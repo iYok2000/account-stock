@@ -1,6 +1,7 @@
 {
   "nav": {
     "brand": "Inventory & Order",
+    "menu": "Menu",
     "dashboard": "Dashboard",
     "inventory": "Inventory",
     "orders": "Orders",
@@ -11,6 +12,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "description": "Overview of your inventory and orders",
     "totalProducts": "Total Products",
     "lowStock": "Low Stock",
     "pendingOrders": "Pending Orders",

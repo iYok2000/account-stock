@@ -32,25 +32,28 @@ export default function LayoutWithSidebar({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header onMenuClick={() => setSidebarOpen((o) => !o)} sidebarOpen={sidebarOpen} />
-      
-      {/* Mobile Sidebar (overlay) */}
-      <Sidebar 
-        open={sidebarOpen} 
+      {/* Header เต็มความกว้าง — logo ซ้ายสุด ไม่ถูก sidebar ดัน (ทับด้านบน) */}
+      <Header
+        onMenuClick={() => setSidebarOpen((o) => !o)}
+        sidebarOpen={sidebarOpen}
+      />
+
+      {/* Mobile: Drawer overlay */}
+      <Sidebar
+        open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         isMobile={true}
       />
-      
+
       <div className="flex flex-1">
-        {/* Desktop Sidebar (collapsible, sticky top-0 ไม่เว้น header) */}
-        <Sidebar 
-          open={sidebarOpen} 
+        {/* Desktop: sidebar ปกติ (ใน flow, ดัน content) */}
+        <Sidebar
+          open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           isMobile={false}
         />
-        
-        {/* Main Content (เว้น header ด้วย pt-) */}
-        <main className="flex-1 bg-neutral-50 pb-6 pt-8 md:pb-8 md:pt-10">
+
+        <main className="flex-1 bg-neutral-50 pb-8 md:pb-10">
           <div className="page-container">{children}</div>
         </main>
       </div>

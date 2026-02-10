@@ -1,6 +1,7 @@
 {
   "nav": {
     "brand": "Inventory & Order",
+    "menu": "เมนู",
     "dashboard": "Dashboard",
     "inventory": "สินค้าคงคลัง",
     "orders": "คำสั่งซื้อ",
@@ -11,6 +12,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "description": "ภาพรวมของสินค้าคงคลังและคำสั่งซื้อของคุณ",
     "totalProducts": "สินค้าทั้งหมด",
     "lowStock": "สต็อกต่ำ",
     "pendingOrders": "รอจัดส่ง",

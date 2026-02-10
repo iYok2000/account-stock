@@ -6,12 +6,14 @@ import { ConfirmModal, FormModal } from "@/components/ui/Modal";
 import StatusTag, { type InventoryStatus } from "@/components/ui/StatusTag";
 import { useToast } from "@/contexts/ToastContext";
 import { ButtonLoading } from "@/components/ui/Loading";
+import { usePermissions } from "@/contexts/AuthContext";
 
 export default function InventoryContent() {
   const t = useTranslations("inventory");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { showSuccess, showError } = useToast();
+  const { can } = usePermissions();
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [addItemOpen, setAddItemOpen] = useState(false);
@@ -77,16 +79,18 @@ export default function InventoryContent() {
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
           {t("title")}
         </h1>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => {
-            setAddItemOpen(true);
-            setFormErrors({});
-          }}
-        >
-          {t("addItem")}
-        </button>
+        {can("inventory:create") && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              setAddItemOpen(true);
+              setFormErrors({});
+            }}
+          >
+            {t("addItem")}
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 md:gap-3">
@@ -103,21 +107,25 @@ export default function InventoryContent() {
         </select>
       </div>
 
-      {someSelected && (
+      {someSelected && (can("inventory:update") || can("inventory:export")) && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 md:gap-4">
           <span className="text-sm font-medium text-neutral-600">
             {selected.size} selected
           </span>
-          <button type="button" className="btn-secondary" disabled>
-            {t("bulkReorder")}
-          </button>
-          <button type="button" className="btn-secondary" disabled>
-            {t("bulkExport")}
-          </button>
+          {can("inventory:update") && (
+            <button type="button" className="btn-secondary" disabled>
+              {t("bulkReorder")}
+            </button>
+          )}
+          {can("inventory:export") && (
+            <button type="button" className="btn-secondary" disabled>
+              {t("bulkExport")}
+            </button>
+          )}
         </div>
       )}
 
-      <div className="card content-table-wrapper overflow-hidden !p-0">
+      <div className="card content-table-wrapper overflow-hidden p-0!">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -177,22 +185,26 @@ export default function InventoryContent() {
                     </td>
                     <td className="table-cell text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-primary hover:underline"
-                        >
-                          {tCommon("edit")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-xs font-medium text-danger hover:underline md:text-sm"
-                          onClick={() => {
-                            setDeleteTargetId(row.id);
-                            setDeleteConfirmOpen(true);
-                          }}
-                        >
-                          {tCommon("delete")}
-                        </button>
+                        {can("inventory:update") && (
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            {tCommon("edit")}
+                          </button>
+                        )}
+                        {can("inventory:delete") && (
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-danger hover:underline md:text-sm"
+                            onClick={() => {
+                              setDeleteTargetId(row.id);
+                              setDeleteConfirmOpen(true);
+                            }}
+                          >
+                            {tCommon("delete")}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

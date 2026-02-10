@@ -5,11 +5,13 @@ import { useTranslations } from "next-intl";
 import { ConfirmModal, FormModal } from "@/components/ui/Modal";
 import StatusTag, { type OrderStatus } from "@/components/ui/StatusTag";
 import { useToast } from "@/contexts/ToastContext";
+import { usePermissions } from "@/contexts/AuthContext";
 
 export default function OrdersContent() {
   const t = useTranslations("orders");
   const tCommon = useTranslations("common");
   const { showSuccess } = useToast();
+  const { can } = usePermissions();
 
   const [placeOrderOpen, setPlaceOrderOpen] = useState(false);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
@@ -38,13 +40,15 @@ export default function OrdersContent() {
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
           {t("title")}
         </h1>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => setPlaceOrderOpen(true)}
-        >
-          {t("placeOrder")}
-        </button>
+        {can("orders:create") && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setPlaceOrderOpen(true)}
+          >
+            {t("placeOrder")}
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 md:gap-3">
@@ -70,7 +74,7 @@ export default function OrdersContent() {
         </select>
       </div>
 
-      <div className="card content-table-wrapper overflow-hidden !p-0">
+      <div className="card content-table-wrapper overflow-hidden p-0!">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>

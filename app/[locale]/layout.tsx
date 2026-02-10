@@ -1,6 +1,7 @@
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 
 export default async function LocaleLayout({
@@ -15,9 +16,11 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <ToastProvider>
-        <MainLayout>{children}</MainLayout>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <MainLayout>{children}</MainLayout>
+        </ToastProvider>
+      </AuthProvider>
     </NextIntlClientProvider>
   );
 }

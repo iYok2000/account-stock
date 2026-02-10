@@ -58,11 +58,11 @@ export default async function DashboardPage() {
           {t("title")}
         </h1>
         <p className="mt-1 text-sm text-neutral-600">
-          Overview of your inventory and orders
+          {t("description")}
         </p>
       </div>
       
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-4 lg:gap-6">
         {cards.map(({ labelKey, value, path, icon }) => (
           <LocaleLink
             key={labelKey}
