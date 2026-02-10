@@ -1,0 +1,86 @@
+{
+  "nav": {
+    "brand": "Inventory & Order",
+    "dashboard": "Dashboard",
+    "inventory": "Inventory",
+    "orders": "Orders",
+    "suppliers": "Suppliers",
+    "reports": "Reports",
+    "lang": "Language",
+    "role": "Role"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalProducts": "Total Products",
+    "lowStock": "Low Stock",
+    "pendingOrders": "Pending Orders",
+    "ordersToday": "Orders Today"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "addItem": "Add Item",
+    "search": "Search...",
+    "filterStatus": "All status",
+    "filterCategory": "All categories",
+    "empty": "No data yet — empty state",
+    "colName": "Name",
+    "colSku": "SKU",
+    "colQty": "Qty",
+    "colStatus": "Status",
+    "bulkReorder": "Reorder",
+    "bulkExport": "Export",
+    "confirmDeleteItem": "Delete this item?",
+    "addItemFormTitle": "Add Item",
+    "formName": "Name",
+    "formSku": "SKU",
+    "formQty": "Qty",
+    "formStatus": "Status",
+    "validationRequired": "This field is required"
+  },
+  "orders": {
+    "title": "Orders",
+    "placeOrder": "Place Order",
+    "search": "Search...",
+    "filterStatus": "All status",
+    "filterDateFrom": "From",
+    "filterDateTo": "To",
+    "empty": "No data yet — empty state",
+    "colId": "ID",
+    "colDate": "Date",
+    "colStatus": "Status",
+    "colAmount": "Amount",
+    "confirmSubmitOrder": "Confirm submit this order?",
+    "placeOrderFormTitle": "Place Order"
+  },
+  "suppliers": {
+    "title": "Suppliers",
+    "empty": "No data yet — empty state",
+    "colName": "Name",
+    "colContact": "Contact",
+    "placeholder": "Ready for API later"
+  },
+  "reports": {
+    "title": "Reports",
+    "salesSummary": "Sales Summary",
+    "topProducts": "Top Products",
+    "placeholder": "Ready for API later"
+  },
+  "status": {
+    "in_stock": "In Stock",
+    "low_stock": "Low Stock",
+    "out_of_stock": "Out of Stock",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "delivered": "Delivered"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "close": "Close"
+  }
+}

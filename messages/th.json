@@ -1,0 +1,86 @@
+{
+  "nav": {
+    "brand": "Inventory & Order",
+    "dashboard": "Dashboard",
+    "inventory": "สินค้าคงคลัง",
+    "orders": "คำสั่งซื้อ",
+    "suppliers": "ผู้จัดส่ง",
+    "reports": "รายงาน",
+    "lang": "ภาษา",
+    "role": "บทบาท"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalProducts": "สินค้าทั้งหมด",
+    "lowStock": "สต็อกต่ำ",
+    "pendingOrders": "รอจัดส่ง",
+    "ordersToday": "คำสั่งวันนี้"
+  },
+  "inventory": {
+    "title": "สินค้าคงคลัง",
+    "addItem": "เพิ่มสินค้า",
+    "search": "ค้นหา...",
+    "filterStatus": "สถานะทั้งหมด",
+    "filterCategory": "หมวดทั้งหมด",
+    "empty": "ยังไม่มีข้อมูล — แสดง empty state",
+    "colName": "ชื่อ",
+    "colSku": "SKU",
+    "colQty": "จำนวน",
+    "colStatus": "สถานะ",
+    "bulkReorder": "สั่งซื้อใหม่",
+    "bulkExport": "ส่งออก",
+    "confirmDeleteItem": "ลบรายการนี้?",
+    "addItemFormTitle": "เพิ่มสินค้า",
+    "formName": "ชื่อ",
+    "formSku": "SKU",
+    "formQty": "จำนวน",
+    "formStatus": "สถานะ",
+    "validationRequired": "กรุณากรอกข้อมูล"
+  },
+  "orders": {
+    "title": "คำสั่งซื้อ",
+    "placeOrder": "สร้างคำสั่งซื้อ",
+    "search": "ค้นหา...",
+    "filterStatus": "สถานะทั้งหมด",
+    "filterDateFrom": "จาก",
+    "filterDateTo": "ถึง",
+    "empty": "ยังไม่มีข้อมูล — แสดง empty state",
+    "colId": "เลขที่",
+    "colDate": "วันที่",
+    "colStatus": "สถานะ",
+    "colAmount": "ยอด",
+    "confirmSubmitOrder": "ยืนยันส่ง order นี้?",
+    "placeOrderFormTitle": "สร้างคำสั่งซื้อ"
+  },
+  "suppliers": {
+    "title": "ผู้จัดส่ง",
+    "empty": "ยังไม่มีข้อมูล",
+    "colName": "ชื่อ",
+    "colContact": "ติดต่อ",
+    "placeholder": "เตรียมสำหรับต่อ API ทีหลัง"
+  },
+  "reports": {
+    "title": "รายงาน",
+    "salesSummary": "สรุปยอดขาย",
+    "topProducts": "สินค้าขายดี",
+    "placeholder": "เตรียมสำหรับต่อ API ทีหลัง"
+  },
+  "status": {
+    "in_stock": "มีสต็อก",
+    "low_stock": "สต็อกต่ำ",
+    "out_of_stock": "หมด",
+    "pending": "รอดำเนินการ",
+    "confirmed": "ยืนยันแล้ว",
+    "shipped": "จัดส่งแล้ว",
+    "delivered": "ส่งถึงแล้ว"
+  },
+  "common": {
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "delete": "ลบ",
+    "edit": "แก้ไข",
+    "confirm": "ยืนยัน",
+    "loading": "กำลังโหลด...",
+    "close": "ปิด"
+  }
+}

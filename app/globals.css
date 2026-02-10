@@ -1,0 +1,352 @@
+@import "tailwindcss";
+
+/* Design Tokens — 2026 Enterprise Standards */
+@theme {
+  /* Brand Colors */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #dbeafe;
+  
+  --color-success: #16a34a;
+  --color-warning: #ca8a04;
+  --color-danger: #dc2626;
+  
+  /* Neutrals */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f4f4f5;
+  --color-neutral-200: #e4e4e7;
+  --color-neutral-300: #d4d4d8;
+  --color-neutral-400: #a1a1aa;
+  --color-neutral-500: #71717a;
+  --color-neutral-600: #52525b;
+  --color-neutral-700: #3f3f46;
+  --color-neutral-800: #27272a;
+  --color-neutral-900: #18181b;
+  
+  /* Status Tags Extended Palette */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-800: #166534;
+  
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-800: #92400e;
+  
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-800: #991b1b;
+  
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-800: #1e40af;
+  
+  --color-purple-50: #faf5ff;
+  --color-purple-100: #f3e8ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-800: #6b21a8;
+}
+
+/* Base Resets */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  background: #fafafa;
+  color: var(--color-neutral-900);
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Page Container — Content padding: 16px mobile, 24px tablet, 48px desktop */
+.page-container {
+  width: 100%;
+  max-width: 80rem; /* 1280px */
+  margin: 0 auto;
+  padding: 0 1rem; /* 16px mobile */
+  position: relative;
+}
+
+/* Spacing: filter/actions bar → table card. Use this class on the card that wraps the table so the gap is always visible (avoids relying only on flex gap). */
+.content-table-wrapper {
+  margin-top: 2.5rem; /* 40px */
+}
+@media (min-width: 768px) {
+  .page-container {
+    padding: 0 1.5rem; /* 24px tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .page-container {
+    padding: 0 3rem; /* 48px desktop */
+  }
+}
+
+/* Cards — Padding: 16px mobile, 24px tablet, 32px desktop */
+.card {
+  background: #ffffff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.5rem; /* 8px */
+  box-shadow: 
+    0 1px 2px 0 rgb(0 0 0 / 0.05);
+  padding: 1rem; /* 16px mobile */
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+@media (min-width: 768px) {
+  .card {
+    padding: 1.5rem; /* 24px tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .card {
+    border-radius: 0.75rem; /* 12px desktop */
+    padding: 2rem; /* 32px desktop */
+  }
+}
+
+.card-hover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border-color: var(--color-neutral-300);
+}
+
+/* Buttons — Medium: 16×12px, Gap: 16px */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem; /* 8px icon spacing */
+  min-height: 2.5rem; /* 40px */
+  padding: 0.625rem 1rem; /* 10px 16px */
+  border-radius: 0.375rem; /* 6px */
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500;
+  line-height: 1.25;
+  color: #fff;
+  background: var(--color-primary);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+.btn-primary:active:not(:disabled) {
+  background: #1e40af;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-neutral-300);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-neutral-700);
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-400);
+}
+.btn-secondary:active:not(:disabled) {
+  background: var(--color-neutral-100);
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #fff;
+  background: var(--color-danger);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Inputs — 12×12px padding */
+.input-base {
+  width: 100%;
+  min-height: 2.5rem; /* 40px */
+  padding: 0.625rem 0.75rem; /* 10px 12px */
+  border-radius: 0.375rem; /* 6px */
+  border: 1px solid var(--color-neutral-300);
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.input-base::placeholder {
+  color: var(--color-neutral-400);
+}
+.input-base:hover {
+  border-color: var(--color-neutral-400);
+}
+.input-base:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.input-base:disabled {
+  background: var(--color-neutral-50);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Status Colors */
+.status-success,
+.text-success {
+  color: var(--color-success);
+}
+.status-warning,
+.text-warning {
+  color: var(--color-warning);
+}
+.status-danger,
+.text-danger {
+  color: var(--color-danger);
+}
+
+/* Navigation Active State — Based on enterprise best practices: prominent, clear visual feedback */
+.nav-active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 
+    0 1px 3px 0 rgb(37 99 235 / 0.2),
+    0 1px 2px -1px rgb(37 99 235 / 0.1);
+}
+.nav-active:hover {
+  background: var(--color-primary-hover) !important;
+  color: #fff !important;
+  transform: translateX(2px);
+}
+
+/* Overlays */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+.mobile-menu-overlay {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Tables — Cell: 8×8px mobile, 12×12px tablet, 16×16px desktop */
+.table-header-row {
+  background: var(--color-neutral-50);
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.table-body-row {
+  min-height: 2.5rem; /* 40px mobile */
+  border-bottom: 1px solid var(--color-neutral-100);
+  transition: background 0.1s ease;
+}
+@media (min-width: 768px) {
+  .table-body-row {
+    min-height: 3rem; /* 48px tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .table-body-row {
+    min-height: 3.5rem; /* 56px desktop */
+  }
+}
+
+.table-body-row:hover {
+  background: var(--color-neutral-50);
+}
+
+.table-body-row:last-child {
+  border-bottom: none;
+}
+
+.table-cell {
+  padding: 0.5rem; /* 8×8px mobile */
+  font-size: 0.875rem;
+}
+@media (min-width: 768px) {
+  .table-cell {
+    padding: 0.75rem; /* 12×12px tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .table-cell {
+    padding: 1rem; /* 16×16px desktop */
+  }
+}
+
+.table-header-cell {
+  padding: 0.75rem 0.5rem; /* 12×8px mobile */
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+@media (min-width: 768px) {
+  .table-header-cell {
+    padding: 1rem 0.75rem; /* 16×12px tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .table-header-cell {
+    padding: 1.25rem 1rem; /* 20×16px desktop */
+  }
+}
