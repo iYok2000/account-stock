@@ -1,170 +1,191 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { routing } from "@/i18n/routing";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Upload,
+  Users,
+  Calculator,
+  FileText,
+  Store,
+  Megaphone,
+  Ticket,
+  BadgePercent,
+  Receipt,
+  GitBranch,
+  Bot,
+  Settings,
+  X,
+} from "lucide-react";
 import { usePermissions } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
 
-const navPaths = [
-  { href: "/", key: "dashboard", emoji: "🏠" },
-  { href: "/inventory", key: "inventory", emoji: "📦" },
-  { href: "/orders", key: "orders", emoji: "📋" },
-  { href: "/suppliers", key: "suppliers", emoji: "👥" },
-  { href: "/reports", key: "reports", emoji: "📊" },
+const NAV_GROUPS = [
+  {
+    label: null,
+    items: [
+      { href: "/", key: "dashboard", icon: LayoutDashboard },
+      { href: "/inventory", key: "inventory", icon: Package },
+      { href: "/orders", key: "orders", icon: ShoppingCart },
+      { href: "/suppliers", key: "suppliers", icon: Users },
+      { href: "/import", key: "import", icon: Upload },
+      { href: "/shops", key: "shops", icon: Store },
+    ],
+  },
+  {
+    label: "โปรโมชั่น",
+    items: [
+      { href: "/campaigns", key: "campaigns", icon: Megaphone },
+      { href: "/vouchers", key: "vouchers", icon: Ticket },
+      { href: "/fees", key: "fees", icon: BadgePercent },
+    ],
+  },
+  {
+    label: "วิเคราะห์",
+    items: [
+      { href: "/calculator", key: "calculator", icon: Calculator },
+      { href: "/tax", key: "tax", icon: Receipt },
+      { href: "/funnels", key: "funnels", icon: GitBranch },
+      { href: "/reports", key: "reports", icon: FileText },
+    ],
+  },
+  {
+    label: "เครื่องมือ",
+    items: [
+      { href: "/agents", key: "agents", icon: Bot },
+      { href: "/settings", key: "settings", icon: Settings },
+    ],
+  },
 ] as const;
 
-type SidebarProps = {
-  open: boolean;
-  onClose: () => void;
-  isMobile: boolean;
-};
+// Flatten for RBAC filtering convenience
+type NavItem = { href: string; key: string; icon: React.ElementType };
+const navigation: NavItem[] = NAV_GROUPS.flatMap((g) => [...g.items]);
 
-export default function Sidebar({ open, onClose, isMobile }: SidebarProps) {
+interface SidebarProps {
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
+}
+
+export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const locale = useLocale();
   const { can } = usePermissions();
 
-  const visibleNavPaths = useMemo(
+  const canSee = useMemo(
     () =>
-      navPaths.filter((p) => {
-        const perm = NAV_PERMISSIONS[p.href as keyof typeof NAV_PERMISSIONS];
-        return perm ? can(perm) : true;
-      }),
+      new Set(
+        navigation
+          .filter((item) => {
+            const perm = NAV_PERMISSIONS[item.href as keyof typeof NAV_PERMISSIONS];
+            return perm ? can(perm) : true;
+          })
+          .map((item) => item.href)
+      ),
     [can]
   );
 
-  useEffect(() => {
-    if (!isMobile) return;
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobile, open]);
-
-  // Mobile: overlay drawer (ทับ content)
-  if (isMobile) {
+  const renderLink = (item: NavItem) => {
+    if (!canSee.has(item.href)) return null;
+    const isActive =
+      pathname === item.href ||
+      (item.href !== "/" && pathname.startsWith(item.href));
     return (
-      <>
-        <div
-          className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 md:hidden ${
-            open ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"
-          }`}
-          aria-hidden="true"
-          onClick={onClose}
-        />
-        <aside
-          className={`fixed left-0 top-0 z-50 flex h-full w-[280px] max-w-[85vw] flex-col border-r border-neutral-200 bg-white shadow-xl transition-transform duration-200 ease-out md:hidden ${
-            open ? "translate-x-0" : "-translate-x-full"
-          }`}
-          aria-label="Main navigation"
+      <li key={item.href}>
+        <Link
+          href={item.href}
+          onClick={() => setMobileOpen(false)}
+          className={cn(
+            "group flex min-h-10 items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            isActive
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
         >
-          {renderSidebarContent(true)}
-        </aside>
-      </>
+          <item.icon
+            className={cn(
+              "h-5 w-5 shrink-0",
+              isActive
+                ? "text-primary"
+                : "text-muted-foreground group-hover:text-foreground"
+            )}
+          />
+          <span className="truncate">{t(item.key)}</span>
+        </Link>
+      </li>
     );
-  }
+  };
 
-  // Desktop: sidebar ปกติ (ใน flow, ดัน content — ไม่ใช่ drawer)
-  return (
-    <aside
-      className={`hidden md:flex md:h-full md:shrink-0 md:flex-col md:border-r md:border-neutral-200 md:bg-white md:transition-all md:duration-200 ${
-        open ? "md:w-[280px]" : "md:w-0 md:border-0 md:overflow-hidden"
-      }`}
-      aria-label="Main navigation"
-    >
-      {open ? (
-        <div className="flex h-full w-[280px] flex-col">
-          {renderSidebarContent(false)}
+  const navContent = (
+    <div className="flex grow flex-col overflow-y-auto border-r border-border bg-card pb-4">
+      {/* Logo row — same height as header (h-16) */}
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-6">
+        <Package className="h-8 w-8 shrink-0 text-primary" />
+        <div className="min-w-0">
+          <h1 className="text-base font-bold leading-tight text-foreground">
+            {t("brand")}
+          </h1>
+          <p className="text-xs leading-tight text-muted-foreground">
+            {t("subtitle")}
+          </p>
         </div>
-      ) : null}
-    </aside>
+      </div>
+
+      {/* Navigation groups */}
+      <nav className="flex flex-1 flex-col gap-y-4 px-4 pt-4">
+        {NAV_GROUPS.map((group) => {
+          const visibleItems = group.items.filter((item) => canSee.has(item.href));
+          if (visibleItems.length === 0) return null;
+          return (
+            <div key={group.label ?? "__main"}>
+              {group.label && (
+                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {group.label}
+                </p>
+              )}
+              <ul role="list" className="flex flex-col gap-y-0.5">
+                {visibleItems.map((item) => renderLink(item as NavItem))}
+              </ul>
+            </div>
+          );
+        })}
+      </nav>
+    </div>
   );
 
-  function renderSidebarContent(showBrand: boolean) {
-    return (
-      <>
-        {/* Sidebar header — ขนาดและ style ตาม reference (icon + title, compact) */}
-        <div className="flex min-h-14 items-center justify-between border-b border-neutral-200 px-4 py-3 md:min-h-[52px] md:px-5 md:py-3.5">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-600 md:size-8" aria-hidden="true">
-              <svg className="size-5 md:size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </span>
-            {showBrand ? (
-              <span className="text-base font-bold tracking-tight text-neutral-900 md:text-lg">
-                {t("brand")}
-              </span>
-            ) : (
-              <span className="text-sm font-semibold text-neutral-700 md:text-base">{t("menu")}</span>
-            )}
+  return (
+    <>
+      {/* Mobile overlay sidebar */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden
+          />
+          <div className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col shadow-xl">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="absolute right-3 top-3 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="ปิดเมนู"
+            >
+              <X className="size-5" />
+            </button>
+            {navContent}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-9 items-center justify-center rounded-lg text-neutral-500 transition-all hover:bg-neutral-100 hover:text-neutral-900 active:scale-95"
-            aria-label="Close menu"
-          >
-            {isMobile ? (
-              <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            )}
-          </button>
         </div>
+      )}
 
-        {/* ระยะซ้าย: nav pl-4 + link paddingLeft = ไอคอนห่างจากขอบ (เทียบเว็บทั่วไป ~24–32px) */}
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto py-6 pl-4 pr-3 md:pl-5 md:pr-4">
-          {visibleNavPaths.map(({ href, key, emoji }) => {
-            const isActive =
-              pathname === href ||
-              (href !== "/" && pathname.startsWith(href));
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`group flex min-h-12 items-center gap-4 rounded-lg py-4 pr-4 text-base font-medium leading-tight transition-all duration-150 md:min-h-[52px] md:py-5 md:pr-5 md:text-[17px] ${
-                  isActive
-                    ? "nav-active"
-                    : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-                }`}
-                style={{ paddingLeft: "1.5rem" }}
-              >
-                <span className="shrink-0 text-2xl leading-none" role="img" aria-hidden="true">{emoji}</span>
-                <span>{t(key)}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* ปุ่มภาษา + Role — style ตาม reference (compact, ขนาดปุ่มเท่ากัน) */}
-        <div className="border-t border-neutral-200 p-3 md:p-4">
-          <div className="mb-2.5 flex gap-1.5 rounded-lg bg-neutral-50 p-1.5 md:mb-3 md:p-2">
-            {routing.locales.map((loc) => (
-              <Link
-                key={loc}
-                href={pathname}
-                locale={loc}
-                className={`min-h-9 flex-1 rounded-md px-3 py-2 text-center text-sm font-medium transition-colors md:min-h-[38px] md:py-2.5 md:text-[15px] ${
-                  locale === loc
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-neutral-600 hover:bg-neutral-200/80 hover:text-neutral-900"
-                }`}
-              >
-                {loc.toUpperCase()}
-              </Link>
-            ))}
-          </div>
-          <p className="text-xs font-medium text-neutral-500 md:text-[13px]">{t("role")}</p>
-        </div>
-      </>
-    );
-  }
+      {/* Desktop sidebar — fixed, full height */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
+        {navContent}
+      </aside>
+    </>
+  );
 }
