@@ -178,13 +178,16 @@
   }
 
   .card-hover {
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   }
   .card-hover:hover {
     box-shadow:
       0 4px 6px -1px rgb(0 0 0 / 0.1),
       0 2px 4px -2px rgb(0 0 0 / 0.1);
     border-color: var(--color-neutral-300);
+  }
+  .card-hover:active {
+    transform: scale(0.99);
   }
 
   /* Buttons */
@@ -203,15 +206,18 @@
     background: var(--color-primary);
     border: none;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
     white-space: nowrap;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--color-primary-hover);
+    box-shadow: 0 2px 6px -1px rgb(0 0 0 / 0.15);
   }
   .btn-primary:active:not(:disabled) {
     background: #1e40af;
+    transform: scale(0.98);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
   .btn-primary:disabled {
     opacity: 0.5;
@@ -233,16 +239,19 @@
     color: var(--color-neutral-700);
     background: #fff;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
     white-space: nowrap;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06);
   }
   .btn-secondary:hover:not(:disabled) {
     background: var(--color-neutral-50);
     border-color: var(--color-neutral-400);
+    box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.08);
   }
   .btn-secondary:active:not(:disabled) {
     background: var(--color-neutral-100);
+    transform: scale(0.98);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04);
   }
   .btn-secondary:disabled {
     opacity: 0.5;

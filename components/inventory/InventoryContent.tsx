@@ -6,6 +6,7 @@ import { ConfirmModal, FormModal } from "@/components/ui/Modal";
 import StatusTag, { type InventoryStatus } from "@/components/ui/StatusTag";
 import { useToast } from "@/contexts/ToastContext";
 import { ButtonLoading } from "@/components/ui/Loading";
+import NumberInput from "@/components/ui/NumberInput";
 import { usePermissions } from "@/contexts/AuthContext";
 
 export default function InventoryContent() {
@@ -272,12 +273,13 @@ export default function InventoryContent() {
             <label className="mb-2 block text-sm font-medium text-neutral-700">
               {t("formQty")}
             </label>
-            <input
-              type="number"
-              min={0}
+            <NumberInput
               value={form.qty}
-              onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-              className="input-base"
+              onChange={(v) => setForm((f) => ({ ...f, qty: v }))}
+              min={0}
+              step={1}
+              error={!!formErrors.qty}
+              label={t("formQty")}
             />
             {formErrors.qty && (
               <p className="mt-2 text-sm text-danger">{formErrors.qty}</p>
