@@ -12,6 +12,7 @@ export const RESOURCES = [
   "analysis",   // calculator, tax, funnels, reports
   "agents",     // AI assistant / automation
   "settings",   // system configuration
+  "users",      // user management — SuperAdmin only
 ] as const;
 
 export const ACTIONS = ["read", "create", "update", "delete", "export"] as const;
@@ -49,4 +50,5 @@ export const NAV_PERMISSIONS: Record<string, PermissionString> = {
   "/reports":    "analysis:read",
   "/agents":     "agents:read",
   "/settings":   "settings:read",
+  "/users":      "users:read",
 } as const;

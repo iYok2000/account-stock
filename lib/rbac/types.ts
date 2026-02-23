@@ -4,7 +4,7 @@
 
 import type { PermissionString } from "./constants";
 
-export type Role = "Admin" | "Manager" | "Staff" | "Viewer";
+export type Role = "SuperAdmin" | "Admin" | "Manager" | "Staff" | "Viewer";
 
 export interface UserSession {
   userId: string;

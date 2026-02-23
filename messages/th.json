@@ -18,8 +18,32 @@
     "reports": "รายงาน",
     "agents": "AI ผู้ช่วย",
     "settings": "ตั้งค่า",
+    "users": "ผู้ใช้",
     "lang": "ภาษา",
     "role": "บทบาท"
+  },
+  "auth": {
+    "user": "ผู้ใช้",
+    "userMenu": "เมนูผู้ใช้",
+    "signIn": "เข้าสู่ระบบ",
+    "signInSubtitle": "อีเมล / ชื่อผู้ใช้ และรหัสผ่าน",
+    "devLogin": "เข้าสู่ระบบ (ทดสอบ)",
+    "login": "เข้าสู่ระบบ",
+    "logout": "ออกจากระบบ",
+    "emailOrUsername": "อีเมลหรือชื่อผู้ใช้",
+    "password": "รหัสผ่าน",
+    "placeholderUser": "อีเมลหรือชื่อผู้ใช้",
+    "placeholderPass": "รหัสผ่าน",
+    "loginFailed": "อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+    "loading": "กำลังเข้าสู่ระบบ...",
+    "devOnlyHint": "Dev: ใช้ test user ตาม env (ดู .env.example)"
+  },
+  "users": {
+    "title": "ผู้ใช้",
+    "subtitle": "จัดการผู้ใช้ระบบ (เฉพาะ SuperAdmin)",
+    "empty": "ยังไม่มีผู้ใช้",
+    "emptyDescription": "รายการผู้ใช้จะแสดงเมื่อต่อ API แล้ว",
+    "apiNote": "รอต่อ API — การจัดการผู้ใช้จะใช้งานได้เมื่อเชื่อมต่อ backend"
   },
   "dashboard": {
     "title": "Dashboard",

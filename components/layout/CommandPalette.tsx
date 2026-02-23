@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
 import {
   Search, LayoutDashboard, Package, ShoppingCart, Upload,
   Users, Store, Megaphone, Ticket, BadgePercent, Calculator,
-  Receipt, GitBranch, FileText, Bot, Settings,
+  Receipt, GitBranch, FileText, Bot, Settings, UserCog,
 } from "lucide-react";
+import { usePermissions } from "@/contexts/AuthContext";
+import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
 
 // Must mirror NAV_GROUPS in Sidebar.tsx
 const NAV_ITEMS = [
@@ -27,6 +29,7 @@ const NAV_ITEMS = [
   { group: "วิเคราะห์", href: "/reports", key: "reports", icon: FileText },
   { group: "เครื่องมือ", href: "/agents", key: "agents", icon: Bot },
   { group: "เครื่องมือ", href: "/settings", key: "settings", icon: Settings },
+  { group: "เครื่องมือ", href: "/users", key: "users", icon: UserCog },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -39,9 +42,13 @@ export function CommandPalette() {
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const t = useTranslations("nav");
+  const { can } = usePermissions();
 
-  // Build translated items once
-  const allItems = NAV_ITEMS.map((item) => ({
+  // Build translated items once; filter by permission (same as Sidebar)
+  const allItems = NAV_ITEMS.filter((item) => {
+    const perm = NAV_PERMISSIONS[item.href as keyof typeof NAV_PERMISSIONS];
+    return perm ? can(perm) : true;
+  }).map((item) => ({
     ...item,
     label: t(item.key as NavKey),
   }));

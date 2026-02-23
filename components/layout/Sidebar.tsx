@@ -20,6 +20,7 @@ import {
   GitBranch,
   Bot,
   Settings,
+  UserCog,
   X,
 } from "lucide-react";
 import { usePermissions } from "@/contexts/AuthContext";
@@ -59,6 +60,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/agents", key: "agents", icon: Bot },
       { href: "/settings", key: "settings", icon: Settings },
+      { href: "/users", key: "users", icon: UserCog },
     ],
   },
 ] as const;

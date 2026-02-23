@@ -1,8 +1,9 @@
 "use client";
 
-import { Bell, Menu, User, Search } from "lucide-react";
+import { Bell, Menu, Search } from "lucide-react";
 import AppSwitcher from "../AppSwitcher";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { UserMenu } from "./UserMenu";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -54,17 +55,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         <div className="hidden h-6 w-px bg-border lg:block" aria-hidden />
 
-        <button
-          type="button"
-          className="-m-1.5 flex items-center gap-x-2 p-1.5"
-        >
-          <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-            <User className="size-4 text-primary" aria-hidden />
-          </div>
-          <span className="hidden text-sm font-medium text-foreground lg:block">
-            ผู้ใช้
-          </span>
-        </button>
+        <UserMenu />
       </div>
     </header>
   );

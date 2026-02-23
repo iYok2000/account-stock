@@ -75,12 +75,16 @@ const managerPermissions: PermissionString[] = [
   "settings:read",
 ];
 
+// SuperAdmin: all permissions including users:* (user management)
+const superAdminPermissions: PermissionString[] = [...allPermissions];
+
 /** Static map: role → permissions. Replace with API response when backend is ready. */
 export const ROLE_PERMISSIONS: Record<Role, PermissionString[]> = {
   Viewer: viewerPermissions,
   Staff: staffPermissions,
   Manager: managerPermissions,
   Admin: allPermissions,
+  SuperAdmin: superAdminPermissions,
 };
 
 export function getPermissionsForRoles(roles: Role[]): PermissionString[] {

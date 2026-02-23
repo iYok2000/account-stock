@@ -17,19 +17,24 @@ type AuthContextValue = {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  /** Dev/test: login with env credentials → SuperAdmin. Frontend-only; do not use in production. */
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const MOCK_ROLE_KEY = "rbac_mock_role";
 const SESSION_CACHE_KEY = "rbac_session";
+const AUTH_LOGGED_OUT_KEY = "auth_logged_out";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min; refetch after
+
+const ALL_ROLES: Role[] = ["SuperAdmin", "Admin", "Manager", "Staff", "Viewer"];
 
 function getMockRole(): Role {
   if (typeof window === "undefined") return "Staff";
   const stored = sessionStorage.getItem(MOCK_ROLE_KEY);
-  if (stored && ["Admin", "Manager", "Staff", "Viewer"].includes(stored))
-    return stored as Role;
+  if (stored && ALL_ROLES.includes(stored as Role)) return stored as Role;
   return (process.env.NEXT_PUBLIC_MOCK_ROLE as Role) || "Staff";
 }
 
@@ -87,27 +92,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         saveCachedSession(session);
         return;
       }
-      // No backend or 401: use mock for dev (do not cache long-term)
-      const roles: Role[] = [getMockRole()];
-      const permissions = getPermissionsForRoles(roles);
-      const mock: UserSession = {
-        userId: "mock",
-        roles,
-        permissions,
-        displayName: `Mock ${roles[0]}`,
-      };
-      setSession(mock);
+      // No backend or 401: use mock for dev unless user explicitly logged out
+      if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
+        setSession(null);
+      } else {
+        const roles: Role[] = [getMockRole()];
+        const permissions = getPermissionsForRoles(roles);
+        const mock: UserSession = {
+          userId: "mock",
+          roles,
+          permissions,
+          displayName: `Mock ${roles[0]}`,
+        };
+        setSession(mock);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Auth failed";
       setError(msg);
-      const roles: Role[] = [getMockRole()];
-      setSession({
-        userId: "mock",
-        roles,
-        permissions: getPermissionsForRoles(roles),
-      });
+      if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
+        setSession(null);
+      } else {
+        const roles: Role[] = [getMockRole()];
+        setSession({
+          userId: "mock",
+          roles,
+          permissions: getPermissionsForRoles(roles),
+        });
+      }
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
+    const envUser = process.env.NEXT_PUBLIC_TEST_USER ?? "useradmin1234";
+    const envPass = process.env.NEXT_PUBLIC_TEST_PASS ?? "pass@1";
+    const input = emailOrUsername.trim();
+    if (input !== envUser || password !== envPass) return false;
+    if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
+    const roles: Role[] = ["SuperAdmin"];
+    const permissions = getPermissionsForRoles(roles);
+    const newSession: UserSession = {
+      userId: "test",
+      roles,
+      permissions,
+      displayName: "SuperAdmin",
+    };
+    setSession(newSession);
+    saveCachedSession(newSession);
+    return true;
+  }, []);
+
+  const logout = useCallback(() => {
+    setSession(null);
+    setError(null);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(SESSION_CACHE_KEY);
+      sessionStorage.removeItem(MOCK_ROLE_KEY);
+      sessionStorage.setItem(AUTH_LOGGED_OUT_KEY, "1");
     }
   }, []);
 
@@ -122,8 +164,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchSession]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, isLoading, error, refetch: fetchSession }),
-    [session, isLoading, error, fetchSession]
+    () => ({ session, isLoading, error, refetch: fetchSession, login, logout }),
+    [session, isLoading, error, fetchSession, login, logout]
   );
 
   return (

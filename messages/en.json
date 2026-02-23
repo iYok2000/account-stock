@@ -18,8 +18,32 @@
     "reports": "Reports",
     "agents": "AI Assistant",
     "settings": "Settings",
+    "users": "Users",
     "lang": "Language",
     "role": "Role"
+  },
+  "auth": {
+    "user": "User",
+    "userMenu": "User menu",
+    "signIn": "Sign in",
+    "signInSubtitle": "Email / username and password",
+    "devLogin": "Dev login",
+    "login": "Sign in",
+    "logout": "Sign out",
+    "emailOrUsername": "Email or username",
+    "password": "Password",
+    "placeholderUser": "Email or username",
+    "placeholderPass": "Password",
+    "loginFailed": "Invalid email/username or password",
+    "loading": "Signing in...",
+    "devOnlyHint": "Dev: use env test user (see .env.example)"
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage system users (SuperAdmin only)",
+    "empty": "No users yet",
+    "emptyDescription": "User list will appear when connected to API",
+    "apiNote": "Waiting for API — user management will work when backend is connected"
   },
   "dashboard": {
     "title": "Dashboard",
