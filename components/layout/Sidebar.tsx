@@ -101,17 +101,17 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           href={item.href}
           onClick={() => setMobileOpen(false)}
           className={cn(
-            "group flex min-h-10 items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            "group flex min-h-10 items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
             isActive
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "bg-primary text-primary-foreground shadow-md hover:shadow-lg"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground hover:translate-x-0.5"
           )}
         >
           <item.icon
             className={cn(
               "h-5 w-5 shrink-0",
               isActive
-                ? "text-primary"
+                ? "text-primary-foreground"
                 : "text-muted-foreground group-hover:text-foreground"
             )}
           />
@@ -168,7 +168,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
-          <div className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col shadow-xl">
+          <div className="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col shadow-xl">
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
@@ -183,7 +183,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
       )}
 
       {/* Desktop sidebar — fixed, full height */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:w-[280px] lg:flex-col">
         {navContent}
       </aside>
     </>

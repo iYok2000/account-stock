@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ShieldAlert, TrendingUp, GitCompare, Zap } from "lucide-react";
+import { ShieldAlert, TrendingUp, GitCompare, Zap, ChevronDown } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { CalcResult } from "@/lib/calculator/engine";
 
@@ -26,6 +26,7 @@ const LOSS_BAR: Record<string, string>  = { green: "bg-green-500",  yellow: "bg-
 
 export function AnalysisSection({ breakEven, sensitivity, scenarios, monte, activePrice, productCost, returnRate }: Props) {
   const t = useTranslations("calculator.analysis");
+  const tPage = useTranslations("calculator");
 
   return (
     <div className="border-t border-border pt-2 space-y-4">
@@ -78,7 +79,41 @@ export function AnalysisSection({ breakEven, sensitivity, scenarios, monte, acti
         </div>
       </div>
 
-      {/* 2. Sensitivity */}
+      {/* 2. Scenario Lab */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-3">
+          <GitCompare className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-foreground">{t("scenario.title")}</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {scenarios.map(({ color, noteKey, r }, i) => {
+            const labelKey = i === 0 ? "worst" : i === 1 ? "expected" : "best";
+            return (
+              <div key={color} className={cn("rounded-lg p-3 border text-center",
+                color === "red" ? "border-red-200 bg-red-50" : color === "green" ? "border-green-200 bg-green-50" : "border-blue-200 bg-blue-50"
+              )}>
+                <p className="text-sm font-semibold text-foreground">{t(`scenario.${labelKey}`)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{t(`scenario.${noteKey}`)}</p>
+                <p className={cn("text-xl font-bold mt-2 tabular-nums",
+                  r.profitPerUnit >= 0 ? (color === "green" ? "text-green-700" : "text-foreground") : "text-red-600"
+                )}>
+                  {formatCurrency(r.profitPerUnit)}
+                </p>
+                <p className="text-xs text-muted-foreground">{t("scenario.profitPerUnit")}</p>
+                <div className={cn("mt-2 text-xs font-medium rounded px-1.5 py-0.5 inline-block",
+                  r.profitMargin >= 15 ? "bg-green-100 text-green-700" :
+                  r.profitMargin >= 0  ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                )}>
+                  Margin {r.profitMargin.toFixed(1)}%
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2 text-center">{t("scenario.footnote")}</p>
+      </div>
+
+      {/* 3. Sensitivity */}
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="h-4 w-4 text-primary" />
@@ -114,79 +149,52 @@ export function AnalysisSection({ breakEven, sensitivity, scenarios, monte, acti
         </div>
       </div>
 
-      {/* 3. Scenario Lab */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-3">
-          <GitCompare className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-foreground">{t("scenario.title")}</h3>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {scenarios.map(({ color, noteKey, r }, i) => {
-            const labelKey = i === 0 ? "worst" : i === 1 ? "expected" : "best";
-            return (
-              <div key={color} className={cn("rounded-lg p-3 border text-center",
-                color === "red" ? "border-red-200 bg-red-50" : color === "green" ? "border-green-200 bg-green-50" : "border-blue-200 bg-blue-50"
-              )}>
-                <p className="text-sm font-semibold text-foreground">{t(`scenario.${labelKey}`)}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{t(`scenario.${noteKey}`)}</p>
-                <p className={cn("text-xl font-bold mt-2 tabular-nums",
-                  r.profitPerUnit >= 0 ? (color === "green" ? "text-green-700" : "text-foreground") : "text-red-600"
-                )}>
-                  {formatCurrency(r.profitPerUnit)}
-                </p>
-                <p className="text-xs text-muted-foreground">{t("scenario.profitPerUnit")}</p>
-                <div className={cn("mt-2 text-xs font-medium rounded px-1.5 py-0.5 inline-block",
-                  r.profitMargin >= 15 ? "bg-green-100 text-green-700" :
-                  r.profitMargin >= 0  ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                )}>
-                  Margin {r.profitMargin.toFixed(1)}%
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-2 text-center">{t("scenario.footnote")}</p>
-      </div>
-
-      {/* 4. Monte Carlo */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-3">
+      {/* 4. Monte Carlo — collapsible "Advanced analysis" */}
+      <details className="group/calc card overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-2 px-3 font-semibold text-foreground hover:bg-muted/50 transition-colors [&::-webkit-details-marker]:hidden">
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open/calc:rotate-180" />
           <Zap className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-foreground">{t("monte.title")}</h3>
-          <span className="text-xs text-muted-foreground ml-1">{t("monte.subtitle")}</span>
-        </div>
-        <div className="flex items-center gap-3 mb-4">
-          <div className={cn("rounded-xl px-4 py-2 text-center min-w-[90px]", RISK_BG[monte.riskColor])}>
-            <p className="text-xs text-muted-foreground">{t("monte.riskLabel")}</p>
-            <p className={cn("text-lg font-bold", RISK_TEXT[monte.riskColor])}>{t(`monte.${monte.riskKey}`)}</p>
+          <span>{tPage("advancedSectionTitle")}</span>
+          <span className="text-xs font-normal text-muted-foreground ml-1">— {t("monte.title")}</span>
+        </summary>
+        <div className="pt-2 pb-1">
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="font-semibold text-foreground">{t("monte.title")}</h3>
+            <span className="text-xs text-muted-foreground ml-1">{t("monte.subtitle")}</span>
           </div>
-          <div className="flex-1">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>{t("monte.lossChance")}</span>
-              <span className="font-medium">{monte.lossPct.toFixed(0)}%</span>
+          <div className="flex items-center gap-3 mb-4">
+            <div className={cn("rounded-xl px-4 py-2 text-center min-w-[90px]", RISK_BG[monte.riskColor])}>
+              <p className="text-xs text-muted-foreground">{t("monte.riskLabel")}</p>
+              <p className={cn("text-lg font-bold", RISK_TEXT[monte.riskColor])}>{t(`monte.${monte.riskKey}`)}</p>
             </div>
-            <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
-              <div className={cn("h-3 rounded-full transition-all duration-300", LOSS_BAR[monte.riskColor])}
-                style={{ width: `${Math.min(monte.lossPct, 100)}%` }} />
+            <div className="flex-1">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <span>{t("monte.lossChance")}</span>
+                <span className="font-medium">{monte.lossPct.toFixed(0)}%</span>
+              </div>
+              <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
+                <div className={cn("h-3 rounded-full transition-all duration-300", LOSS_BAR[monte.riskColor])}
+                  style={{ width: `${Math.min(monte.lossPct, 100)}%` }} />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">{t("monte.note")}</p>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">{t("monte.note")}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {([
+              { key: "p10", value: monte.p10, icon: "📉", cls: "text-red-600" },
+              { key: "p50", value: monte.p50, icon: "📊", cls: "text-foreground" },
+              { key: "p90", value: monte.p90, icon: "📈", cls: "text-green-600" },
+            ] as { key: string; value: number; icon: string; cls: string }[]).map(({ key, value, icon, cls }) => (
+              <div key={key} className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-base">{icon}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t(`monte.${key}`)}</p>
+                <p className={cn("text-base font-bold tabular-nums mt-1", cls)}>{formatCurrency(value)}</p>
+                <p className="text-[10px] text-muted-foreground">{t("monte.profitPerUnit")}</p>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          {([
-            { key: "p10", value: monte.p10, icon: "📉", cls: "text-red-600" },
-            { key: "p50", value: monte.p50, icon: "📊", cls: "text-foreground" },
-            { key: "p90", value: monte.p90, icon: "📈", cls: "text-green-600" },
-          ] as { key: string; value: number; icon: string; cls: string }[]).map(({ key, value, icon, cls }) => (
-            <div key={key} className="rounded-lg border border-border bg-muted/20 p-3">
-              <p className="text-base">{icon}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t(`monte.${key}`)}</p>
-              <p className={cn("text-base font-bold tabular-nums mt-1", cls)}>{formatCurrency(value)}</p>
-              <p className="text-[10px] text-muted-foreground">{t("monte.profitPerUnit")}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      </details>
     </div>
   );
 }

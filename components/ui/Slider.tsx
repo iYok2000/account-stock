@@ -20,6 +20,8 @@ interface SliderProps {
   showLock?: boolean;
   locked?: boolean;
   onLockToggle?: () => void;
+  /** Short description under or on hover (tooltip) */
+  hint?: string;
 }
 
 export function Slider({
@@ -34,6 +36,7 @@ export function Slider({
   showLock,
   locked,
   onLockToggle,
+  hint,
 }: SliderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -119,6 +122,9 @@ export function Slider({
         <span>{prefix}{fmt(min)}{suffix}</span>
         <span>{prefix}{fmt(max)}{suffix}</span>
       </div>
+      {hint && (
+        <p className="text-[11px] text-muted-foreground/80 leading-tight" title={hint}>{hint}</p>
+      )}
     </div>
   );
 }

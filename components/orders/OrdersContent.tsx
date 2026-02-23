@@ -30,12 +30,12 @@ export default function OrdersContent() {
     setTimeout(() => {
       setSubmitLoading(false);
       setConfirmSubmitOpen(false);
-      showSuccess("Order submitted (mock)");
+      showSuccess(tCommon("saved"));
     }, 500);
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:gap-4">
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
           {t("title")}
@@ -135,7 +135,7 @@ export default function OrdersContent() {
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-neutral-600">
-            Form fields for order (mock) — ready for API.
+            Form fields — ready for API.
           </p>
           <div className="flex justify-end gap-4">
             <button

@@ -16,9 +16,9 @@ export default function LayoutWithSidebar({
     <div>
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       {/* Content area — offset by sidebar width on lg+ */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-[280px]">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="py-4 px-4 sm:py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-h-[100vh] bg-muted/20 py-6 px-4 sm:px-6 lg:px-8">{children}</main>
       </div>
       {/* Global Cmd+K palette — rendered outside content to avoid clipping */}
       <CommandPalette />

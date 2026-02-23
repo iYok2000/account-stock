@@ -5,6 +5,7 @@ import { Info } from "lucide-react";
 import { Slider } from "@/components/ui/Slider";
 import { formatCurrency } from "@/lib/utils";
 import { FEE, type SliderKey } from "@/lib/calculator/engine";
+import { cn } from "@/lib/utils";
 
 interface Props {
   listPrice: number; setListPrice: (v: number) => void;
@@ -20,35 +21,63 @@ interface Props {
   toggleLock: (k: SliderKey) => void;
   priceMode: "list" | "selling";
   discountPct: number;
+  /** When true, hide advanced inputs: packaging, adSpend, returnRate */
+  simpleMode?: boolean;
+}
+
+function Group({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("space-y-3", className)}>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
 }
 
 export function SlidersPanel(p: Props) {
   const t = useTranslations("calculator.sliders");
+  const tGroups = useTranslations("calculator");
   const locked = (k: SliderKey) => p.lockedSliders.has(k);
+  const simple = p.simpleMode ?? false;
 
   return (
-    <div className="card space-y-5">
+    <div className="card space-y-6">
       <div>
         <h3 className="font-semibold text-foreground">{t("title")}</h3>
         <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
       </div>
 
-      <Slider label={t("listPrice")}    value={p.listPrice}    onChange={p.setListPrice}    min={0} max={50_000} step={50}  prefix="฿" />
-      <Slider label={t("sellingPrice")} value={p.sellingPrice} onChange={p.setSellingPrice} min={0} max={50_000} step={50}  prefix="฿" />
+      <Group title={tGroups("groupPricing")}>
+        <Slider label={t("listPrice")}    value={p.listPrice}    onChange={p.setListPrice}    min={0} max={50_000} step={50}  prefix="฿" />
+        <Slider label={t("sellingPrice")} value={p.sellingPrice} onChange={p.setSellingPrice} min={0} max={50_000} step={50}  prefix="฿" />
+        {p.discountPct > 0 && (
+          <div className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-400 rounded px-2 py-1.5">
+            {t("discountNote", { pct: p.discountPct.toFixed(0), saving: formatCurrency(p.listPrice - p.sellingPrice) })}
+          </div>
+        )}
+      </Group>
 
-      {p.discountPct > 0 && (
-        <div className="text-xs text-orange-600 bg-orange-50 rounded px-2 py-1.5">
-          {t("discountNote", { pct: p.discountPct.toFixed(0), saving: formatCurrency(p.listPrice - p.sellingPrice) })}
-        </div>
+      <Group title={tGroups("groupCosts")}>
+        <Slider label={t("productCost")}  value={p.productCost}  onChange={p.setProductCost}  min={0} max={50_000} step={50}  prefix="฿" showLock locked={locked("productCost")}  onLockToggle={() => p.toggleLock("productCost")} hint={t("hintProductCost")} />
+        <Slider label={t("quantity")}     value={p.quantity}     onChange={p.setQuantity}     min={1} max={500_000} step={100} suffix={t("unit")} />
+        <Slider label={t("shippingCost")} value={p.shippingCost} onChange={p.setShippingCost} min={0} max={500}    step={5}   prefix="฿" showLock locked={locked("shippingCost")}  onLockToggle={() => p.toggleLock("shippingCost")} hint={t("hintShipping")} />
+        {!simple && (
+          <Slider label={t("packagingCost")} value={p.packagingCost} onChange={p.setPackagingCost} min={0} max={500} step={5} prefix="฿" showLock locked={locked("packagingCost")} onLockToggle={() => p.toggleLock("packagingCost")} hint={t("hintPackaging")} />
+        )}
+      </Group>
+
+      <Group title={tGroups("groupMarketing")}>
+        <Slider label={t("affiliateRate")} value={p.affiliateRate} onChange={p.setAffiliateRate} min={0} max={30} step={0.5} suffix="%" showLock locked={locked("affiliateRate")} onLockToggle={() => p.toggleLock("affiliateRate")} hint={t("hintAffiliate")} />
+        {!simple && (
+          <Slider label={t("adSpend")} value={p.adSpend} onChange={p.setAdSpend} min={0} max={1_000} step={10} prefix="฿" showLock locked={locked("adSpend")} onLockToggle={() => p.toggleLock("adSpend")} hint={t("hintAdSpend")} />
+        )}
+      </Group>
+
+      {!simple && (
+        <Group title={tGroups("groupReturns")}>
+          <Slider label={t("returnRate")} value={p.returnRate} onChange={p.setReturnRate} min={0} max={50} step={0.5} suffix="%" showLock locked={locked("returnRate")} onLockToggle={() => p.toggleLock("returnRate")} hint={t("hintReturnRate")} />
+        </Group>
       )}
-
-      <Slider label={t("productCost")}  value={p.productCost}  onChange={p.setProductCost}  min={0} max={50_000} step={50}  prefix="฿" showLock locked={locked("productCost")}  onLockToggle={() => p.toggleLock("productCost")} />
-      <Slider label={t("quantity")}     value={p.quantity}     onChange={p.setQuantity}     min={1} max={500_000} step={100} suffix={t("unit")} />
-      <Slider label={t("shippingCost")} value={p.shippingCost} onChange={p.setShippingCost} min={0} max={500}    step={5}   prefix="฿" showLock locked={locked("shippingCost")}  onLockToggle={() => p.toggleLock("shippingCost")} />
-      <Slider label={t("affiliateRate")}value={p.affiliateRate} onChange={p.setAffiliateRate} min={0} max={30}  step={0.5} suffix="%" showLock locked={locked("affiliateRate")} onLockToggle={() => p.toggleLock("affiliateRate")} />
-      <Slider label={t("adSpend")}      value={p.adSpend}      onChange={p.setAdSpend}      min={0} max={1_000}  step={10}  prefix="฿" showLock locked={locked("adSpend")}       onLockToggle={() => p.toggleLock("adSpend")} />
-      <Slider label={t("packagingCost")}value={p.packagingCost} onChange={p.setPackagingCost} min={0} max={500} step={5}   prefix="฿" showLock locked={locked("packagingCost")} onLockToggle={() => p.toggleLock("packagingCost")} />
-      <Slider label={t("returnRate")}   value={p.returnRate}   onChange={p.setReturnRate}   min={0} max={50}    step={0.5} suffix="%" showLock locked={locked("returnRate")}    onLockToggle={() => p.toggleLock("returnRate")} />
 
       <div className="pt-1 flex items-start gap-2 text-xs text-muted-foreground border-t border-border">
         <Info className="h-3 w-3 shrink-0 mt-0.5" />

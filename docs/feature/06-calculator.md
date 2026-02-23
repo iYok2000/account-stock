@@ -4,6 +4,68 @@
 
 ---
 
+## Research & UX Analysis (จาก GPT Research MCP)
+
+**ที่มา:** เรียก MCP tool `research` (server: project-0-account-stock-fe-mcp) โดยส่งคำอธิบายฟีเจอร์หน้าคำนวณและคำขอให้วิเคราะห์ว่าควร ADD / REMOVE / REORGANIZE อะไร ตามพฤติกรรมผู้ใช้และ best practices สำหรับ seller (TikTok Shop / Shopee). ด้านล่างเป็นสรุปจากผล research และ Final analysis.
+
+---
+
+### สรุปจาก GPT Research MCP
+
+**Additions (ควรเพิ่ม)**
+- **โหมด Simple vs Advanced:** สลับโหมดให้คนเริ่มต้นเห็นแค่ input/output หลัก; power user เปิด Advanced ได้
+- **Save/Load Scenarios:** บันทึกชุด input แล้วโหลดกลับมาใช้
+- **Export / แชร์ผล:** ส่งออกรายงานหรือแชร์สรุป (screenshot/PDF)
+- **Alerts & คำแนะนำ:** แจ้งเตือน/คำแนะนำอัตโนมัติ (เช่น "ค่าโฆษณาสูงเมื่อเทียบราคาขาย")
+- **Benchmark ตาม marketplace:** แสดงค่าเฉลี่ย/ typical ของบาง input (เช่น return rate, affiliate fee)
+- **Input เพิ่ม (ถ้าจำเป็น):** ภาษี, ค่าชำระเงิน (payment gateway), ส่วนลด/โปรโมชัน; ต้นทุนถือสต็อก (inventory holding) ถ้าเกี่ยวข้อง
+- **Cash flow / Break-even timeline:** ระบุว่าเมื่อไหร่ถึง break-even (ช่วยวางแผน)
+- **Tooltip / Help:** อธิบายสั้นๆ ต่อ slider และ metric (hover) เพื่อช่วยมือใหม่
+
+**Removals / Demotions (ควรลดความเด่นหรือย้าย)**
+- **Happiness indicators:** ย้ายไปแท็บรองหรือด้านล่าง — ไม่ใช่ core ของการตัดสินใจทางการเงิน
+- **Monte Carlo:** ย้ายไปส่วน "advanced" หรือ panel ที่ย่อได้ (ลดความซับซ้อนที่เห็นครั้งแรก)
+
+**Reorganization (จัดลำดับ/จัดกลุ่มใหม่)**
+- **Input ก่อน, layout ชัด:** จัดกลุ่ม input ตามหมวด (Pricing, Costs, Marketing, Returns) แนวตั้งหรือแท็บ
+- **ผลหลักเห็นทันที:** กำไรต่อชิ้น, margin, กำไรต่อเดือน อยู่ above the fold พร้อมสี/ตัวเลขใหญ่
+- **Charts และ Analysis อยู่ถัดไป:** Cost breakdown, Waterfall, Scenarios อยู่ใต้ผลหลัก
+- **Mode toggle อยู่บน:** Simple/Advanced อยู่ใกล้ input
+- **Scenario และ Monte Carlo แยกแท็บ/ย่อได้:** ลด cognitive load ตอนแรก
+
+**Missing inputs/outputs (ที่อาจขาด)**
+- ต้นทุนถือสต็อก (inventory holding)
+- ส่วนลด/โปรโมชัน (expected discount rate)
+- ค่าชำระเงิน (payment gateway fee)
+- Cash flow timing / break-even timeline
+
+**Trade-offs**
+- Simplicity vs Power: โหมด Simple/Advanced ช่วยแบ่งกลุ่มผู้ใช้
+- การแสดง advanced (Monte Carlo, Happiness): ซ่อนมากไป power user หาไม่เจอ; เปิดมากไปมือใหม่สับสน
+- ความหนาแน่นของ UI: จัดกลุ่ม + ย่อได้ ช่วยลด clutter
+- Educational vs Speed: tooltip/คำแนะนำช่วยเรียนรู้แต่อาจชะลอคนที่ต้องการคำตอบเร็ว
+
+---
+
+### Final Analysis (สรุปสุดท้าย — นำไปทำได้เลย)
+
+| หมวด | การดำเนินการ |
+|------|----------------|
+| **โหมด Simple/Advanced** | เพิ่มสลับโหมด: Simple = ราคา, ต้นทุน, จัดส่ง, (option) คอม/affiliate + ผลหลัก; Advanced = ฟิลด์ครบ + Breakeven + Scenarios + Sensitivity + Monte Carlo |
+| **ลำดับหน้า** | 1) Input (จัดกลุ่ม Pricing / Costs / Marketing / Returns) 2) ผลหลัก (กำไรต่อชิ้น, margin, กำไรเดือน) 3) Cost + Waterfall chart 4) Breakeven + Scenarios 5) Sensitivity 6) Monte Carlo (ย่อได้หรือแท็บ "ขั้นสูง") 7) Happiness (ด้านล่างหรือบล็อก "สุขภาพดีล") |
+| **Happiness** | เก็บไว้ แต่ **ลดความเด่น** — ย้ายลงใต้ผลหลัก หรือใส่ในบล็อกรอง |
+| **Monte Carlo** | เก็บไว้ แต่ **ย้ายไปส่วนขั้นสูง** — accordion หรือแท็บ "การวิเคราะห์ขั้นสูง" |
+| **Goal + reverse calc** | เก็บไว้ + **เพิ่มคำอธิบายหนึ่งบรรทัด** ว่า lock ค่าไหน แล้วระบบจะปรับค่าที่ปลดล็อกเพื่อให้ได้เป้ากำไร |
+| **Default fee ตาม region** | เมื่อมี API: เลือกประเทศ/ช่องทาง (TikTok US/UK/TH ฯลฯ) แล้วเติม commission/VAT default |
+| **Tooltip / คำอธิบาย** | คำอธิบายสั้นใต้หรือ hover ที่ slider/ metric หลัก (ต้นทุนสินค้าต่อชิ้น, ค่าจัดส่งต่อออเดอร์ ฯลฯ) |
+| **Export / แชร์** | ปุ่มคัดลอกสรุป หรือส่งออก PDF (ตามความพร้อม) |
+| **Save/Load scenario** | บันทึก/โหลดชุด input (ตามความพร้อม) |
+| **Input ที่อาจเพิ่ม** | ภาษี, payment fee, ส่วนลด/โปรโมชัน; break-even timeline ถ้าคำนวณได้ |
+
+**คำถามเปิด (สำหรับเก็บข้อมูลต่อ):** สัดส่วนมือใหม่ vs power user, เวลาที่ใช้บนหน้า, ฟีเจอร์ไหนถูกใช้หรือได้ feedback บวก, pain point ที่ผู้ใช้บอก, การใช้บน mobile, ความเป็นไปได้ของการดึง fee จริงจาก TikTok/Shopee, หลายภาษา/ศัพท์ท้องถิ่น
+
+---
+
 ## Route & Permission
 
 - **Route:** `/[locale]/calculator`

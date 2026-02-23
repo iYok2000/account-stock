@@ -1,6 +1,6 @@
-# Dev Spec — Inventory & Ordering Control (Next.js)
+# Dev Spec — account-stock-fe (Next.js)
 
-เตรียมสำหรับ dev ต่อ: เมนู + หน้า UI ก่อน (ไม่ใช้ mock data — ใช้ empty state, ไม่ต่อ API)
+อัปเดตจากโครงและโค้ดปัจจุบัน — เมนู + หน้า UI ทั้งชุด, ไม่ใช้ mock data (empty state), ยังไม่ต่อ API
 
 ---
 
@@ -8,14 +8,16 @@
 
 | สิ่งที่ใช้ | ตัวเลือก |
 |-----------|----------|
-| Framework | **Next.js** (ตัวล่าสุด) |
-| หลายภาษา | next-intl หรือ next-i18next |
-| UI components | เลือกได้: MUI / Ant Design / Chakra UI (แนะนำ MUI หรือ Ant Design สำหรับตาราง+ฟอร์ม) |
-| Data | ไม่ใช้ mock — หน้า list แสดง empty state จนกว่าจะต่อ API |
+| Framework | **Next.js 16** (App Router) |
+| หลายภาษา | **next-intl** |
+| UI | **Tailwind CSS 4** + components ใน `components/ui/` (ปุ่ม, Modal, Slider, StatusTag, NumberInput, Loading, Skeleton ฯลฯ) |
+| Icons | **lucide-react** |
+| Data / State | **TanStack React Query** (พร้อมใช้); ยังไม่ต่อ API — list แสดง empty state |
+| อื่นๆ | papaparse, xlsx, zod, react-dropzone (ใช้ใน Import) |
 
 ---
 
-## โครงโฟลเดอร์แนะนำ (Next.js App Router)
+## โครงโฟลเดอร์ (ปัจจุบัน)
 
 ```
 account-stock-fe/
@@ -23,103 +25,136 @@ account-stock-fe/
 │   ├── [locale]/           # i18n
 │   │   ├── layout.tsx      # MainLayout
 │   │   ├── page.tsx        # Dashboard /
-│   │   ├── inventory/
-│   │   │   ├── page.tsx
-│   │   │   └── ...
-│   │   ├── orders/
-│   │   │   ├── page.tsx
-│   │   │   └── ...
-│   │   ├── suppliers/
-│   │   │   └── page.tsx
-│   │   └── reports/
-│   │       └── page.tsx
-│   ├── layout.tsx          # root layout
-│   └── ...
+│   │   ├── inventory/page.tsx
+│   │   ├── orders/page.tsx
+│   │   ├── suppliers/page.tsx
+│   │   ├── import/page.tsx
+│   │   ├── shops/page.tsx
+│   │   ├── campaigns/page.tsx
+│   │   ├── vouchers/page.tsx
+│   │   ├── fees/page.tsx
+│   │   ├── calculator/page.tsx
+│   │   ├── tax/page.tsx
+│   │   ├── funnels/page.tsx
+│   │   ├── reports/page.tsx
+│   │   ├── agents/page.tsx
+│   │   └── settings/page.tsx
+│   └── layout.tsx
 ├── components/
-│   ├── common/
-│   ├── layout/             # Header, Sidebar, MainLayout
-│   └── ...
-├── messages/               # i18n (th.json, en.json)
+│   ├── layout/             # Header, Sidebar, LayoutWithSidebar, CommandPalette, LanguageSwitcher
+│   ├── ui/                  # Button, Modal, Slider, StatusTag, NumberInput, Loading, Skeleton ฯลฯ
+│   ├── inventory/           # InventoryContent
+│   ├── orders/              # OrdersContent
+│   ├── calculator/          # SlidersPanel, ResultsPanel, AnalysisSection
+│   ├── upload/              # ImportWizard, FileDropzone, ColumnMapper, DataPreview, file-parser
+│   └── providers/           # IntlProviderWrapper
+├── lib/
+│   ├── utils.ts             # cn, formatCurrency ฯลฯ
+│   ├── calculator/engine.ts
+│   ├── upload/file-validator.ts
+│   ├── validators/          # inventory, order, supplier, report, sanitize
+│   ├── rbac/                # constants (NAV_PERMISSIONS), role-permissions, types
+│   └── hooks/use-api.ts
+├── contexts/                # AuthContext, ToastContext
+├── messages/                # th.json, en.json
 ├── docs/
+│   ├── DEV_SPEC.md
 │   ├── DESIGN_UX_UI.md
-│   └── DEV_SPEC.md
-├── package.json
-└── next.config.js
+│   └── feature/*.md
+├── project-specific_context.md
+└── AGENTS.md
 ```
 
 ---
 
 ## เมนูและ Route
 
-| เมนู | Path | หน้าที่ |
-|------|------|--------|
-| Dashboard | `/` | สรุปตัวเลข + ลิงก์ (empty state จนกว่าจะต่อ API) |
-| Inventory | `/inventory` | รายการสินค้า + ค้นหา/filter + Add/Edit/Delete — แสดง empty state |
-| Orders | `/orders` | รายการ order + Place Order — แสดง empty state |
-| Suppliers | `/suppliers` | หน้า placeholder |
-| Reports | `/reports` | หน้า placeholder |
+| กลุ่ม | เมนู | Path | หน้าที่ |
+|-------|------|------|--------|
+| — | Dashboard | `/` | สรุป KPI (— รอ API), chart placeholder, low stock/recent orders empty, quick actions |
+| — | Inventory | `/inventory` | รายการสินค้า + ค้นหา/filter + Add/Edit/Delete — empty state |
+| — | Orders | `/orders` | รายการ order + Place Order — empty state |
+| — | Suppliers | `/suppliers` | โครงตาราง, empty state |
+| — | Import | `/import` | Wizard: ประเภท → อัปโหลด → mapping → result |
+| — | Shops | `/shops` | หน้า placeholder |
+| โปรโมชั่น | Campaigns | `/campaigns` | หน้า placeholder |
+| โปรโมชั่น | Vouchers | `/vouchers` | หน้า placeholder |
+| โปรโมชั่น | Fees | `/fees` | หน้า placeholder |
+| วิเคราะห์ | Calculator | `/calculator` | Sliders ราคา/ต้นทุน/การตลาด, ผลลัพธ์, Breakeven, Sensitivity, Scenarios, Monte Carlo |
+| วิเคราะห์ | Tax | `/tax` | ภาษีบุคคลธรรมดา: bracket, ตัวเลขเสีย/ได้คืน, export copy |
+| วิเคราะห์ | Funnels | `/funnels` | หน้า placeholder |
+| วิเคราะห์ | Reports | `/reports` | โครงการ์ด, placeholder |
+| เครื่องมือ | Agents | `/agents` | หน้า placeholder |
+| เครื่องมือ | Settings | `/settings` | หน้า placeholder |
 
 ---
 
-## หน้าต่อหน้า (ไม่ใช้ mock data)
+## หน้าหลัก (สรุป)
 
-### Dashboard
-- 4 การ์ดตัวเลข: สินค้าทั้งหมด, Low Stock, Pending Orders, Orders วันนี้ — แสดง 0 หรือ empty state
-- ปุ่ม/ลิงก์ไป Inventory, Orders
-
-### Inventory
-- Toolbar: Search, Filter (สถานะ), ปุ่ม "Add Item"
-- Table/Card: หัวคอลัมน์พร้อม — แสดง **empty state** (ยังไม่มีข้อมูล) จนกว่าจะต่อ API
-- Bulk: checkbox + ปุ่ม Bulk actions (disable เมื่อไม่มีข้อมูล)
-- Modal ฟอร์ม Add/Edit: ชื่อ, SKU, จำนวน, เกณฑ์ Low Stock — validation real-time (submit ยังไม่ส่งไปที่ไหน)
-- Modal ยืนยันก่อนลบ
-
-### Orders
-- Toolbar: Search, Filter (วันที่, สถานะ), ปุ่ม "Place Order"
-- Table: หัวคอลัมน์พร้อม — แสดง **empty state**
-- Modal ฟอร์ม Place Order + validation (submit ยังไม่ส่ง)
-- Modal ยืนยันก่อน submit
-
-### Suppliers / Reports
-- หน้าเดียว มีหัวข้อ + ข้อความ placeholder (ไม่มี mock list)
+- **Dashboard:** KPI cards (—), chart 7 วัน placeholder, สต็อกใกล้หมด/คำสั่งซื้อล่าสุด "ไม่มีข้อมูล — รอต่อ API", quick actions (Inventory, Orders, Import, Calculator).
+- **Inventory:** Toolbar (Search, Filter สถานะ/หมวด), ตาราง empty state, Add/Edit/Delete + confirmation, bulk actions (disable เมื่อไม่มีข้อมูล).
+- **Orders:** Toolbar (Search, Filter วันที่/สถานะ), ตาราง empty state, Place Order + confirmation.
+- **Suppliers / Shops / Campaigns / Vouchers / Fees / Funnels / Reports / Agents / Settings:** หน้าโครงหรือ placeholder พร้อมต่อ API ทีหลัง.
+- **Import:** Wizard เลือกประเภท → อัปโหลด → mapping คอลัมน์ → result.
+- **Calculator:** โหมด Simple/Advanced, Sliders (Pricing, Costs, Marketing, Returns), KPIs, Breakeven, Scenarios, Sensitivity, Monte Carlo (collapsible).
+- **Tax:** ภาษีบุคคลธรรมดา — bracket, slider รายได้, ตัวเลขเสีย/ได้คืน, tips, export copy.
 
 ---
 
-## Components ที่ควรมี
+## RBAC
 
-- **Layout:** MainLayout (Header + Nav + Content), Header, Sidebar หรือ TopNav
-- **Common:** Button (primary/secondary/danger), Input, Select, Modal, Toast (StatusTag เพิ่มเมื่อมีข้อมูล)
-- **Data:** DataTable (รองรับ sort, filter, checkbox), SearchBar, FilterBar
-- **i18n:** ใช้ `useTranslation()` ในทุกข้อความที่แสดง
-
----
-
-## i18n (Next.js)
-
-- ใช้ `next-intl` หรือ `next-i18next` ตาม Next.js ตัวล่าสุด
-- เก็บคำแปลใน `messages/th.json`, `messages/en.json`
-- Key แนะนำ: `nav.inventory`, `nav.orders`, `inventory.addItem`, `orders.placeOrder`, `common.save`, `common.delete`, ฯลฯ
-- ใน Header: dropdown สลับภาษา (th/en)
+- **lib/rbac:** `NAV_PERMISSIONS` map path → permission (เช่น `/inventory` → `inventory:read`). Resources: dashboard, inventory, orders, suppliers, shops, promotions, analysis, agents, settings.
+- **AuthContext:** `usePermissions()`, `can(permission)` — ใช้ใน Sidebar เพื่อซ่อนเมนูที่ไม่มีสิทธิ์.
+- ยังไม่ต่อ API — role/session เป็น mock เมื่อ backend ไม่มี; เมื่อต่อ API แล้วให้ backend เป็น source of truth.
 
 ---
 
-## Role (ทีหลัง)
+## i18n
 
-- ใน Header มี placeholder "User" หรือ "Role" (dropdown ว่างหรือตัวเลือก mock)
-- ไม่ต้องเช็คสิทธิ์ใน route ตอนนี้ — เตรียมโครงไว้
+- **next-intl:** `messages/th.json`, `messages/en.json`. Key แยก namespace: `nav.*`, `inventory.*`, `orders.*`, `calculator.*`, `tax.*`, `common.*`, `status.*` ฯลฯ
+- Header: สลับภาษา (TH/EN). Sidebar: แสดงตามสิทธิ์.
 
 ---
 
-## ลำดับทำได้
+## กฎโปรเจค (สำหรับ AI)
 
-1. สร้างโปรเจกต์ **Next.js** (ตัวล่าสุด) + i18n
-2. Layout + เมนูหลัก + route ทุกหน้า (App Router)
-3. Dashboard — การ์ดตัวเลข (ค่า 0 / empty state)
-4. Inventory: โครงตาราง + toolbar + **empty state** + form Add/Edit + confirmation
-5. Orders: โครงตาราง + toolbar + **empty state** + form Place Order + confirmation
-6. Suppliers / Reports: หน้า placeholder
-7. ปรับ responsive + สลับภาษา
+- **Import:** ห้าม feature import ข้าม feature — ใช้ได้แค่ `@/components/ui`, `@/lib/utils`, `@/contexts`, `@/lib/<feature>`. รายละเอียดบังคับใช้ → `project-specific_context.md`; บังคับผ่าน ESLint `no-restricted-imports` ใน `eslint.config.mjs`.
+- **ไม่ใช้ mock data:** list แสดง empty state จนกว่าจะต่อ API.
 
-**ไม่ใช้ mock data** — ทุก list แสดง empty state จนกว่าจะต่อ API
+---
 
-เสร็จแล้ว Cursor พร้อมให้ dev ต่อจากโครงและเอกสารนี้ได้เลย
+## ความพร้อมแยกฟีเจอร์/โมดูล
+
+โครงสร้างเหมาะกับการแยกเป็น **โมดูลใน repo เดียว** (monorepo/packages) มากกว่าแยกไปอีกโปรเจกต์โดยไม่พกของร่วม — ทุก feature พึ่ง layout, contexts, ui, lib/utils; แยกไปที่อื่นต้องพก shared หรือทำ adapter.
+
+### สรุปโดยรวม
+
+| ด้าน | สถานะ |
+|------|--------|
+| แยกตาม feature (โฟลเดอร์ชัด) | ✅ inventory, orders, calculator, upload |
+| Route ต่อหน้า | ✅ `app/[locale]/<feature>/page.tsx` |
+| Dependency ของร่วม | ⚠️ หนัก — แยกไปที่อื่นต้องพก ui, contexts, utils |
+| RBAC / i18n | ✅ ใช้ร่วมกัน; แยก feature ต้อง slice permission/messages |
+| Logic ใน lib | ✅ Calculator, Tax, Import มี lib แยก |
+
+### แยกไปอีกโปรเจกต์ vs แยกเป็นโมดูลใน repo
+
+| Feature | แยกไปอีกโปรเจกต์ | แยกเป็นโมดูลใน repo |
+|---------|-------------------|----------------------|
+| **Calculator** | ✅ เหมาะสุด (engine + Slider + utils + messages) | ✅ ง่าย |
+| **Import** | ✅ ได้ (upload/* + utils) | ✅ ง่าย |
+| **Tax** | ✅ ได้ (logic ในหน้า/ย้าย lib/tax + Slider + utils) | ✅ ง่าย |
+| **Inventory / Orders** | ⚠️ ได้แต่ต้องพก auth, toast, ui หลายตัว | ✅ ทำได้ |
+| **Dashboard** | ❌ ไม่แนะนำ (จุดรวมหลายฟีเจอร์) | ⚠️ ทำได้ถ้ามี API สรุป |
+| **Suppliers, Shops, Campaigns, Vouchers, Fees, Funnels, Reports, Agents, Settings** | ❌ ยังเป็นแค่โครง | ⚠️ เก็บใน app หลักก่อน |
+
+### แนวทางเมื่อจะแยกโมดูลจริง
+
+1. เก็บ feature ละก้อนในโฟลเดอร์ตัวเอง (หรือ `packages/<feature>` ถ้า monorepo).
+2. ใช้เฉพาะ `@/components/ui`, `@/lib/utils`, `@/contexts` จาก shared — ไม่ import ข้าม feature.
+3. กำหนด contract ของ shared (เช่น AuthContext มี `usePermissions()`, Toast มี `showSuccess`/`showError`) เพื่อทำ stub/adapter ที่ปลายทาง.
+4. i18n แยกไฟล์ต่อ feature ได้ (เช่น `messages/inventory.json`) แล้วรวมใน config — เวลาเอา feature ไปที่อื่น copy เฉพาะที่เกี่ยวข้อง.
+
+---
+
+*อัปเดตเมื่อมี route/เมนู, tech หรือโครง feature เปลี่ยน.*

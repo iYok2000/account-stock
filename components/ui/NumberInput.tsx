@@ -14,6 +14,11 @@ type NumberInputProps = {
   className?: string;
   /** Label for accessibility (aria-label) */
   label?: string;
+  /** Called after blur and value normalization */
+  onBlur?: () => void;
+  onFocus?: () => void;
+  /** Called when value changes via +/- buttons (so parent can commit immediately) */
+  onStepChange?: (newValue: number) => void;
 };
 
 export default function NumberInput({
@@ -27,6 +32,9 @@ export default function NumberInput({
   error = false,
   className = "",
   label,
+  onBlur: onBlurProp,
+  onFocus: onFocusProp,
+  onStepChange,
 }: NumberInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const holdRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -46,8 +54,9 @@ export default function NumberInput({
       const current = parseFloat(value) || 0;
       const next = clamp(current + delta);
       onChange(String(next));
+      onStepChange?.(next);
     },
-    [value, clamp, onChange]
+    [value, clamp, onChange, onStepChange]
   );
 
   const stopHold = useCallback(() => {
@@ -80,13 +89,17 @@ export default function NumberInput({
   };
 
   const handleBlur = () => {
-    if (value === "" || value === "-") return;
-    const num = parseFloat(value);
-    if (isNaN(num)) {
+    if (value === "" || value === "-") {
       onChange(String(min ?? 0));
-      return;
+    } else {
+      const num = parseFloat(value);
+      if (isNaN(num)) {
+        onChange(String(min ?? 0));
+      } else {
+        onChange(String(clamp(num)));
+      }
     }
-    onChange(String(clamp(num)));
+    onBlurProp?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -127,12 +140,13 @@ export default function NumberInput({
         value={value}
         onChange={handleInputChange}
         onBlur={handleBlur}
+        onFocus={onFocusProp}
         onKeyDown={handleKeyDown}
         placeholder={placeholder ?? String(min ?? 0)}
         disabled={disabled}
         aria-label={label}
-        className={`input-base min-w-0 flex-1 rounded-none border-x-0 text-center tabular-nums ${borderClass}`}
-        style={{ borderLeft: "none", borderRight: "none" }}
+        className={`input-base min-w-[3ch] flex-1 rounded-none border-x-0 text-center tabular-nums text-neutral-900 ${borderClass}`}
+        style={{ borderLeft: "none", borderRight: "none", width: "100%" }}
       />
 
       <button

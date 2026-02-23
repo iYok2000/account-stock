@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgePercent, Plus, Info, X } from "lucide-react";
+import { BadgePercent, Plus, Info } from "lucide-react";
 
 type FeeType = "COMMISSION" | "PAYMENT_PROCESSING" | "PLATFORM" | "SHIPPING" | "AFFILIATE" | "OTHER";
 
@@ -21,15 +21,6 @@ const FEE_TYPE_INFO: Record<FeeType, string> = {
   SHIPPING: "ค่าขนส่งที่แพลตฟอร์มเรียกเก็บ",
   OTHER: "ค่าธรรมเนียมอื่นๆ",
 };
-
-// Default fee suggestions (read-only reference)
-const DEFAULT_FEE_SUGGESTIONS = [
-  { type: "COMMISSION" as FeeType, category: "สกินแคร์/แฟชั่น/สุขภาพ", rate: 4 },
-  { type: "COMMISSION" as FeeType, category: "อิเล็กทรอนิกส์", rate: 3 },
-  { type: "COMMISSION" as FeeType, category: "อาหาร", rate: 2 },
-  { type: "PAYMENT_PROCESSING" as FeeType, category: "-", rate: 2 },
-  { type: "AFFILIATE" as FeeType, category: "ตามแคมเปญ", rate: 10 },
-];
 
 export default function FeesPage() {
   return (
@@ -85,38 +76,13 @@ export default function FeesPage() {
         </div>
       </div>
 
-      {/* Reference info */}
       <div className="card border-primary/20 bg-primary/5">
-        <div className="mb-4">
-          <h3 className="font-semibold flex items-center gap-2 text-foreground">
-            <Info className="h-5 w-5 text-primary" />
-            อัตราค่าธรรมเนียมแนะนำ (ตัวอย่าง)
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left py-2 px-3 font-medium text-muted-foreground">ประเภท</th>
-                <th className="text-left py-2 px-3 font-medium text-muted-foreground">หมวดหมู่</th>
-                <th className="text-center py-2 px-3 font-medium text-muted-foreground">อัตรา (%)</th>
-                <th className="text-left py-2 px-3 font-medium text-muted-foreground">รายละเอียด</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEFAULT_FEE_SUGGESTIONS.map((fee, i) => (
-                <tr key={i} className="border-b last:border-0">
-                  <td className="py-2 px-3 font-medium">{FEE_TYPE_LABELS[fee.type]}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{fee.category}</td>
-                  <td className="py-2 px-3 text-center font-bold text-primary">{fee.rate}%</td>
-                  <td className="py-2 px-3 text-xs text-muted-foreground">{FEE_TYPE_INFO[fee.type]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-muted-foreground italic mt-3">
-          หมายเหตุ: อัตราค่าธรรมเนียมอาจเปลี่ยนแปลงตามนโยบายแพลตฟอร์ม กรุณาตรวจสอบจาก Seller Center
+        <h3 className="font-semibold flex items-center gap-2 text-foreground">
+          <Info className="h-5 w-5 text-primary" />
+          หมายเหตุ
+        </h3>
+        <p className="text-sm text-muted-foreground mt-2">
+          อัตราค่าธรรมเนียมขึ้นกับแพลตฟอร์ม — กรุณาตรวจสอบจาก Seller Center เมื่อต่อ API แล้ว
         </p>
       </div>
 
