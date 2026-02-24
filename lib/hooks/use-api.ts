@@ -13,7 +13,7 @@ import type { OrderListResponseApi, OrderApi } from "@/types/api/orders";
 import type { SupplierListResponseApi, SupplierApi } from "@/types/api/suppliers";
 import type { ReportSummaryApi } from "@/types/api/reports";
 
-const BASE = "";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {

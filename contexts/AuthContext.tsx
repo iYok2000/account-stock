@@ -76,7 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       // Prefer backend; fallback to mock (security: backend must enforce all checks)
-      const res = await fetch("/api/auth/me", {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
+      const res = await fetch(`${apiBase}/api/auth/me`, {
         credentials: "include",
         headers: { Accept: "application/json" },
       });

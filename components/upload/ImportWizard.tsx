@@ -47,7 +47,7 @@ interface ImportWizardProps {
   defaultDataType?: DataType;
 }
 
-const API_BASE = typeof window !== "undefined" ? "" : "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export function ImportWizard({
   onClose,
