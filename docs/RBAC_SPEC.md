@@ -1,6 +1,6 @@
 # RBAC Specification — Inventory & Order Management
 
-> Last updated: 2026-02-18  
+> Last updated: 2026-02-23  
 > Status: **Active**
 
 ---
@@ -132,10 +132,16 @@ users:read      # เฉพาะ SuperAdmin
 ## 7. ความปลอดภัย (Security Notes)
 
 - **Frontend enforcement** — ซ่อน/แสดง UI elements เท่านั้น ไม่ถือว่าปลอดภัย
-- **Backend enforcement** — ต้องตรวจสอบ permission ทุก API endpoint
-- **Token** — permissions (และ role, tier, company_id ถ้ามี) ควร embed ใน JWT หรือ fetch จาก `/api/auth/me` และ cache ไว้
-- **Audit log** — บันทึก `userId`, `resource`, `action`, `result` (allowed/denied), `timestamp`
+- **Backend enforcement** — ต้องตรวจสอบ permission ทุก API endpoint; ใน multi-tenant ต้องเข้มงวด เพื่อป้องกันข้อมูลรั่วไหลข้าม tenant และสิทธิ์ผิดพลาด
+- **Middleware / Interceptor** — ใช้ชั้นกลางสำหรับ (1) ดึง user context จาก token (2) ตรวจ permission ตาม resource:action (3) inject/ตรวจ `company_id` ให้ทุก query/upsert ถูก scope — ลดความซ้ำซ้อนและช่องโหว่
+- **Token** — permissions (และ role, tier, company_id ถ้ามี) ควร embed ใน JWT หรือ fetch จาก `/api/auth/me`; อัปเดตให้ถูกต้องเพื่อให้ backend เช็คสิทธิ์ได้ทันทีและแม่นยำ
+- **Tier** — ตรวจสอบสิทธิ์ tier ที่ backend เท่านั้น ไม่พึ่ง frontend
+- **Audit log** — บันทึก `userId`, `resource`, `action`, `result` (allowed/denied), `timestamp`; พัฒนาให้ละเอียดและเก็บ log ให้มีประสิทธิภาพ เพื่อวิเคราะห์เหตุการณ์ผิดปกติในระบบ multi-tenant
 - **Multi-tenant** — ข้อมูลที่แยกตามเจ้า ใช้ `company_id` จาก user context เป็น scope; ดู [USER_SPEC.md](USER_SPEC.md)
+
+### 7.1 การทดสอบ (Testing)
+
+- **Unit / Integration tests** — ทดสอบ enforcement สิทธิ์ (permission ตาม role) และ scope (`company_id`) ให้ครบถ้วน เช่น ทดสอบว่า request ที่ไม่มี permission ถูก deny, request ข้าม company ถูก deny
 
 ---
 
@@ -151,6 +157,7 @@ users:read      # เฉพาะ SuperAdmin
 
 | วันที่ | การเปลี่ยนแปลง |
 |---|---|
+| 2026-02-23 | อัพเดท spec ตาม research: แยกหน้าที่ RBAC vs tier/company; Backend middleware/interceptor, tier ที่ backend, token อัปเดต; Audit log ละเอียด; §7.1 Testing (unit/integration สำหรับ permission + scope) |
 | 2026-02-23 | Frontend: user context store (tier, companyId) ใน AuthContext; useUserContext; HOC RequirePermission + useAuthRedirect; หน้าผู้ใช้ใช้ users:read |
 | 2026-02-23 | เพิ่ม role SuperAdmin และ resource users; เมนู Users เห็นเฉพาะ SuperAdmin; dev login ผ่าน env (NEXT_PUBLIC_TEST_USER / NEXT_PUBLIC_TEST_PASS) |
 | 2026-02-18 | เพิ่ม resources: shops, promotions, analysis, agents, settings; อัพเดท role matrix; แก้ Viewer/Staff ไม่เห็น reports ผ่าน readOnly bug |
