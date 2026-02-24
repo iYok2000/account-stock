@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthRedirect } from "./useAuthRedirect";
 
 /**
  * Renders children only when the user is authenticated.
@@ -11,17 +11,12 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { session, isLoading } = useAuth();
   const isLoginPage = pathname === "/login";
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (isLoginPage) return;
-    if (!session) {
-      router.replace("/login");
-    }
-  }, [session, isLoading, isLoginPage, router]);
+  const redirectTo =
+    !isLoading && !isLoginPage && !session ? "/login" : null;
+  useAuthRedirect(redirectTo);
 
   if (isLoginPage) return <>{children}</>;
   if (!session) return null;

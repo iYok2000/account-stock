@@ -43,7 +43,15 @@
     "subtitle": "จัดการผู้ใช้ระบบ (เฉพาะ SuperAdmin)",
     "empty": "ยังไม่มีผู้ใช้",
     "emptyDescription": "รายการผู้ใช้จะแสดงเมื่อต่อ API แล้ว",
-    "apiNote": "รอต่อ API — การจัดการผู้ใช้จะใช้งานได้เมื่อเชื่อมต่อ backend"
+    "apiNote": "รอต่อ API — การจัดการผู้ใช้จะใช้งานได้เมื่อเชื่อมต่อ backend",
+    "currentContext": "บริบทของคุณ",
+    "role": "บทบาท",
+    "tier": "ระดับบริการ",
+    "company": "บริษัท",
+    "tableName": "ชื่อ",
+    "tableRole": "บทบาท",
+    "tableTier": "ระดับ",
+    "tableCompany": "บริษัท"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -43,7 +43,15 @@
     "subtitle": "Manage system users (SuperAdmin only)",
     "empty": "No users yet",
     "emptyDescription": "User list will appear when connected to API",
-    "apiNote": "Waiting for API — user management will work when backend is connected"
+    "apiNote": "Waiting for API — user management will work when backend is connected",
+    "currentContext": "Your context",
+    "role": "Role",
+    "tier": "Tier",
+    "company": "Company",
+    "tableName": "Name",
+    "tableRole": "Role",
+    "tableTier": "Tier",
+    "tableCompany": "Company"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -9,7 +9,7 @@ const ACCEPTED_TYPES = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 3.5 * 1024 * 1024; // 3.5MB per spec
 
 interface FileDropzoneProps {
   onFileAccepted: (file: File) => void;
@@ -30,7 +30,7 @@ export function FileDropzone({
         const rejection = rejectedFiles[0];
         const errorCode = rejection.errors[0]?.code;
         if (errorCode === "file-too-large") {
-          onError("ไฟล์มีขนาดเกิน 10MB กรุณาเลือกไฟล์ที่มีขนาดเล็กกว่า");
+          onError("ไฟล์มีขนาดเกิน 3.5MB กรุณาเลือกไฟล์ที่มีขนาดเล็กกว่า");
         } else if (errorCode === "file-invalid-type") {
           onError("รองรับเฉพาะไฟล์ .xlsx และ .csv เท่านั้น");
         } else {
@@ -84,7 +84,7 @@ export function FileDropzone({
               <p className="text-sm text-neutral-500">หรือ คลิกเพื่อเลือกไฟล์</p>
             </div>
             <p className="text-xs text-neutral-500">
-              รองรับ: .xlsx, .csv | ขนาดสูงสุด: 10MB | สูงสุด 50,000 แถว
+              รองรับ: .xlsx, .csv | ขนาดสูงสุด: 3.5MB | สูงสุด 50,000 แถว
             </p>
           </>
         )}

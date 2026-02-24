@@ -11,11 +11,17 @@ out/
 build
 dist
 
+# env — do not commit secrets (.env.example is committed as template)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
 # misc
 .DS_Store
 *.pem
-.env
-.env*.local
 
 # debug
 npm-debug.log*

@@ -87,6 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           roles: data.roles ?? [],
           permissions: data.permissions ?? [],
           displayName: data.user?.displayName,
+          tier: data.tier ?? "free",
+          companyId: data.company_id ?? undefined,
         };
         setSession(session);
         saveCachedSession(session);
@@ -103,6 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           roles,
           permissions,
           displayName: `Mock ${roles[0]}`,
+          tier: "free",
+          companyId: "default",
         };
         setSession(mock);
       }
@@ -117,6 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           userId: "mock",
           roles,
           permissions: getPermissionsForRoles(roles),
+          tier: "free",
+          companyId: "default",
         });
       }
     } finally {
@@ -137,6 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       roles,
       permissions,
       displayName: "SuperAdmin",
+      tier: "free",
+      companyId: "default",
     };
     setSession(newSession);
     saveCachedSession(newSession);
@@ -208,4 +216,32 @@ export function usePermissions() {
     () => ({ can, canAny, canAll, permissions: session?.permissions ?? [] }),
     [can, canAny, canAll, session?.permissions]
   );
+}
+
+/** User context from store (USER_SPEC: role, tier, company). Use with HOC or pages. */
+export type UserContextValue = {
+  userId: string;
+  role: Role;
+  roles: Role[];
+  tier: "free" | "paid";
+  companyId: string | undefined;
+  displayName: string | undefined;
+  permissions: PermissionString[];
+};
+
+export function useUserContext(): UserContextValue | null {
+  const { session } = useAuth();
+  return useMemo(() => {
+    if (!session) return null;
+    const role = session.roles[0] ?? "Viewer";
+    return {
+      userId: session.userId,
+      role,
+      roles: session.roles,
+      tier: session.tier ?? "free",
+      companyId: session.companyId,
+      displayName: session.displayName,
+      permissions: session.permissions ?? [],
+    };
+  }, [session]);
 }
