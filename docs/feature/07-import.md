@@ -38,11 +38,27 @@ Import ใช้ **user context ตาม [docs/USER_SPEC.md](../USER_SPEC.md)**
 
 ---
 
-## Column Mapper — ฟิลด์เป้าหมาย Order Transaction (60 ฟิลด์)
+## Column Mapper — ฟิลด์เป้าหมาย Order Transaction (เฉพาะที่ใช้คำนวณยอด 2 features)
 
-ฟิลด์ที่รองรับสำหรับ map จาก header ในไฟล์ (ตรงกับ `ORDER_TRANSACTION_FIELDS` ใน `file-parser.ts`):
+ระบบรองรับ **เฉพาะฟิลด์ที่ใช้คำนวณยอด** สำหรับ 2 features: **1) สรุปตามวัน (free)** และ **2) สรุปตาม SKU (paid)**. คอลัมน์ในไฟล์จับคู่เฉพาะฟิลด์ด้านล่าง (ตรงกับ `ORDER_TRANSACTION_FIELDS` ใน `file-parser.ts`):
 
-Order ID, Order Status, Order Substatus, Cancelation/Return Type, Normal or Pre-order, SKU ID, Seller SKU, Product Name, Variation, Quantity, Sku Quantity of return, SKU Unit Original Price, SKU Subtotal Before Discount, SKU Platform Discount, SKU Seller Discount, SKU Subtotal After Discount, Shipping Fee After Discount, Original Shipping Fee, Shipping Fee Seller Discount, Shipping Fee Platform Discount, Payment platform discount, Taxes, Small Order Fee, Order Amount, Order Refund Amount, Created Time, Paid Time *(ไม่ใช้ใน Phase 1)*, RTS Time, Shipped Time, Delivered Time, Cancelled Time, Cancel By, Cancel Reason, Fulfillment Type, Warehouse Name, Tracking ID, Delivery Option, Shipping Provider Name, Buyer Message, Buyer Username, Recipient, Phone #, Zipcode, Country, Province, District, Detail Address, Additional address information, Payment Method, Weight(kg), Product Category, Package ID, Seller Note, Checked Status, Checked Marked by
+| ฟิลด์ | Label | จำเป็น | ใช้สำหรับ |
+|--------|--------|--------|------------|
+| order_id | Order ID | ใช่ | จัดกลุ่ม order / แบ่งสัดส่วน order-level |
+| sku_id | SKU ID | ใช่ | จัดกลุ่มตาม SKU |
+| quantity | Quantity | ใช่ | จำนวนต่อ SKU |
+| sku_subtotal_after_discount | SKU Subtotal After Discount (รายได้) | ใช่ | รายได้ต่อแถว / ฐานคำนวณ |
+| sku_platform_discount | SKU Platform Discount | ไม่ | หัก |
+| sku_seller_discount | SKU Seller Discount | ไม่ | หัก |
+| shipping_fee_after_discount | Shipping Fee After Discount | ไม่ | แบ่งตามสัดส่วนต่อ SKU |
+| payment_platform_discount | Payment Platform Discount | ไม่ | แบ่งตามสัดส่วนต่อ SKU |
+| taxes | Taxes | ไม่ | แบ่งตามสัดส่วนต่อ SKU |
+| small_order_fee | Small Order Fee | ไม่ | แบ่งตามสัดส่วนต่อ SKU |
+| order_refund_amount | Order Refund Amount | ไม่ | คืน |
+| created_time | Created Time (วันที่) | ไม่ | สรุปตามวัน |
+| seller_sku | Seller SKU | ไม่ | แสดง (paid) |
+| product_name | Product Name | ไม่ | แสดง (paid) |
+| variation | Variation | ไม่ | แสดง (paid) |
 
 ---
 
@@ -252,9 +268,9 @@ Order ID, Order Status, Order Substatus, Cancelation/Return Type, Normal or Pre-
 - `app/[locale]/import/page.tsx` — หน้า import
 - `components/upload/ImportWizard.tsx` — วิซาร์ด (select-type → upload → mapping/preview → result); Phase 1 แสดงเฉพาะ Order Transaction; เลือก tier ฟรี/เสียเงิน; Process เรียก aggregateOrderTransaction แล้ว POST `/api/import/order-transaction`
 - `components/upload/FileDropzone.tsx` — ลาก/เลือกไฟล์ (max 3.5 MB)
-- `components/upload/ColumnMapper.tsx` — map คอลัมน์ (60 ฟิลด์จาก getFieldsForType("order_transaction"))
+- `components/upload/ColumnMapper.tsx` — map คอลัมน์ (เฉพาะฟิลด์ที่ใช้คำนวณยอด 2 features จาก getFieldsForType("order_transaction"))
 - `components/upload/DataPreview.tsx` — แสดงตัวอย่างข้อมูลที่ map แล้ว
-- `components/upload/file-parser.ts` — parseFile (3.5 MB + 50k rows), ORDER_TRANSACTION_FIELDS (60 ฟิลด์), autoDetectMappings, validateRows, normalizeOrderTransactionRow, aggregateOrderTransaction (formula A; คืน summary + daily + items)
+- `components/upload/file-parser.ts` — parseFile (3.5 MB + 50k rows), ORDER_TRANSACTION_FIELDS (15 ฟิลด์ — เฉพาะที่ใช้คำนวณยอด), autoDetectMappings, validateRows, normalizeOrderTransactionRow, aggregateOrderTransaction (formula A; คืน summary + daily + items)
 
 **Backend (repo/service แยก)**
 

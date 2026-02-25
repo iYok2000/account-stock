@@ -1,13 +1,16 @@
 "use client";
 
-import { UserCog } from "lucide-react";
+import { UserCog, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { RequirePermission } from "@/components/auth/RequirePermission";
 import { useUserContext } from "@/contexts/AuthContext";
+import { useUsers } from "@/lib/hooks/use-api";
 
 function UsersPageContent() {
   const t = useTranslations("users");
   const userContext = useUserContext();
+  const { data, isLoading, isError, error } = useUsers();
+  const users = data?.users ?? [];
 
   return (
     <div className="space-y-6">
@@ -43,11 +46,6 @@ function UsersPageContent() {
         </div>
       )}
 
-      <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
-        <span>⏳</span>
-        <span>{t("apiNote")}</span>
-      </div>
-
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -60,12 +58,40 @@ function UsersPageContent() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                  <p className="font-medium text-foreground">{t("empty")}</p>
-                  <p className="text-sm mt-1">{t("emptyDescription")}</p>
-                </td>
-              </tr>
+              {isLoading && (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t("loading")}
+                    </span>
+                  </td>
+                </tr>
+              )}
+              {!isLoading && isError && (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-destructive">
+                    {error instanceof Error ? error.message : t("error")}
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !isError && users.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                    <p className="font-medium text-foreground">{t("empty")}</p>
+                    <p className="text-sm mt-1">{t("emptyDescription")}</p>
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !isError && users.length > 0 &&
+                users.map((u) => (
+                  <tr key={u.id} className="border-b last:border-0">
+                    <td className="p-3">{u.display_name ?? u.email ?? u.id}</td>
+                    <td className="p-3">{u.role ?? "—"}</td>
+                    <td className="p-3">{u.tier ?? "—"}</td>
+                    <td className="p-3">{u.company_id ?? "—"}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

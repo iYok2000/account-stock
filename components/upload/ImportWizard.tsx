@@ -47,7 +47,8 @@ interface ImportWizardProps {
   defaultDataType?: DataType;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { apiRequest, getApiBase } from "@/lib/api-client";
+import type { ImportOrderTransactionPayloadApi, ImportOrderTransactionResponseApi } from "@/types/api/import";
 
 export function ImportWizard({
   onClose,
@@ -128,19 +129,13 @@ export function ImportWizard({
     setError(null);
     try {
       const { summary, daily, items } = aggregateOrderTransaction(parsedData.rows, mappings, tier);
-      const payload = tier === "free"
-        ? { tier: "free" as const, summary, daily }
-        : { tier: "paid" as const, summary, items };
-      const res = await fetch(`${API_BASE}/api/import/order-transaction`, {
+      const payload: ImportOrderTransactionPayloadApi = tier === "free"
+        ? { tier: "free", summary, daily }
+        : { tier: "paid", summary, items };
+      await apiRequest<ImportOrderTransactionResponseApi>("/api/import/order-transaction", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include",
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
-      }
       const result: ImportResult = {
         imported: validation.validCount,
         skipped: validation.invalidRows.length,
@@ -155,7 +150,11 @@ export function ImportWizard({
       setStep("result");
       onImportComplete?.(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการส่งข้อมูล");
+      const base = getApiBase();
+      const url = base ? `${base}/api/import/order-transaction` : "(base URL ว่าง — ตั้ง NEXT_PUBLIC_API_URL ใน .env.local แล้ว restart frontend)";
+      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการส่งข้อมูล";
+      const hint = msg === "Failed to fetch" ? ` ${url}` : msg;
+      setError(hint);
       const { summary, daily, items } = aggregateOrderTransaction(parsedData.rows, mappings, tier);
       setImportResult({
         imported: validation.validCount,
@@ -185,7 +184,7 @@ export function ImportWizard({
   const stepDescriptions: Record<Step, string> = {
     "select-type": "เลือกประเภทข้อมูลที่ต้องการนำเข้า",
     upload: `อัพโหลดไฟล์ ${DATA_TYPE_OPTIONS.find((d) => d.type === dataType)?.label ?? ""}`,
-    mapping: "ตรวจสอบและจับคู่คอลัมน์",
+    mapping: "ตรวจสอบจับคู่ฟิลด์ (ตรง/ใกล้เคียง)",
     result: "ผลการตรวจสอบ",
   };
 
@@ -300,7 +299,9 @@ export function ImportWizard({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-medium">จับคู่คอลัมน์</p>
+              <p className="mb-3 text-sm font-medium">
+                {dataType === "order_transaction" ? "ฟิลด์ในระบบ ↔ คอลัมน์ในไฟล์" : "จับคู่คอลัมน์"}
+              </p>
               <ColumnMapper
                 headers={parsedData.headers}
                 mappings={mappings}

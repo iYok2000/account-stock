@@ -8,26 +8,36 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { InventoryListResponseApi, InventoryItemApi } from "@/types/api/inventory";
-import type { OrderListResponseApi, OrderApi } from "@/types/api/orders";
-import type { SupplierListResponseApi, SupplierApi } from "@/types/api/suppliers";
+import type {
+  InventoryListResponseApi,
+  InventoryItemApi,
+  InventoryCreateBodyApi,
+  InventoryUpdateBodyApi,
+} from "@/types/api/inventory";
+import type {
+  OrderListResponseApi,
+  OrderApi,
+  OrderCreateBodyApi,
+  OrderStatusBodyApi,
+} from "@/types/api/orders";
+import type {
+  SupplierListResponseApi,
+  SupplierApi,
+  SupplierCreateBodyApi,
+  SupplierUpdateBodyApi,
+} from "@/types/api/suppliers";
 import type { ReportSummaryApi } from "@/types/api/reports";
+import type { UsersListResponseApi } from "@/types/api/users";
+import { apiRequest } from "@/lib/api-client";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+// ============== USERS (GET /api/users — SuperAdmin, พร้อมใช้ที่ backend) ==============
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
+export function useUsers() {
+  return useQuery({
+    queryKey: ["users"],
+    queryFn: () => apiRequest<UsersListResponseApi>("/api/users"),
+    retry: false,
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
-  }
-  return res.json();
 }
 
 // ============== INVENTORY (รอต่อ API) ==============
@@ -48,8 +58,8 @@ export function useInventory(params?: {
   return useQuery({
     queryKey: ["inventory", params],
     queryFn: () =>
-      apiFetch<InventoryListResponseApi>(
-        `${BASE}/api/inventory${qs ? `?${qs}` : ""}`
+      apiRequest<InventoryListResponseApi>(
+        `/api/inventory${qs ? `?${qs}` : ""}`
       ),
     retry: false,
   });
@@ -58,7 +68,7 @@ export function useInventory(params?: {
 export function useInventoryItem(id: string | null) {
   return useQuery({
     queryKey: ["inventory", id],
-    queryFn: () => apiFetch<InventoryItemApi>(`${BASE}/api/inventory/${id}`),
+    queryFn: () => apiRequest<InventoryItemApi>(`/api/inventory/${id}`),
     enabled: !!id,
     retry: false,
   });
@@ -67,8 +77,8 @@ export function useInventoryItem(id: string | null) {
 export function useCreateInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Record<string, unknown>) =>
-      apiFetch<InventoryItemApi>(`${BASE}/api/inventory`, {
+    mutationFn: (data: InventoryCreateBodyApi) =>
+      apiRequest<InventoryItemApi>(`/api/inventory`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -81,14 +91,8 @@ export function useCreateInventoryItem() {
 export function useUpdateInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Record<string, unknown>;
-    }) =>
-      apiFetch<InventoryItemApi>(`${BASE}/api/inventory/${id}`, {
+    mutationFn: ({ id, data }: { id: string; data: InventoryUpdateBodyApi }) =>
+      apiRequest<InventoryItemApi>(`/api/inventory/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
       }),
@@ -102,7 +106,7 @@ export function useDeleteInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch(`${BASE}/api/inventory/${id}`, { method: "DELETE" }),
+      apiRequest(`/api/inventory/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
@@ -129,8 +133,8 @@ export function useOrders(params?: {
   return useQuery({
     queryKey: ["orders", params],
     queryFn: () =>
-      apiFetch<OrderListResponseApi>(
-        `${BASE}/api/orders${qs ? `?${qs}` : ""}`
+      apiRequest<OrderListResponseApi>(
+        `/api/orders${qs ? `?${qs}` : ""}`
       ),
     retry: false,
   });
@@ -139,7 +143,7 @@ export function useOrders(params?: {
 export function useOrder(id: string | null) {
   return useQuery({
     queryKey: ["orders", id],
-    queryFn: () => apiFetch<OrderApi>(`${BASE}/api/orders/${id}`),
+    queryFn: () => apiRequest<OrderApi>(`/api/orders/${id}`),
     enabled: !!id,
     retry: false,
   });
@@ -148,8 +152,8 @@ export function useOrder(id: string | null) {
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Record<string, unknown>) =>
-      apiFetch<OrderApi>(`${BASE}/api/orders`, {
+    mutationFn: (data: OrderCreateBodyApi) =>
+      apiRequest<OrderApi>(`/api/orders`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -162,16 +166,10 @@ export function useCreateOrder() {
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: {
-      id: string;
-      status: string;
-    }) =>
-      apiFetch<OrderApi>(`${BASE}/api/orders/${id}/status`, {
+    mutationFn: ({ id, status }: { id: string; status: OrderStatusBodyApi["status"] }) =>
+      apiRequest<OrderApi>(`/api/orders/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status } satisfies OrderStatusBodyApi),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -195,8 +193,8 @@ export function useSuppliers(params?: {
   return useQuery({
     queryKey: ["suppliers", params],
     queryFn: () =>
-      apiFetch<SupplierListResponseApi>(
-        `${BASE}/api/suppliers${qs ? `?${qs}` : ""}`
+      apiRequest<SupplierListResponseApi>(
+        `/api/suppliers${qs ? `?${qs}` : ""}`
       ),
     retry: false,
   });
@@ -205,7 +203,7 @@ export function useSuppliers(params?: {
 export function useSupplier(id: string | null) {
   return useQuery({
     queryKey: ["suppliers", id],
-    queryFn: () => apiFetch<SupplierApi>(`${BASE}/api/suppliers/${id}`),
+    queryFn: () => apiRequest<SupplierApi>(`/api/suppliers/${id}`),
     enabled: !!id,
     retry: false,
   });
@@ -214,8 +212,8 @@ export function useSupplier(id: string | null) {
 export function useCreateSupplier() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Record<string, unknown>) =>
-      apiFetch<SupplierApi>(`${BASE}/api/suppliers`, {
+    mutationFn: (data: SupplierCreateBodyApi) =>
+      apiRequest<SupplierApi>(`/api/suppliers`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -228,14 +226,8 @@ export function useCreateSupplier() {
 export function useUpdateSupplier() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Record<string, unknown>;
-    }) =>
-      apiFetch<SupplierApi>(`${BASE}/api/suppliers/${id}`, {
+    mutationFn: ({ id, data }: { id: string; data: SupplierUpdateBodyApi }) =>
+      apiRequest<SupplierApi>(`/api/suppliers/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
       }),
@@ -249,7 +241,7 @@ export function useDeleteSupplier() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch(`${BASE}/api/suppliers/${id}`, { method: "DELETE" }),
+      apiRequest(`/api/suppliers/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
@@ -262,8 +254,8 @@ export function useReportSummary(period: string = "30d") {
   return useQuery({
     queryKey: ["reports", "summary", period],
     queryFn: () =>
-      apiFetch<ReportSummaryApi>(
-        `${BASE}/api/reports/summary?period=${encodeURIComponent(period)}`
+      apiRequest<ReportSummaryApi>(
+        `/api/reports/summary?period=${encodeURIComponent(period)}`
       ),
     retry: false,
   });

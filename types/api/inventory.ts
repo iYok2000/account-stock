@@ -21,3 +21,8 @@ export type InventoryListResponseApi = {
   totalPages?: number;
   nextCursor?: string;
 };
+
+/** POST /api/inventory — create body */
+export type InventoryCreateBodyApi = Partial<Omit<InventoryItemApi, "id">> & Pick<InventoryItemApi, "name" | "sku" | "quantity" | "status">;
+/** PUT /api/inventory/:id — update body */
+export type InventoryUpdateBodyApi = Partial<Omit<InventoryItemApi, "id">>;

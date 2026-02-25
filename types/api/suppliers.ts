@@ -21,3 +21,8 @@ export type SupplierListResponseApi = {
   totalPages?: number;
   nextCursor?: string;
 };
+
+/** POST /api/suppliers — create body */
+export type SupplierCreateBodyApi = Partial<Omit<SupplierApi, "id">> & Pick<SupplierApi, "name">;
+/** PUT /api/suppliers/:id — update body */
+export type SupplierUpdateBodyApi = Partial<Omit<SupplierApi, "id">>;

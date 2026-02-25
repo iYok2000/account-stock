@@ -44,3 +44,8 @@ export type OrderListResponseApi = {
   totalPages?: number;
   nextCursor?: string;
 };
+
+/** POST /api/orders — create body */
+export type OrderCreateBodyApi = Partial<Omit<OrderApi, "id" | "createdAt" | "updatedAt">> & { orderDate?: string; status?: OrderStatusApi; totalAmount: number };
+/** PATCH /api/orders/:id/status — body */
+export type OrderStatusBodyApi = { status: OrderStatusApi };

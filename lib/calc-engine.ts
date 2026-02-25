@@ -4,13 +4,12 @@
  */
 
 import type { ProfitCalcInputApi, ProfitCalcResultApi } from "@/types/api/calculator";
-
-const CALC_ENGINE_URL = process.env.NEXT_PUBLIC_CALC_ENGINE_URL || "";
-const CALC_ENGINE_SECRET = process.env.NEXT_PUBLIC_CALC_ENGINE_SECRET || "";
+import { env } from "@/lib/env";
 
 export async function callProfitCalc(
   input: ProfitCalcInputApi
 ): Promise<ProfitCalcResultApi> {
+  const { NEXT_PUBLIC_CALC_ENGINE_URL: CALC_ENGINE_URL, NEXT_PUBLIC_CALC_ENGINE_SECRET: CALC_ENGINE_SECRET } = env();
   if (!CALC_ENGINE_URL) {
     throw new Error("รอต่อ API — ยังไม่ได้ตั้งค่า CALC_ENGINE_URL");
   }

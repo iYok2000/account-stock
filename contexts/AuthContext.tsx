@@ -11,6 +11,9 @@ import {
 import type { UserSession, Role } from "@/lib/rbac/types";
 import type { PermissionString } from "@/lib/rbac/constants";
 import { getPermissionsForRoles } from "@/lib/rbac/role-permissions";
+import { apiRequest, setAuthToken, setOnUnauthorized } from "@/lib/api-client";
+import type { MeResponseApi } from "@/types/api/auth";
+import { env } from "@/lib/env";
 
 type AuthContextValue = {
   session: UserSession | null;
@@ -35,7 +38,8 @@ function getMockRole(): Role {
   if (typeof window === "undefined") return "Staff";
   const stored = sessionStorage.getItem(MOCK_ROLE_KEY);
   if (stored && ALL_ROLES.includes(stored as Role)) return stored as Role;
-  return (process.env.NEXT_PUBLIC_MOCK_ROLE as Role) || "Staff";
+  const envRole = env().NEXT_PUBLIC_MOCK_ROLE;
+  return (ALL_ROLES.includes(envRole as Role) ? envRole : "Staff") as Role;
 }
 
 function loadCachedSession(): UserSession | null {
@@ -76,25 +80,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       // Prefer backend; fallback to mock (security: backend must enforce all checks)
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
-      const res = await fetch(`${apiBase}/api/auth/me`, {
-        credentials: "include",
-        headers: { Accept: "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const session: UserSession = {
-          userId: data.user?.id ?? "unknown",
-          roles: data.roles ?? [],
-          permissions: data.permissions ?? [],
-          displayName: data.user?.displayName,
-          tier: data.tier ?? "free",
-          companyId: data.company_id ?? undefined,
-        };
-        setSession(session);
-        saveCachedSession(session);
-        return;
-      }
+      const data = await apiRequest<MeResponseApi>("/api/auth/me");
+      const roles = (data.roles ?? []) as Role[];
+      const permissions = (data.permissions ?? []) as PermissionString[];
+      const session: UserSession = {
+        userId: data.user?.id ?? "unknown",
+        roles,
+        permissions,
+        displayName: data.user?.displayName,
+        tier: (data.tier === "paid" ? "paid" : "free") as UserSession["tier"],
+        companyId: data.company_id ?? undefined,
+      };
+      setSession(session);
+      saveCachedSession(session);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Auth failed";
+      setError(msg);
       // No backend or 401: use mock for dev unless user explicitly logged out
       if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
         setSession(null);
@@ -111,29 +112,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setSession(mock);
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Auth failed";
-      setError(msg);
-      if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
-        setSession(null);
-      } else {
-        const roles: Role[] = [getMockRole()];
-        setSession({
-          userId: "mock",
-          roles,
-          permissions: getPermissionsForRoles(roles),
-          tier: "free",
-          companyId: "default",
-        });
-      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
-    const envUser = process.env.NEXT_PUBLIC_TEST_USER ?? "useradmin1234";
-    const envPass = process.env.NEXT_PUBLIC_TEST_PASS ?? "pass@1";
+    // Dev/test only — ปิดใน production build
+    if (typeof process !== "undefined" && process.env.NODE_ENV === "production") return false;
+    const { NEXT_PUBLIC_TEST_USER: envUser, NEXT_PUBLIC_TEST_PASS: envPass } = env();
     const input = emailOrUsername.trim();
     if (input !== envUser || password !== envPass) return false;
     if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
@@ -153,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    setAuthToken(null);
     setSession(null);
     setError(null);
     if (typeof window !== "undefined") {
@@ -160,6 +148,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem(MOCK_ROLE_KEY);
       sessionStorage.setItem(AUTH_LOGGED_OUT_KEY, "1");
     }
+  }, []);
+
+  useEffect(() => {
+    setOnUnauthorized(() => setSession(null));
+    return () => setOnUnauthorized(null);
   }, []);
 
   useEffect(() => {
