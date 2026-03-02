@@ -82,3 +82,15 @@ Backend measures to align with **OWASP Top 10 (2021)** and prevent **injection**
 | Role / tier in JWT     | `ValidRole`, `ValidTier` allowlist |
 | Response body (e.g. /me)| `json.Encoder.Encode` (escapes strings) |
 | Future: query/body params | Parameterized queries; no concat into SQL/shell |
+
+---
+
+## Pitfalls — JWT/Auth (ต้องเข้มงวดในการ implement)
+
+**สรุปจากวิจัย (JWT authorization, OWASP):**
+
+- **Algorithm confusion:** ห้ามใช้ค่า `alg` จาก header ของ JWT ในการ verify โดยไม่จำกัด. กำหนด algorithm ที่ยอมรับแบบ hardcode/whitelist เท่านั้น; ไม่รับ `none`; ไม่ผสม HMAC กับ asymmetric ใน path เดียว (A02).
+- **ตรวจ claim ครบ:** ตรวจ signature + `exp` (และ `iss`/`aud` ถ้าใช้); อนุญาต clock skew เล็กน้อย. เช็คแค่ signature = token หมดอายุหรือ issuer ผิดยังใช้ได้.
+- **Secret ใน production:** Production บังคับ JWT_SECRET ที่ไม่ใช่ default; อ่านจาก env เท่านั้น (DEPLOY.md).
+
+**กรณีที่อนาคตอาจกระทบ:** Endpoint ใหม่ต้องผ่าน Auth; ถ้าเป็น resource ต้องมี RequirePermission. ดู ENTITY_SPEC §7 สำหรับ tenant scope และ endpoint/table/job/cache.

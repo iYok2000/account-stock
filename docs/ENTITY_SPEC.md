@@ -97,9 +97,32 @@ Spec สำหรับ **entity ฝั่ง backend** และกฎ **tenant
 
 ---
 
-## 7. อ้างอิง
+## 7. ข้อควรระวังและกรณีที่อนาคตอาจกระทบ (ต้องเข้มงวดในการ implement)
+
+**สรุปจากวิจัย (OWASP Multi-Tenant, tenant isolation):**
+
+- **ห้ามเชื่อถือ company_id จาก client** — ใช้จาก auth context เท่านั้น; ใช้จาก body/query/header เป็น scope = tenant context injection.
+- **ห้ามลืม WHERE company_id** — ทุก SELECT/UPDATE/DELETE ที่ tenant-scoped ต้องมีเงื่อนไขจาก `middleware.TenantScope(ctx)`; ลืมแล้วคืนข้อมูลข้าม tenant โดยไม่ error.
+- **Tenant context เป็น per-request เท่านั้น** — ไม่อยู่ต่อ connection/global; ถ้ามี background job แต่ละ job ต้องรับ/resolve tenant ของ job (ไม่ใช้ request context).
+- **RLS ไม่พอถ้า app ไม่ส่ง context** — App ต้องส่ง company_id จาก auth context ในทุก query ที่ tenant-scoped.
+
+**กรณีที่อนาคตอาจกระทบ:**
+
+| กรณี | การป้องกัน |
+|------|------------|
+| เพิ่ม endpoint ใหม่ที่อ่าน/เขียนข้อมูล | ระบุใน feature spec ว่า Auth, Permission, Tenant scope; ใช้ TenantScope(ctx) ใน query |
+| เพิ่มตารางที่แยกตามเจ้า | ตารางต้องมี company_id + index; ทุก query ใช้ค่าจาก context เท่านั้น |
+| Background job | แต่ละ job ต้องมี tenant identifier (เช่น จาก queue); resolve company_id ใน job; ไม่ใช้ request context |
+| Query raw / สร้าง query จาก string | Parameterized เท่านั้น; ใส่ company_id จาก context เป็น parameter |
+| Query param สำหรับ filter company | ห้ามใช้เป็น tenant scope; ใช้เฉพาะจาก auth context. ข้อยกเว้น SuperAdmin ต้องระบุใน spec และตรวจ role ที่ backend |
+| Cache แยกตาม tenant | Cache key ต้องรวม company_id จาก context |
+
+---
+
+## 8. อ้างอิง
 
 - **User context (ความหมาย role, tier, company):** `account-stock-fe/docs/USER_SPEC.md`
 - **RBAC (role, permission):** `account-stock-fe/docs/RBAC_SPEC.md`
 - **Backend context & API:** this repo `project-specific_context.md`
 - **DB & migration:** this repo `docs/DB_SPEC.md`
+- **Security (JWT, algorithm, claims):** this repo `docs/SECURITY.md`

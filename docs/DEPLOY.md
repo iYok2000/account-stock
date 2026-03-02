@@ -7,11 +7,13 @@ Checklist และสิ่งที่ต้องตั้งก่อน dep
 ## พร้อมแล้ว
 
 - **Build:** `go build -o server ./cmd/server` ได้ binary เดียว
-- **Config จาก env:** ไม่ hardcode secret; ใช้ `JWT_SECRET`, `DATABASE_URL` / `SUPABASE_DB_URL`, `PORT`
+- **Config จาก env:** ไม่ hardcode secret; ใช้ `JWT_SECRET`, `DATABASE_URL` / `SUPABASE_DB_URL`, `PORT`, `CORS_ORIGIN`
 - **PORT:** อ่านจาก env `PORT` (default 8080) — ใช้กับ Railway, Render, Fly.io, Heroku ได้
+- **CORS:** middleware CORS (env `CORS_ORIGIN`); default อนุญาต localhost/127.0.0.1 ทุกพอร์ต
 - **Health:** `GET /health` ไม่ต้อง auth ใช้สำหรับ load balancer / health check
 - **Security:** JWT validation, RBAC, error responses แบบไม่ inject; ดู `docs/SECURITY.md`
 - **Migration:** รัน `go run ./cmd/migrate` ก่อนหรือหลัง deploy (ตาม flow ของ host)
+- **Import:** POST `/api/import/order-transaction` รับ payload จาก frontend; **Auth + orders:create** บังคับ (stub; ดู `docs/feature/03-import.md`)
 
 ---
 
@@ -33,7 +35,6 @@ Checklist และสิ่งที่ต้องตั้งก่อน dep
 - **Graceful shutdown** — รับ SIGTERM แล้วปิด listener / drain request (ส่วนใหญ่ reverse proxy ปิด connection ให้)
 - **TLS ใน process** — ใช้ reverse proxy (nginx, cloud load balancer) terminate TLS แทนก็ได้
 - **Rate limit** — ตามความเสี่ยงของบริการ
-- **Import auth** — `POST /api/import/order-transaction` ยังไม่ตรวจ JWT; ควรใส่ auth ก่อน production
 
 ---
 
@@ -44,3 +45,9 @@ Checklist และสิ่งที่ต้องตั้งก่อน dep
 3. **ตั้ง env บน host:** JWT_SECRET, DATABASE_URL หรือ SUPABASE_DB_URL, PORT (ถ้า host กำหนด)
 4. **รัน:** `./server` (หรือตามที่ host กำหนด)
 5. **Health check:** ตั้งให้เรียก `GET /health` เป็นระยะ
+
+---
+
+## Production readiness
+
+Checklist ครบสำหรับขึ้น prod: **`docs/PRODUCTION_READINESS.md`** (env, auth, permission, tenant, security).

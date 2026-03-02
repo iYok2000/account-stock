@@ -42,3 +42,6 @@ You are working on **account-stock-be** — the backend for **account-stock-fe**
 - **Security:** This repo `docs/SECURITY.md` — OWASP Top 10, injection prevention, error handling.
 - **Database:** This repo `docs/DB_SPEC.md` — GORM, Postgres/Supabase, migration, multi-tenant scope.
 - **Feature API:** This repo `docs/feature/README.md` + `docs/feature/*.md` — route, permission, request/response, tenant scope, acceptance criteria ต่อฟีเจอร์ (auth, users, …).
+- **Production readiness:** This repo `docs/PRODUCTION_READINESS.md` — checklist ก่อนขึ้น prod (env, auth, permission, tenant, security). ดู `docs/DEPLOY.md` สำหรับ deploy steps.
+- **Pitfalls (tenant):** This repo **`docs/ENTITY_SPEC.md`** §7 — ข้อควรระวัง multi-tenant และกรณีที่อนาคตอาจกระทบ (endpoint, ตาราง, background job, cache). อ่านเมื่อ implement/review ฟีเจอร์ที่เกี่ยวกับ tenant.
+- **Pitfalls (auth/JWT):** This repo **`docs/SECURITY.md`** § Pitfalls — ข้อควรระวัง JWT และ endpoint ใหม่. อ่านเมื่อ implement/review auth.

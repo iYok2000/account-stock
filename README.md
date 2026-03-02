@@ -31,6 +31,7 @@ Server listens on `PORT` (default `8080`). For production build: `go build -o se
 | GET | `/health` | no | — | Health check |
 | GET | `/api/auth/me` | JWT Bearer | — | Current user context (user, roles, permissions, tier, company_id) |
 | GET | `/api/users` | JWT Bearer | `users:read` | List users (SuperAdmin only) |
+| POST | `/api/import/order-transaction` | JWT Bearer | `orders:create` | Import order-transaction payload (stub; 200 + `{"ok":true}`). CORS enabled. |
 
 ## Auth (JWT)
 
@@ -50,8 +51,8 @@ Server listens on `PORT` (default `8080`). For production build: `go build -o se
 - `cmd/server` — main entry, routes, middleware chain (Auth → RequirePermission where needed)
 - `internal/auth` — Context, Role, Tier, JWT claims and ValidateToken
 - `internal/rbac` — role→permissions map, HasPermission (RBAC_SPEC §5)
-- `internal/middleware` — Auth(JWT), RequirePermission(permission), RequireAuthContext, Tenant, secure error responses
-- `internal/handler` — Me (/api/auth/me), UsersList (/api/users)
+- `internal/middleware` — CORS (env CORS_ORIGIN), Auth(JWT), RequirePermission, RequireAuthContext, Tenant, secure error responses
+- `internal/handler` — Me (/api/auth/me), UsersList (/api/users), ImportOrderTransaction (POST /api/import/order-transaction)
 - `internal/database` — GORM connection (Postgres/Supabase), config from env
 - `internal/model` — GORM models (Company, User with company_id)
 - `migrations/` — Versioned SQL (000001_init.up/down.sql); run via `go run ./cmd/migrate`

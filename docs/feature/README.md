@@ -18,6 +18,7 @@
 |------|---------|-------------------|
 | [01-auth.md](./01-auth.md) | Auth / session | `GET /api/auth/me` |
 | [02-users.md](./02-users.md) | จัดการผู้ใช้ (SuperAdmin) | `GET /api/users` (และ CRUD เมื่อมี) |
+| [03-import.md](./03-import.md) | Import order-transaction | `POST /api/import/order-transaction` (Auth + orders:create) |
 
 ฟีเจอร์อื่น (inventory, orders, suppliers, …) จะเพิ่มเมื่อมี endpoint นั้นใน backend.
 

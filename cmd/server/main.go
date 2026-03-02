@@ -43,8 +43,16 @@ func main() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// API: import — stub for frontend Import Wizard (CORS needed for browser)
-	mux.HandleFunc("/api/import/order-transaction", handler.ImportOrderTransaction)
+	// API: import — Auth + orders:create per docs/feature/03-import.md (production-ready)
+	importHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			middleware.WriteJSONError(w, middleware.ErrMethodNotAllowed, http.StatusMethodNotAllowed)
+			return
+		}
+		handler.ImportOrderTransaction(w, r)
+	})
+	importChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermOrdersCreate)(importHandler))
+	mux.Handle("/api/import/order-transaction", importChain)
 
 	// API: auth — /api/auth/me requires valid JWT
 	apiAuth := http.NewServeMux()
