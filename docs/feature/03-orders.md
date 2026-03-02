@@ -32,12 +32,12 @@
 
 ### 4. Modal — สร้างคำสั่งซื้อ (FormModal)
 - ชื่อ: placeOrderFormTitle
-- เนื้อหา: ข้อความ mock "Form fields for order (mock) — ready for API"
+- เนื้อหา: ฟอร์มสร้าง order (dev-only placeholder จนต่อ API)
 - ปุ่ม: ยกเลิก, ยืนยัน (คลิกแล้วเปิด ConfirmModal)
 
 ### 5. Modal — ยืนยันส่ง order (ConfirmModal)
 - ข้อความ: confirmSubmitOrder
-- ปุ่มยืนยัน → mock submit (setTimeout + toast success)
+- ปุ่มยืนยัน → dev-only mock submit (setTimeout + toast) จนกว่าต่อ API
 
 ---
 

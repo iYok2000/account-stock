@@ -11,6 +11,6 @@
 | [05-reports.md](./05-reports.md) | รายงาน | `/reports` | โครงการ์ด 2 อัน, placeholder |
 | [06-calculator.md](./06-calculator.md) | เครื่องคำนวณกำไร | `/calculator` | Sliders, ผลลัพธ์, Breakeven, Sensitivity, Scenarios, Monte Carlo |
 | [07-import.md](./07-import.md) | นำเข้าข้อมูล | `/import` | Wizard: เลือกประเภท → อัปโหลด → mapping → result |
-| [07-tax.md](./07-tax.md) | ภาษี | `/tax` | ภาษีบุคคลธรรมดา: bracket, ตัวเลขเสีย/ได้คืน, tips, export |
+| [08-tax.md](./08-tax.md) | ภาษี | `/tax` | ภาษีบุคคลธรรมดา: bracket, ตัวเลขเสีย/ได้คืน, tips, export |
 
 เมนูอื่น (shops, campaigns, vouchers, fees, funnels, agents, settings) ยังไม่มี spec แยกในโฟลเดอร์นี้ — ถ้ามีหน้า/component ชัดเจนแล้วค่อยเพิ่มไฟล์ใหม่ได้

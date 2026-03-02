@@ -6,11 +6,13 @@
 
 ## สี (CSS Variables ใน `app/globals.css`)
 
+Primary โทน warm (น้ำตาล/ส้ม) ตาม DESIGN_UX_UI — ค่าจริงอยู่ที่ `:root` ใน `app/globals.css`.
+
 | Token | ค่า | ใช้กับ |
 |-------|-----|--------|
-| `--color-primary` | #2563eb | ปุ่ม CTA, ลิงก์สำคัญ |
-| `--color-primary-hover` | #1d4ed8 | Hover ปุ่มหลัก |
-| `--color-primary-light` | #dbeafe | Focus ring, ไฮไลต์ |
+| `--primary` (HSL) | 25 55% 38% | ปุ่ม CTA, ลิงก์สำคัญ (โทน warm) |
+| `--color-primary-hover` | #6b4423 | Hover ปุ่มหลัก |
+| `--color-primary-light` | #f5ebe0 | Focus ring, ไฮไลต์ |
 | `--color-success` | #16a34a | In Stock |
 | `--color-warning` | #ca8a04 | Low Stock |
 | `--color-danger` | #dc2626 | Out of Stock / ลบ |

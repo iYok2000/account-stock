@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Bot, Send, User, Sparkles, MessageSquare, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +66,10 @@ export default function AgentsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const messages = messagesByAgent[selectedAgent] ?? [];
+  const messages = useMemo(
+    () => messagesByAgent[selectedAgent] ?? [],
+    [messagesByAgent, selectedAgent]
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

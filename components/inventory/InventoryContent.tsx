@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { ConfirmModal, FormModal } from "@/components/ui/Modal";
 import StatusTag, { type InventoryStatus } from "@/components/ui/StatusTag";
@@ -97,11 +97,14 @@ export default function InventoryContent() {
     return String(row.qty);
   };
 
-  const hasUnsavedQty = (row: InventoryItem) => {
-    if (editingQty[row.id] === undefined) return false;
-    const parsed = Math.max(0, parseInt(editingQty[row.id], 10) || 0);
-    return parsed !== row.qty;
-  };
+  const hasUnsavedQty = useCallback(
+    (row: InventoryItem) => {
+      if (editingQty[row.id] === undefined) return false;
+      const parsed = Math.max(0, parseInt(editingQty[row.id], 10) || 0);
+      return parsed !== row.qty;
+    },
+    [editingQty]
+  );
 
   /** ตอนแก้จำนวน → เช็ค checkbox แถวนั้นอัตโนมัติ (บันทึกจะอิงจากที่เลือก) */
   const handleRowQtyChange = (rowId: number, value: string) => {
@@ -121,7 +124,7 @@ export default function InventoryContent() {
   /** รายการที่เลือกและมีค่าแก้ (จริงๆ ต่างจากเดิม) — บันทึกเฉพาะพวกนี้, ค่าเดิมไม่ส่ง */
   const selectedRowsWithUnsaved = useMemo(
     () => filteredItems.filter((row) => selected.has(row.id) && hasUnsavedQty(row)),
-    [filteredItems, selected, editingQty, items]
+    [filteredItems, selected, hasUnsavedQty]
   );
   const hasAnyUnsavedSelected = selectedRowsWithUnsaved.length > 0;
 

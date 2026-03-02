@@ -51,8 +51,10 @@ export async function apiRequest<T>(
     credentials,
   });
   if (res.status === 401) {
+    const hadToken = !!authToken;
     authToken = null;
-    onUnauthorized?.();
+    // เคลียร์ session เฉพาะเมื่อเราส่ง token ไปแล้ว (token หมดอายุ/ไม่ถูกต้อง). ถ้าไม่มี token แล้วได้ 401 = โหมด mock; อย่าเคลียร์ session จะได้ไม่เด้งไป login
+    if (hadToken) onUnauthorized?.();
     const body: ApiErrorBody = await res.json().catch(() => ({ error: "Unauthorized" }));
     throw new Error(body.error ?? "Unauthorized");
   }

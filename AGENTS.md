@@ -1,3 +1,8 @@
+---
+description: 
+alwaysApply: true
+---
+
 # Agent prompt — account-stock-fe
 
 You are working on **account-stock-fe** (Next.js, i18n, Tailwind). Follow these instructions.

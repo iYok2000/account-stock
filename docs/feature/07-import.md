@@ -62,67 +62,19 @@ Import ใช้ **user context ตาม [docs/USER_SPEC.md](../USER_SPEC.md)**
 
 ---
 
-## ฟิลด์: จำเป็น vs เลือกใช้ + Data processing (สรุปจาก GPT research)
+## การจับคู่คอลัมน์: ตรงหรือใกล้เคียง
 
-### ความจำเป็นต่อผลลัพธ์ "ยอดขายตาม SKU + รายได้" (ทีละฟิลด์)
+ระบบจับคู่ **ชื่อคอลัมน์ในไฟล์** กับ **ฟิลด์ในระบบ** อัตโนมัติจากชื่อที่ **ตรงหรือใกล้เคียง** (ความหมายเดียวกัน):
 
-| ฟิลด์ | ระดับ | ใช้ทำอะไร | Data processing แนะนำ |
-|--------|--------|-----------|------------------------|
-| Order ID | จำเป็น | Key สำหรับจัดกลุ่ม transaction | Trim; ตรวจสอบไม่ว่าง; format สม่ำเสมอ |
-| Order Status | เลือกใช้ | กรอง/แสดงสถานะ | Trim; standardize ค่า |
-| Order Substatus | เลือกใช้ | สถานะย่อย (ถ้าต้องการ) | Trim |
-| Cancelation/Return Type | จำเป็น | ระบุเหตุผลคืน/หัก | Trim; standardize คำ |
-| Normal or Pre-order | เลือกใช้ | กรอง/แสดง (ถ้าต้องการ) | Trim; normalize |
-| SKU ID | จำเป็น | **Unique ID** — ใช้เป็น key รวมยอดและเป็น identifier ของแถว per-SKU (1 SKU = 1 record) | Trim; validate; ไม่ว่าง |
-| Seller SKU | เลือกใช้ | แสดง (รหัส/ชื่อที่ผู้ขายใช้) | Trim |
-| Product Name | เลือกใช้ | แสดงชื่อสินค้า | Trim |
-| Variation | เลือกใช้ | แสดง/กรองตัวเลือก | Trim |
-| Quantity | จำเป็น | คำนวณจำนวนหน่วยขาย | Parse integer; ว่าง/ผิดรูปแบบ → 0 |
-| Sku Quantity of return | จำเป็น | คำนวณจำนวนหน่วยคืน | Parse integer; default 0 |
-| SKU Unit Original Price | จำเป็น | ราคาต้นทางสำหรับคำนวณรายได้ | Parse float; รองรับ locale ทศนิยม |
-| SKU Subtotal Before Discount | จำเป็น | ตรวจสอบความถูกต้องการคำนวณ | Parse float |
-| SKU Platform Discount | จำเป็น | หักส่วนลดแพลตฟอร์ม | Parse float; ว่าง → 0 |
-| SKU Seller Discount | จำเป็น | หักส่วนลดผู้ขาย | Parse float; ว่าง → 0 |
-| SKU Subtotal After Discount | จำเป็น | รายได้หลังหักส่วนลด | Parse float |
-| Shipping Fee After Discount | เลือกใช้ | แสดง/คำนวณส่วนร่วมค่าขนส่ง | Parse float |
-| Original Shipping Fee | เลือกใช้ | อ้างอิง/แสดง | Parse float |
-| Shipping Fee Seller Discount | เลือกใช้ | แหล่งส่วนลด (ถ้าต้องการ) | Parse float |
-| Shipping Fee Platform Discount | เลือกใช้ | แหล่งส่วนลด (ถ้าต้องการ) | Parse float |
-| Payment platform discount | จำเป็น | หักส่วนลดชำระเงิน | Parse float |
-| Taxes | จำเป็น | ภาษีสำหรับคำนวณรายได้ | Parse float |
-| Small Order Fee | เลือกใช้ | รายละเอียดค่าธรรมเนียม (ถ้าต้องการ) | Parse float |
-| Order Amount | จำเป็น | ยอดรวม order | Parse float |
-| Order Refund Amount | จำเป็น | ยอดคืนรวม | Parse float |
-| Created Time | เลือกใช้ | กรอง/แสดงตามเวลา; ใช้เป็นวันที่สำหรับสรุปและ upsert | Parse datetime (ISO); รองรับ timezone |
-| Paid Time | **ตัดออกใน Phase 1** | ไม่ใช้ | — |
-| RTS Time | ไม่ใช้ใน Phase 1 | ไม่เกี่ยวกับการรวมยอด | — |
-| Shipped Time | เลือกใช้ | กรอง/ติดตาม (ถ้าต้องการ) | Parse datetime |
-| Delivered Time | เลือกใช้ | กรอง/แสดง | Parse datetime |
-| Cancelled Time | เลือกใช้ | รายงานยกเลิก (ถ้าต้องการ) | Parse datetime |
-| Cancel By | เลือกใช้ | แสดงเหตุผลยกเลิก | Trim |
-| Cancel Reason | เลือกใช้ | แสดงเหตุผลยกเลิก | Trim |
-| Fulfillment Type | เลือกใช้ | แสดง/กรอง | Trim |
-| Warehouse Name | เลือกใช้ | กรอง/แสดง | Trim |
-| Tracking ID | เลือกใช้ | กรอง/ติดตาม | Trim |
-| Delivery Option | เลือกใช้ | กรอง/แสดง | Trim |
-| Shipping Provider Name | เลือกใช้ | แสดง/กรอง | Trim |
-| Buyer Message | ไม่ใช้ใน Phase 1 | ไม่ใช้ในการรวมยอด | — |
-| Buyer Username | เลือกใช้ | กรอง/แสดง (ถ้าต้องการ) | Trim |
-| Recipient | เลือกใช้ | แสดง (ถ้าต้องการ) | Trim |
-| Phone # | ไม่ใช้ใน Phase 1 | ไม่เกี่ยวข้อง | — |
-| Zipcode | ไม่ใช้ใน Phase 1 | อยู่นอกขอบเขต Phase 1 | — |
-| Country | เลือกใช้ | กรองภูมิศาสตร์ (ถ้าต้องการ) | Trim |
-| Province | เลือกใช้ | กรองภูมิศาสตร์ (ถ้าต้องการ) | Trim |
-| District | เลือกใช้ | กรองภูมิศาสตร์ (ถ้าต้องการ) | Trim |
-| Detail Address | ไม่ใช้ใน Phase 1 | ไม่ใช้ในการรวม | — |
-| Additional address information | ไม่ใช้ใน Phase 1 | ไม่ใช้ในการรวม | — |
-| Payment Method | เลือกใช้ | กรอง/แสดง | Trim |
-| Weight(kg) | เลือกใช้ | วิเคราะห์ (ถ้าต้องการ) | Parse float |
-| Product Category | เลือกใช้ | กรอง/แสดง | Trim |
-| Package ID | เลือกใช้ | แสดง/กรอง | Trim |
-| Seller Note | ไม่ใช้ใน Phase 1 | ไม่ใช้ | — |
-| Checked Status | ไม่ใช้ใน Phase 1 | ไม่ใช้ | — |
-| Checked Marked by | ไม่ใช้ใน Phase 1 | ไม่ใช้ | — |
+- **Normalize:** ตัวเล็ก, `_` ถือเป็นช่องว่าง, ลบช่องว่างซ้ำ
+- **คำพ้อง:** ฟิลด์หนึ่งรองรับหลายชื่อ (เช่น SKU ID ← `sku id`, `sku_id`, `skumain`, `รหัส sku`, `product id`)
+- **UI:** แสดงเฉพาะฟิลด์ในระบบ (15 ฟิลด์) → เลือกคอลัมน์ในไฟล์ที่จับคู่; ฟิลด์จำเป็น * แยกกลุ่มด้านบน
+
+คำพ้องหลัก (ใน `ORDER_TRANSACTION_HEADER_KEYWORDS`): order_id (order no, คำสั่งซื้อ), sku_id (skumain, รหัสสินค้า, product id), quantity (qty, จำนวน), sku_subtotal_after_discount (ยอดหลังหักส่วนลด, revenue), created_time (date, วันที่, paid time), order_refund_amount (refund, คืน), ฯลฯ
+
+---
+
+## Data processing (เฉพาะ 15 ฟิลด์ด้านบน)
 
 ### ขั้นตอน Clean / Prepare / Parse (ทั่วไป)
 
@@ -173,7 +125,7 @@ Import ใช้ **user context ตาม [docs/USER_SPEC.md](../USER_SPEC.md)**
 ### ขั้นตอนประมวลผล (เพื่อผลลัพธ์ตรงกับที่ user อยากเห็น)
 
 1. **Clean / Prepare:** ค่าว่าง → trim; ตัวเลข (Quantity, ราคา, ส่วนลด) → parse เป็น number; วันที่ → parse เป็น date
-2. **Map column → 60 ฟิลด์:** Auto-detect จาก header name (ให้ user แก้ mapping ได้ถ้าชื่อไม่ตรง)
+2. **Map column → 15 ฟิลด์:** Auto-detect จากชื่อที่ตรงหรือใกล้เคียง (ให้ user แก้ mapping ได้); UI แสดงฟิลด์ในระบบ → เลือกคอลัมน์ในไฟล์
 3. **กรองแถว (ถ้าต้องการ):** เช่น เฉพาะ Order Status = Delivered/Paid
 4. **Group by SKU ID** (ใช้ SKU ID เป็น unique id); แสดง Seller SKU, Product Name, Variation ใน output
 5. **ต่อกลุ่ม (per SKU) คำนวณ:** รายได้ (sum SKU Subtotal After Discount), หักระดับ SKU (Platform/Seller Discount), หักระดับ order ที่แบ่งตามสัดส่วน (Shipping, Taxes, Small Order Fee, Payment platform discount — ตามวิธีที่เลือก), คืน (Order Refund Amount / Sku Quantity of return), รายได้สุทธิ
@@ -268,9 +220,9 @@ Import ใช้ **user context ตาม [docs/USER_SPEC.md](../USER_SPEC.md)**
 - `app/[locale]/import/page.tsx` — หน้า import
 - `components/upload/ImportWizard.tsx` — วิซาร์ด (select-type → upload → mapping/preview → result); Phase 1 แสดงเฉพาะ Order Transaction; เลือก tier ฟรี/เสียเงิน; Process เรียก aggregateOrderTransaction แล้ว POST `/api/import/order-transaction`
 - `components/upload/FileDropzone.tsx` — ลาก/เลือกไฟล์ (max 3.5 MB)
-- `components/upload/ColumnMapper.tsx` — map คอลัมน์ (เฉพาะฟิลด์ที่ใช้คำนวณยอด 2 features จาก getFieldsForType("order_transaction"))
+- `components/upload/ColumnMapper.tsx` — Order Transaction: แสดงฟิลด์ในระบบ (15 ฟิลด์) → เลือกคอลัมน์ในไฟล์ (จับคู่อัตโนมัติจากชื่อที่ตรงหรือใกล้เคียง); ฟิลด์จำเป็น * แยกกลุ่มด้านบน
 - `components/upload/DataPreview.tsx` — แสดงตัวอย่างข้อมูลที่ map แล้ว
-- `components/upload/file-parser.ts` — parseFile (3.5 MB + 50k rows), ORDER_TRANSACTION_FIELDS (15 ฟิลด์ — เฉพาะที่ใช้คำนวณยอด), autoDetectMappings, validateRows, normalizeOrderTransactionRow, aggregateOrderTransaction (formula A; คืน summary + daily + items)
+- `components/upload/file-parser.ts` — parseFile (3.5 MB + 50k rows), ORDER_TRANSACTION_FIELDS (15 ฟิลด์), ORDER_TRANSACTION_HEADER_KEYWORDS (คำพ้องความหมาย), autoDetectMappings (ตรง/ใกล้เคียง + normalize), validateRows, normalizeOrderTransactionRow, aggregateOrderTransaction (formula A; คืน summary + daily + items)
 
 **Backend (repo/service แยก)**
 

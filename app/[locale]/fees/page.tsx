@@ -58,7 +58,7 @@ export default function FeesPage() {
         </div>
         <div className="card text-center py-8 text-muted-foreground">
           <p>ยังไม่มีค่าธรรมเนียมหลัก</p>
-          <p className="text-xs mt-1">รอต่อ API — คลิก "เพิ่มค่าธรรมเนียม" เมื่อ backend พร้อม</p>
+          <p className="text-xs mt-1">รอต่อ API — คลิก &quot;เพิ่มค่าธรรมเนียม&quot; เมื่อ backend พร้อม</p>
         </div>
       </div>
 

@@ -20,7 +20,7 @@ Returns current user's identity, roles, and resolved permissions.
     "id": "string (userId)",
     "displayName": "string (optional)"
   },
-  "roles": ["Admin" | "Manager" | "Staff" | "Viewer"],
+  "roles": ["SuperAdmin" | "Admin" | "Manager" | "Staff" | "Viewer"],
   "permissions": [
     "dashboard:read",
     "inventory:read",
@@ -42,7 +42,7 @@ Returns current user's identity, roles, and resolved permissions.
 ## 2. TypeScript Types (Frontend ↔ Backend contract)
 
 ```typescript
-export type Role = "Admin" | "Manager" | "Staff" | "Viewer";
+export type Role = "SuperAdmin" | "Admin" | "Manager" | "Staff" | "Viewer";
 
 export type Resource =
   | "dashboard"
@@ -53,7 +53,8 @@ export type Resource =
   | "promotions"
   | "analysis"
   | "agents"
-  | "settings";
+  | "settings"
+  | "users";
 
 export type Action = "read" | "create" | "update" | "delete" | "export";
 
@@ -90,6 +91,7 @@ export interface UserSession {
 | `analysis` | `/calculator`, `/tax`, `/funnels`, `/reports` |
 | `agents` | `/agents` |
 | `settings` | `/settings` |
+| `users` | `/users` (จัดการผู้ใช้ระบบ — SuperAdmin เท่านั้น) |
 
 ### 3.2 Actions
 
@@ -103,25 +105,26 @@ export interface UserSession {
 
 ### 3.3 Role–Permission Matrix
 
-| Resource | Action | Viewer | Staff | Manager | Admin |
-|---|---|:---:|:---:|:---:|:---:|
-| dashboard | read | ✓ | ✓ | ✓ | ✓ |
-| inventory | read | ✓ | ✓ | ✓ | ✓ |
-| inventory | create/update/delete/export | — | ✓ | ✓ | ✓ |
-| orders | read | ✓ | ✓ | ✓ | ✓ |
-| orders | create/update/export | — | ✓ | ✓ | ✓ |
-| suppliers | read | ✓ | ✓ | ✓ | ✓ |
-| suppliers | create/update/delete | — | — | ✓ | ✓ |
-| shops | read | — | ✓ | ✓ | ✓ |
-| shops | create/update/delete | — | — | ✓ | ✓ |
-| promotions | read | — | ✓ | ✓ | ✓ |
-| promotions | create/update/delete/export | — | — | ✓ | ✓ |
-| analysis | read | — | ✓ | ✓ | ✓ |
-| analysis | export | — | — | ✓ | ✓ |
-| agents | read | — | — | ✓ | ✓ |
-| agents | create/update/delete | — | — | — | ✓ |
-| settings | read | — | — | ✓ | ✓ |
-| settings | update | — | — | — | ✓ |
+| Resource | Action | Viewer | Staff | Manager | Admin | SuperAdmin |
+|---|---|:---:|:---:|:---:|:---:|:---:|
+| dashboard | read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| inventory | read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| inventory | create/update/delete/export | — | ✓ | ✓ | ✓ | ✓ |
+| orders | read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| orders | create/update/export | — | ✓ | ✓ | ✓ | ✓ |
+| suppliers | read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| suppliers | create/update/delete | — | — | ✓ | ✓ | ✓ |
+| shops | read | — | ✓ | ✓ | ✓ | ✓ |
+| shops | create/update/delete | — | — | ✓ | ✓ | ✓ |
+| promotions | read | — | ✓ | ✓ | ✓ | ✓ |
+| promotions | create/update/delete/export | — | — | ✓ | ✓ | ✓ |
+| analysis | read | — | ✓ | ✓ | ✓ | ✓ |
+| analysis | export | — | — | ✓ | ✓ | ✓ |
+| agents | read | — | — | ✓ | ✓ | ✓ |
+| agents | create/update/delete | — | — | — | ✓ | ✓ |
+| settings | read | — | — | ✓ | ✓ | ✓ |
+| settings | update | — | — | — | ✓ | ✓ |
+| users | read/create/update/delete/export | — | — | — | — | ✓ |
 
 ### 3.4 NAV Route → Required Permission
 
@@ -142,6 +145,7 @@ export interface UserSession {
 | `/reports` | `analysis:read` | Staff |
 | `/agents` | `agents:read` | Manager |
 | `/settings` | `settings:read` | Manager |
+| `/users` | `users:read` | SuperAdmin |
 
 ---
 
@@ -209,5 +213,6 @@ export interface UserSession {
 
 | วันที่ | การเปลี่ยนแปลง |
 |---|---|
+| 2026-02-23 | เพิ่ม role SuperAdmin และ resource users; อัพเดท matrix และ NAV (รวม /users → users:read); สอดคล้อง RBAC_SPEC และ constants.ts |
 | 2026-02-18 | เพิ่ม resources: shops, promotions, analysis, agents, settings; อัพเดท matrix, NAV mapping, TypeScript types; แก้ bug Staff ได้ reports:read |
 | Initial | สร้าง spec เบื้องต้น: 5 resources (dashboard/inventory/orders/suppliers/reports) |

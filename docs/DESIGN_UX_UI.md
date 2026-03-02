@@ -10,7 +10,7 @@
 | หัวข้อ | ค่า |
 |--------|-----|
 | งานแรก | เมนู + หน้า UI ทั้งชุด (ยังไม่มี API) |
-| API | ยังไม่ต่อ — ไม่ใช้ mock data (แสดง empty state) |
+| API | ยังไม่ต่อ — ไม่ใช้ mock data (แสดง empty state); ค่า token สีอ้างอิง BRANDING.md และ `app/globals.css` |
 | อุปกรณ์ | รองรับ desktop / tablet / mobile (responsive) |
 | Offline | ไม่ใช้ |
 | Role | Role-based — รายละเอียดทีหลัง |
@@ -168,7 +168,7 @@
 ## แนวทางเพิ่ม (จากสกิล frontend-design)
 
 - **Typography:** ใช้ Sarabun รองรับไทย — ถ้าต้องการ “display” สำหรับหัวข้อใหญ่ อาจเพิ่ม font คู่
-- **Color:** Primary โทน warm (น้ำตาล/ส้ม); hover/focus ใช้โทนเดียวกัน (ไม่ใช้ #1d4ed8 แยก)
+- **Color:** Primary โทน warm (น้ำตาล/ส้ม) — ค่าจริงใน `app/globals.css` (:root --primary) และ BRANDING.md; hover/focus ใช้โทนเดียวกัน
 - **Motion:** stagger ตอนโหลดการ์ด; hover มี scale/shadow ชัด
 - **Spatial:** เลือก 1–2 หน้าให้มีจุดเด่น (การ์ดใหญ่หรือ offset) เพื่อไม่ให้ดู template
 - **Background:** sidebar/content แยกชั้นด้วยพื้นต่างโทน (content มี tint เบา)

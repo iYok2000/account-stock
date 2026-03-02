@@ -25,6 +25,7 @@
 | **NEXT_PUBLIC_API_URL** | บังคับ | ใส่ URL ของ backend production (เช่น `https://your-be.up.railway.app`) |
 | **Dev login** | ปิดอัตโนมัติ | เมื่อ build ด้วย `NODE_ENV=production` การ login ด้วย env credentials จะ return false — ไม่ต้องลบ NEXT_PUBLIC_TEST_* แต่ไม่ทำงานใน production |
 | **Real auth** | ยังไม่มี | ตอนนี้ไม่มี backend login ที่ออก JWT — ต้องมี flow login จริง (หรือ Supabase Auth) ก่อนให้ user เข้าสู่ระบบใน production |
+| **Lint** | pre-release | ก่อน release รัน `npm run lint` และแก้ error ให้หมด — ต้องผ่านก่อน merge/deploy |
 | Build | ตรวจ | `npm run build` ผ่าน และไม่มี error |
 
 ---

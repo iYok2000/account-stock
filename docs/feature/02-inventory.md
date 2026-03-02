@@ -74,17 +74,17 @@
 - **ฟิลด์:** ชื่อ (text), SKU (text), จำนวน (NumberInput — stepper + พิมพ์ได้), สถานะ (select: in_stock, low_stock, out_of_stock)
 - Validation: ชื่อ/SKU/จำนวน required; จำนวนต้องเป็นตัวเลข ≥ 0
 - ปุ่ม: ยกเลิก, บันทึก (submit loading)
-- ปัจจุบัน: mock submit (setTimeout + toast success)
+- ปัจจุบัน: dev-only mock submit (setTimeout + toast) จนกว่าต่อ API
 
 ### 9. Modal — ยืนยันลบ (ConfirmModal)
 - ข้อความยืนยัน, ปุ่มลบ (danger), loading state
-- ปัจจุบัน: mock delete + toast success
+- ปัจจุบัน: dev-only mock delete + toast จนกว่าต่อ API
 
 ---
 
 ## State (Client)
 
-- `items` (รายการสินค้า; ปัจจุบันใช้ mock 3 รายการ สำหรับ demo)
+- `items` (รายการสินค้า; empty state จนต่อ API — ถ้ามี demo data เป็น dev-only ชั่วคราว)
 - `selected` (Set<number>), `quickFilter` ('all' | 'low_stock' | 'out_of_stock'), `addItemOpen`, `deleteConfirmOpen`, `deleteTargetId`, `submitLoading`, `formErrors`, `form`
 - สถานะ derive จาก qty: 0 → out_of_stock, 1–5 → low_stock, 6+ → in_stock (LOW_STOCK_THRESHOLD = 5)
 
