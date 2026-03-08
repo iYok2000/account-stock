@@ -1,218 +1,144 @@
-# RBAC Backend Specification — Inventory & Order Management
+# RBAC Backend Specification — Shops & Roles (FE ↔ BE Contract)
 
-> Last updated: 2026-02-18  
+> Last updated: 2026-03-06  
 > Status: **Active**  
-> See also: [RBAC_SPEC.md](./RBAC_SPEC.md) for role matrix and core concepts.
+> See also: [RBAC_SPEC.md](./RBAC_SPEC.md), [SHOPS_AND_ROLES_SPEC.md](./SHOPS_AND_ROLES_SPEC.md).
 
 ---
 
-## 1. Session Endpoint
+## 1. Auth Endpoints
 
-### `GET /api/auth/me`
+### `POST /api/auth/login`
 
-Returns current user's identity, roles, and resolved permissions.
+Login ด้วย email + password (+ confirm_code สำหรับ Root). คืน JWT.
+
+**Request (application/json)**
+
+```json
+{
+  "email": "string",
+  "password": "string",
+  "confirm_code": "string (optional — required when credentials match Root)"
+}
+```
 
 **Response (200 OK)**
 
 ```json
 {
-  "user": {
-    "id": "string (userId)",
-    "displayName": "string (optional)"
-  },
-  "roles": ["SuperAdmin" | "Admin" | "Manager" | "Staff" | "Viewer"],
-  "permissions": [
-    "dashboard:read",
-    "inventory:read",
-    "inventory:create",
-    "..."
-  ]
+  "token": "JWT string"
 }
 ```
 
-**Error responses**
+**Error:** 401 — credentials ไม่ถูกต้อง หรือ confirm_code ไม่ตรง (กรณี Root).
 
-| Status | Meaning |
-|---|---|
-| 401 | ไม่ได้ login หรือ session หมดอายุ |
-| 403 | Login แล้วแต่ไม่มีสิทธิ์เข้าถึงระบบ |
+- **Root:** ตรวจจาก env `ROOT_EMAIL`, `ROOT_PASSWORD`, `ROOT_CONFIRM_CODE` (server-side). ผ่านแล้วออก JWT role=Root, ไม่มี shop_id.
+- **อื่นๆ:** หา user จาก DB ตาม email, ตรวจ password (bcrypt), ออก JWT พร้อม role, shop_id, shop_name.
+
+---
+
+### `GET /api/auth/me`
+
+Returns current user's identity, roles, permissions, and shop. ต้องส่ง `Authorization: Bearer <JWT>`.
+
+**Response (200 OK)**
+
+```json
+{
+  "user": { "id": "...", "displayName": "..." },
+  "roles": ["Root" | "SuperAdmin" | "Admin" | "Affiliate"],
+  "permissions": ["dashboard:read", "shops:create", "..."],
+  "tier": "free",
+  "company_id": "",
+  "shop_id": "uuid or null (null for Root)",
+  "shop_name": "ชื่อร้าน (optional)"
+}
+```
+
+**Error:** 401 — ไม่มี token / token หมดอายุ / token ไม่ถูกต้อง.
 
 ---
 
 ## 2. TypeScript Types (Frontend ↔ Backend contract)
 
 ```typescript
-export type Role = "SuperAdmin" | "Admin" | "Manager" | "Staff" | "Viewer";
-
-export type Resource =
-  | "dashboard"
-  | "inventory"
-  | "orders"
-  | "suppliers"
-  | "shops"
-  | "promotions"
-  | "analysis"
-  | "agents"
-  | "settings"
-  | "users";
-
-export type Action = "read" | "create" | "update" | "delete" | "export";
-
-export type PermissionString = `${Resource}:${Action}`;
+export type Role = "Root" | "SuperAdmin" | "Admin" | "Affiliate";
 
 export interface MeResponse {
   user: { id: string; displayName?: string };
   roles: Role[];
-  permissions: PermissionString[];
+  permissions: string[];
+  tier?: string;
+  company_id?: string;
+  shop_id?: string | null;
+  shop_name?: string;
 }
 
 export interface UserSession {
   userId: string;
   roles: Role[];
-  permissions: PermissionString[];
+  permissions: string[];
   displayName?: string;
+  tier?: string;
+  shopId?: string | null;
+  shopName?: string;
 }
 ```
 
 ---
 
-## 3. Permission Model
+## 3. Shops API (Backend)
 
-### 3.1 Resources
-
-| Resource | ครอบคลุม route |
-|---|---|
-| `dashboard` | `/` |
-| `inventory` | `/inventory`, `/import` |
-| `orders` | `/orders` |
-| `suppliers` | `/suppliers` |
-| `shops` | `/shops` |
-| `promotions` | `/campaigns`, `/vouchers`, `/fees` |
-| `analysis` | `/calculator`, `/tax`, `/funnels`, `/reports` |
-| `agents` | `/agents` |
-| `settings` | `/settings` |
-| `users` | `/users` (จัดการผู้ใช้ระบบ — SuperAdmin เท่านั้น) |
-
-### 3.2 Actions
-
-| Action | คำอธิบาย |
-|---|---|
-| `read` | GET / ดูข้อมูล |
-| `create` | POST / สร้างใหม่ |
-| `update` | PUT, PATCH / แก้ไข |
-| `delete` | DELETE / ลบ |
-| `export` | ส่งออก CSV, PDF |
-
-### 3.3 Role–Permission Matrix
-
-| Resource | Action | Viewer | Staff | Manager | Admin | SuperAdmin |
-|---|---|:---:|:---:|:---:|:---:|:---:|
-| dashboard | read | ✓ | ✓ | ✓ | ✓ | ✓ |
-| inventory | read | ✓ | ✓ | ✓ | ✓ | ✓ |
-| inventory | create/update/delete/export | — | ✓ | ✓ | ✓ | ✓ |
-| orders | read | ✓ | ✓ | ✓ | ✓ | ✓ |
-| orders | create/update/export | — | ✓ | ✓ | ✓ | ✓ |
-| suppliers | read | ✓ | ✓ | ✓ | ✓ | ✓ |
-| suppliers | create/update/delete | — | — | ✓ | ✓ | ✓ |
-| shops | read | — | ✓ | ✓ | ✓ | ✓ |
-| shops | create/update/delete | — | — | ✓ | ✓ | ✓ |
-| promotions | read | — | ✓ | ✓ | ✓ | ✓ |
-| promotions | create/update/delete/export | — | — | ✓ | ✓ | ✓ |
-| analysis | read | — | ✓ | ✓ | ✓ | ✓ |
-| analysis | export | — | — | ✓ | ✓ | ✓ |
-| agents | read | — | — | ✓ | ✓ | ✓ |
-| agents | create/update/delete | — | — | — | ✓ | ✓ |
-| settings | read | — | — | ✓ | ✓ | ✓ |
-| settings | update | — | — | — | ✓ | ✓ |
-| users | read/create/update/delete/export | — | — | — | — | ✓ |
-
-### 3.4 NAV Route → Required Permission
-
-| Route | Required Permission | Minimum Role |
-|---|---|---|
-| `/` | `dashboard:read` | Viewer |
-| `/inventory` | `inventory:read` | Viewer |
-| `/import` | `inventory:create` | Staff |
-| `/orders` | `orders:read` | Viewer |
-| `/suppliers` | `suppliers:read` | Viewer |
-| `/shops` | `shops:read` | Staff |
-| `/campaigns` | `promotions:read` | Staff |
-| `/vouchers` | `promotions:read` | Staff |
-| `/fees` | `promotions:read` | Staff |
-| `/calculator` | `analysis:read` | Staff |
-| `/tax` | `analysis:read` | Staff |
-| `/funnels` | `analysis:read` | Staff |
-| `/reports` | `analysis:read` | Staff |
-| `/agents` | `agents:read` | Manager |
-| `/settings` | `settings:read` | Manager |
-| `/users` | `users:read` | SuperAdmin |
+| Method | Path | Auth | Permission | หมายเหตุ |
+|--------|------|------|------------|----------|
+| POST | `/api/shops` | Bearer JWT | `shops:create` (Root only) | Body: `{ name, members: [{ email, password, role }] }` อย่างน้อย 1 SuperAdmin |
+| GET | `/api/shops/me` | Bearer JWT | `users:read` | คืนชื่อร้าน + รายชื่อสมาชิก (SuperAdmin ของร้านนั้น) |
+| PATCH | `/api/shops/me` | Bearer JWT | `users:read` | Body: `{ name }` แก้ชื่อร้าน (SuperAdmin) |
+| POST | `/api/shops/me/members` | Bearer JWT | `users:create` | Body: `{ email, password, role: "Admin" \| "Affiliate" }` (SuperAdmin) |
 
 ---
 
-## 4. Security Requirements
+## 4. Role–Permission Matrix (Backend enforce)
 
-### 4.1 Backend Enforcement
+| Role | สิทธิ์หลัก |
+|------|------------|
+| Root | `dashboard:read`, `shops:create` |
+| Affiliate | `dashboard:read`, `inventory:create` (Import affiliate) |
+| Admin | ครบทุก resource ยกเว้น `users:*`, `shops:update` |
+| SuperAdmin | ครบทุก resource รวม `users:*`, `shops:update` |
 
-- ทุก API endpoint ต้องตรวจสอบ permission ก่อนดำเนินการ
-- Frontend permission check ใช้สำหรับ UI rendering เท่านั้น
-- ห้ามใช้ role เปรียบเทียบโดยตรงในโค้ด ให้ใช้ permission string เสมอ
-
-### 4.2 Token & Cache
-
-- permissions ควร embed ใน JWT หรือ fetch จาก `/api/auth/me`
-- Cache ได้บน client สูงสุด 5 นาที (TTL)
-- เมื่อ role เปลี่ยน ต้อง invalidate session ทันที
-
-### 4.3 Audit Logging
-
-บันทึกทุก request ที่เกี่ยวกับ permission check:
-
-```json
-{
-  "timestamp": "ISO8601",
-  "userId": "string",
-  "resource": "inventory",
-  "action": "delete",
-  "result": "allowed | denied",
-  "ip": "string"
-}
-```
+รายละเอียดเต็ม: [RBAC_SPEC.md](./RBAC_SPEC.md) §5, [ROLES_SUMMARY.md](./ROLES_SUMMARY.md).
 
 ---
 
-## 5. Performance Requirements
+## 5. NAV Route → Required Permission (Frontend)
 
-| Requirement | Target |
-|---|---|
-| `/api/auth/me` response time | < 200 ms (p95) |
-| Permission check overhead | < 5 ms per request |
-| Session cache TTL | 5 นาที |
+| Route | Required Permission |
+|-------|---------------------|
+| `/` | `dashboard:read` |
+| `/inventory` | `inventory:read` |
+| `/import` | `inventory:create` |
+| `/shops/create` | `shops:create` |
+| `/shops/me` | `users:read` |
+| `/campaigns`, `/vouchers`, `/fees` | `promotions:read` |
+| `/calculator`, `/tax`, `/reports` | `analysis:read` |
+| `/settings` | `settings:read` |
+| `/users` | `users:read` |
 
 ---
 
-## 6. Implementation Checklist
+## 6. Security
 
-### Backend
-
-- [ ] `GET /api/auth/me` คืนค่า `roles[]` + `permissions[]` ที่ถูกต้องตาม matrix
-- [ ] Middleware ตรวจสอบ permission ทุก protected route
-- [ ] ระบบ Audit logging ครบถ้วน
-- [ ] Unit test ครอบคลุม permission matrix
-
-### Frontend
-
-- [ ] `AuthContext` fetch session จาก `/api/auth/me` แล้ว cache
-- [ ] `usePermissions().can()` ใช้ตรวจสอบก่อน render UI
-- [ ] `NAV_PERMISSIONS` map ถูกต้องตามตาราง Section 3.4
-- [ ] Route guard redirect เมื่อไม่มี permission
-- [ ] `ROLE_PERMISSIONS` (mock) สอดคล้องกับ matrix ข้างต้น
+- ทุก API (ยกเว้น `/api/auth/login`, `/health`) ต้องตรวจ Bearer JWT และ permission ตาม role.
+- Frontend เก็บ token หลัง login แล้วส่งใน header ทุก request; ไม่ส่ง credentials (root/test) ไป client ใน production — Root login ควรผ่าน backend (ส่ง confirm_code ไป POST /api/auth/login).
+- Backend: ใช้ `shop_id` จาก JWT/context เป็น scope เท่านั้น — ไม่ใช้ค่าจาก body/query เป็น scope.
 
 ---
 
 ## 7. Changelog
 
 | วันที่ | การเปลี่ยนแปลง |
-|---|---|
-| 2026-02-23 | เพิ่ม role SuperAdmin และ resource users; อัพเดท matrix และ NAV (รวม /users → users:read); สอดคล้อง RBAC_SPEC และ constants.ts |
-| 2026-02-18 | เพิ่ม resources: shops, promotions, analysis, agents, settings; อัพเดท matrix, NAV mapping, TypeScript types; แก้ bug Staff ได้ reports:read |
-| Initial | สร้าง spec เบื้องต้น: 5 resources (dashboard/inventory/orders/suppliers/reports) |
+|--------|------------------|
+| 2026-03-06 | 4 roles (Root, SuperAdmin, Admin, Affiliate); shop-scoped; POST /api/auth/login, GET /api/auth/me + shop_id/shop_name; Shops API (POST /api/shops, GET/PATCH /api/shops/me, POST /api/shops/me/members) |
+| 2026-02-23 | เพิ่ม role SuperAdmin และ resource users |
+| 2026-02-18 | เพิ่ม resources: shops, promotions, analysis, agents, settings |

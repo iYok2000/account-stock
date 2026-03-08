@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, Fragment } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ColumnMapper } from "./ColumnMapper";
 import { DataPreview } from "./DataPreview";
@@ -9,14 +9,19 @@ import {
   autoDetectMappings,
   validateRows,
   aggregateOrderTransaction,
+  aggregateAffiliateOrders,
   type ParsedData,
   type DataType,
   type ImportTier,
   type OrderTransactionSummary,
   type DailyRow,
   type SkuRow,
+  type AffiliateSummary,
 } from "./file-parser";
 import { formatCurrency } from "@/lib/utils";
+import { useUserContext } from "@/contexts/AuthContext";
+import { ChevronDown } from "lucide-react";
+import { saveImportSnapshot } from "@/lib/import/storage";
 
 type Step = "select-type" | "upload" | "mapping" | "result";
 
@@ -27,7 +32,18 @@ const DATA_TYPE_OPTIONS: {
   icon: string;
   description: string;
 }[] = [
-  { type: "order_transaction", label: "Order Transaction", icon: "📋", description: "นำเข้ารายการขาย/คำสั่งซื้อ เพื่อสรุปยอดขายตาม SKU และรายได้" },
+  {
+    type: "order_transaction",
+    label: "Order Transaction (Owner)",
+    icon: "📋",
+    description: "นำเข้ารายการขาย/คำสั่งซื้อ เพื่อสรุปยอดขายตาม SKU และรายได้",
+  },
+  {
+    type: "affiliate_order",
+    label: "Affiliate Orders / Commission",
+    icon: "🤝",
+    description: "นำเข้าไฟล์ affiliate (XLSX) เพื่อสรุปคอมมิชชันตามร้านและสินค้า",
+  },
 ];
 
 interface ImportResult {
@@ -39,6 +55,8 @@ interface ImportResult {
   daily?: DailyRow[];
   items?: SkuRow[];
   tier?: ImportTier;
+  affiliateSummary?: AffiliateSummary;
+  dataType: DataType;
 }
 
 interface ImportWizardProps {
@@ -49,12 +67,33 @@ interface ImportWizardProps {
 
 import { apiRequest, getApiBase } from "@/lib/api-client";
 import type { ImportOrderTransactionPayloadApi, ImportOrderTransactionResponseApi } from "@/types/api/import";
+import type { InventoryImportPayloadApi } from "@/types/api/inventory";
+import { useImportInventory } from "@/lib/hooks/use-api";
+import { useToast } from "@/contexts/ToastContext";
 
 export function ImportWizard({
   onClose,
   onImportComplete,
   defaultDataType,
 }: ImportWizardProps) {
+  const user = useUserContext();
+  const role = user?.role ?? "Affiliate";
+  const shopId = user?.shopId ?? null;
+  const isAffiliateOnly = role === "Affiliate";
+  const isOwnerRole = !isAffiliateOnly;
+  const { showSuccess, showError } = useToast();
+  const importInventoryMutation = useImportInventory();
+
+  const visibleOptions = useMemo(
+    () =>
+      DATA_TYPE_OPTIONS.filter((opt) => {
+        if (opt.type === "order_transaction") return isOwnerRole;
+        if (opt.type === "affiliate_order") return true;
+        return true;
+      }),
+    [isOwnerRole]
+  );
+
   const [step, setStep] = useState<Step>(defaultDataType ? "upload" : "select-type");
   const [dataType, setDataType] = useState<DataType>(defaultDataType ?? "order_transaction");
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
@@ -64,6 +103,9 @@ export function ImportWizard({
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [tier, setTier] = useState<ImportTier>("free");
+  const [selectedShop, setSelectedShop] = useState<string | null>(null);
+  const [chartHoverShop, setChartHoverShop] = useState<string | null>(null);
+  const [expandedProductTitleKey, setExpandedProductTitleKey] = useState<string | null>(null);
 
   const handleSelectType = (type: DataType) => {
     setDataType(type);
@@ -113,12 +155,29 @@ export function ImportWizard({
 
   const handleConfirmImport = useCallback(async () => {
     if (!parsedData || !validation || validation.errors.length > 0) return;
+    if (dataType === "affiliate_order") {
+      const affiliateSummary = aggregateAffiliateOrders(parsedData.rows, mappings);
+      const result: ImportResult = {
+        imported: validation.validCount,
+        skipped: validation.invalidRows.length,
+        duplicates: 0,
+        errors: [],
+        affiliateSummary,
+        dataType: "affiliate_order",
+      };
+      setImportResult(result);
+      setSelectedShop(null);
+      setStep("result");
+      onImportComplete?.(result);
+      return;
+    }
     if (dataType !== "order_transaction") {
       const result: ImportResult = {
         imported: validation.validCount,
         skipped: validation.invalidRows.length,
         duplicates: 0,
         errors: [],
+        dataType,
       };
       setImportResult(result);
       setStep("result");
@@ -127,11 +186,22 @@ export function ImportWizard({
     }
     setIsLoading(true);
     setError(null);
+    const { summary, daily, items } = aggregateOrderTransaction(parsedData.rows, mappings, tier);
+    const snapshot = {
+      shopId,
+      updatedAt: new Date().toISOString(),
+      tier,
+      summary,
+      daily,
+      items,
+    };
     try {
-      const { summary, daily, items } = aggregateOrderTransaction(parsedData.rows, mappings, tier);
-      const payload: ImportOrderTransactionPayloadApi = tier === "free"
-        ? { tier: "free", summary, daily }
-        : { tier: "paid", summary, items };
+      const payload: ImportOrderTransactionPayloadApi = {
+        tier,
+        items,
+        summary,
+        daily,
+      };
       await apiRequest<ImportOrderTransactionResponseApi>("/api/import/order-transaction", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -145,7 +215,9 @@ export function ImportWizard({
         daily,
         items,
         tier,
+        dataType: "order_transaction",
       };
+      saveImportSnapshot(snapshot);
       setImportResult(result);
       setStep("result");
       onImportComplete?.(result);
@@ -155,7 +227,7 @@ export function ImportWizard({
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการส่งข้อมูล";
       const hint = msg === "Failed to fetch" ? ` ${url}` : msg;
       setError(hint);
-      const { summary, daily, items } = aggregateOrderTransaction(parsedData.rows, mappings, tier);
+      saveImportSnapshot(snapshot);
       setImportResult({
         imported: validation.validCount,
         skipped: validation.invalidRows.length,
@@ -165,6 +237,7 @@ export function ImportWizard({
         daily,
         items,
         tier,
+        dataType: "order_transaction",
       });
       setStep("result");
     } finally {
@@ -181,15 +254,45 @@ export function ImportWizard({
     setParseWarnings([]);
   };
 
+  const handleSaveToInventory = async () => {
+    if (!importResult || !importResult.items || importResult.items.length === 0) return;
+    const payload: InventoryImportPayloadApi = {
+      items: importResult.items.map((row) => ({
+        date: row.date ?? null,
+        sku_id: row.sku_id,
+        name: row.product_name || row.sku_id,
+        seller_sku: row.seller_sku,
+        product_name: row.product_name,
+        variation: row.variation,
+        quantity: row.quantity,
+        revenue: row.revenue,
+        deductions: row.deductions,
+        refund: row.refund,
+        net: row.net,
+      })),
+    };
+    try {
+      await importInventoryMutation.mutateAsync(payload);
+      showSuccess("บันทึกเข้า inventory สำเร็จ");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+    }
+  };
+
   const stepDescriptions: Record<Step, string> = {
-    "select-type": "เลือกประเภทข้อมูลที่ต้องการนำเข้า",
+    "select-type": "เลือกประเภทข้อมูลที่ต้องการนำเข้า (Owner vs Affiliate)",
     upload: `อัพโหลดไฟล์ ${DATA_TYPE_OPTIONS.find((d) => d.type === dataType)?.label ?? ""}`,
     mapping: "ตรวจสอบจับคู่ฟิลด์ (ตรง/ใกล้เคียง)",
     result: "ผลการตรวจสอบ",
   };
 
   return (
-    <div className="card mx-auto w-full max-w-2xl">
+    <div
+      className={
+        "card mx-auto w-full " +
+        (step === "result" && importResult?.dataType === "affiliate_order" ? "max-w-6xl" : "max-w-2xl")
+      }
+    >
       <div className="flex flex-row items-center justify-between border-b border-neutral-200 px-6 py-4">
         <div>
           <h2 className="text-lg font-semibold">นำเข้าข้อมูล</h2>
@@ -211,14 +314,14 @@ export function ImportWizard({
 
       <div className="border-b border-neutral-100 bg-neutral-50 px-6 py-2">
         <p className="text-xs text-neutral-600">
-          Phase 1: Order Transaction — สรุปยอดขายตาม SKU และรายได้ (ฟรี: สรุปเป็นวัน; เสียเงิน: 1 SKU = 1 record)
+          นำเข้า Order Transaction (Owner) หรือ Affiliate Orders (Affiliate) เพื่อสรุปยอดขายและคอมมิชชัน
         </p>
       </div>
 
       <div className="space-y-4 p-6">
         {step === "select-type" && (
           <div className="grid gap-3">
-            {DATA_TYPE_OPTIONS.map((opt) => (
+            {visibleOptions.map((opt) => (
               <button
                 key={opt.type}
                 type="button"
@@ -375,7 +478,306 @@ export function ImportWizard({
                 ))}
               </div>
             )}
-            {importResult.summary && (
+
+            {/* Affiliate result: สรุป + ตารางร้าน (แสดงก่อน) */}
+            {importResult.dataType === "affiliate_order" && importResult.affiliateSummary && (
+              <div className="space-y-6">
+                <h3 className="text-base font-semibold text-neutral-800">สรุปผลนำเข้า Affiliate</h3>
+                {(() => {
+                  const totalAll = importResult.affiliateSummary.totalCommission || 0;
+                  const totalEligible = importResult.affiliateSummary.totalEligibleCommission ?? totalAll;
+                  const settled = importResult.affiliateSummary.byStatus
+                    .filter((s) => s.status.toLowerCase().includes("settled"))
+                    .reduce((sum, s) => sum + s.amount, 0);
+                  const ineligible = importResult.affiliateSummary.byStatus
+                    .filter((s) => s.status.toLowerCase().includes("ineligible"))
+                    .reduce((sum, s) => sum + s.amount, 0);
+                  const other = Math.max(totalAll - settled - ineligible, 0);
+                  const settledRatio = totalAll > 0 ? (settled / totalAll) * 100 : 0;
+                  const ineligibleRatio = totalAll > 0 ? (ineligible / totalAll) * 100 : 0;
+
+                  return (
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">ยอดรายได้ที่นำมาคิด</p>
+                        <p className="mt-2 text-2xl font-semibold text-neutral-900">
+                          {formatCurrency(totalEligible)}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          ไม่รวม Ineligible · จาก {importResult.imported.toLocaleString()} แถว
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                        <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Settled (จ่ายแล้ว)</p>
+                        <p className="mt-2 text-2xl font-semibold text-emerald-900">{formatCurrency(settled)}</p>
+                        <p className="mt-1 text-xs text-emerald-800">คิดเป็น {settledRatio.toFixed(1)}% ของทั้งหมด</p>
+                      </div>
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                        <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Ineligible (ไม่ได้รับ)</p>
+                        <p className="mt-2 text-2xl font-semibold text-amber-900">{formatCurrency(ineligible)}</p>
+                        <p className="mt-1 text-xs text-amber-800">{ineligibleRatio.toFixed(1)}% ของทั้งหมด</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
+                  <p className="font-medium text-neutral-800">
+                    Commission Rate เฉลี่ย (รวม): {(importResult.affiliateSummary.avgCommissionRate * 100).toFixed(1)}%
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-600">
+                    ถ้า Ineligible กลายเป็น Settled ได้ทั้งหมด จะได้เพิ่มอีกประมาณ{" "}
+                    {formatCurrency(importResult.affiliateSummary.potentialGainIfIneligibleSettled)} บาท
+                  </p>
+                </div>
+
+                {/* กราฟร้านค้าที่ทำเงิน: Stacked bar (แกน Y = ร้าน), แท่งซ้อน + ความกว้างขั้นต่ำ + Hover แสดงค่า */}
+                {importResult.affiliateSummary.byShop.length > 0 && (() => {
+                  const topShops = [...importResult.affiliateSummary.byShop]
+                    .sort((a, b) => b.amount - a.amount)
+                    .slice(0, 15);
+                  const maxTotal = Math.max(
+                    1,
+                    ...topShops.map((s) => s.gmv + s.amount + s.ineligibleAmount)
+                  );
+                  const MIN_BAR_PCT = 28;
+                  return (
+                    <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white p-4 shadow-sm">
+                      <p className="mb-3 font-medium text-neutral-800">กราฟร้านค้าที่ทำเงิน (Stacked)</p>
+                      <div className="mb-3 flex flex-wrap gap-4 text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block h-3 w-5 rounded-sm bg-neutral-400" aria-hidden /> ยอดขาย (GMV)
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block h-3 w-5 rounded-sm bg-emerald-500" aria-hidden /> ยอดรายได้จริง
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block h-3 w-5 rounded-sm bg-amber-500" aria-hidden /> ค่าคอมที่หายไป
+                        </span>
+                      </div>
+                      <div className="flex gap-3 overflow-x-auto">
+                        <div className="shrink-0 text-xs text-neutral-600" style={{ width: 132 }}>
+                          {topShops.map((shop) => (
+                            <div
+                              key={shop.shopName}
+                              className="flex h-8 items-center justify-end pr-2"
+                              style={{ minHeight: 32 }}
+                            >
+                              <span className="truncate text-right" title={shop.shopName}>
+                                {shop.shopName.length > 16 ? shop.shopName.slice(0, 14) + "…" : shop.shopName}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="min-w-0 flex-1" style={{ minWidth: 240 }}>
+                          {topShops.map((shop) => {
+                            const total = shop.gmv + shop.amount + shop.ineligibleAmount;
+                            const pct = total / maxTotal;
+                            const barWidthPct = total > 0 ? Math.max(MIN_BAR_PCT, pct * 100) : 0;
+                            const wGmv = total > 0 ? (shop.gmv / total) * barWidthPct : 0;
+                            const wAmount = total > 0 ? (shop.amount / total) * barWidthPct : 0;
+                            const wIneligible = total > 0 ? (shop.ineligibleAmount / total) * barWidthPct : 0;
+                            return (
+                              <div
+                                key={shop.shopName}
+                                className="flex h-8 items-stretch rounded overflow-hidden bg-neutral-100 mb-0.5 cursor-pointer transition-colors hover:bg-neutral-200"
+                                style={{ minHeight: 32 }}
+                                onMouseEnter={() => setChartHoverShop(shop.shopName)}
+                                onMouseLeave={() => setChartHoverShop(null)}
+                              >
+                                <div
+                                  className="bg-neutral-400 shrink-0 transition-all"
+                                  style={{ width: `${wGmv}%`, minWidth: shop.gmv > 0 ? 4 : 0 }}
+                                />
+                                <div
+                                  className="bg-emerald-500 shrink-0 transition-all"
+                                  style={{ width: `${wAmount}%`, minWidth: shop.amount > 0 ? 4 : 0 }}
+                                />
+                                <div
+                                  className="bg-amber-500 shrink-0 transition-all"
+                                  style={{ width: `${wIneligible}%`, minWidth: shop.ineligibleAmount > 0 ? 4 : 0 }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {chartHoverShop && (() => {
+                        const shop = topShops.find((s) => s.shopName === chartHoverShop);
+                        if (!shop) return null;
+                        return (
+                          <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3 shadow-md text-sm">
+                            <p className="font-medium text-neutral-800 border-b border-neutral-100 pb-2 mb-2">{shop.shopName}</p>
+                            <ul className="space-y-1 text-neutral-700">
+                              <li className="flex justify-between gap-4">
+                                <span className="text-neutral-500">ยอดขาย (GMV)</span>
+                                <span className="tabular-nums font-medium">{formatCurrency(shop.gmv)}</span>
+                              </li>
+                              <li className="flex justify-between gap-4">
+                                <span className="text-neutral-500">ยอดรายได้จริง</span>
+                                <span className="tabular-nums font-medium text-emerald-700">{formatCurrency(shop.amount)}</span>
+                              </li>
+                              <li className="flex justify-between gap-4">
+                                <span className="text-neutral-500">ค่าคอมที่หายไป</span>
+                                <span className="tabular-nums font-medium text-amber-700">{formatCurrency(shop.ineligibleAmount)}</span>
+                              </li>
+                            </ul>
+                          </div>
+                        );
+                      })()}
+                      <p className="mt-3 text-xs text-neutral-500">แกน Y = ร้าน · แท่งอย่างน้อย {MIN_BAR_PCT}% ความกว้าง · โฮเวอร์ดูค่า (15 ร้าน)</p>
+                    </div>
+                  );
+                })()}
+
+                <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white shadow-sm">
+                  <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+                    <p className="font-medium text-neutral-800">ร้านที่สร้างคอมมิชชัน</p>
+                    <p className="text-sm text-neutral-500">คลิกรายการร้านเพื่อขยายดูสินค้าในร้าน (collapse)</p>
+                  </div>
+                  <div className="max-h-[32rem] overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10 bg-neutral-100">
+                        <tr>
+                          <th className="w-10 px-2 py-3" aria-label="ขยาย/ย่อ" />
+                          <th className="px-4 py-3 text-left font-medium text-neutral-700">ร้านค้า</th>
+                          <th className="px-4 py-3 text-right font-medium text-neutral-700">จำนวน order</th>
+                          <th className="px-4 py-3 text-right font-medium text-neutral-700">ยอดขาย</th>
+                          <th className="px-4 py-3 text-right font-medium text-neutral-700">ค่าคอมที่ได้</th>
+                          <th className="px-4 py-3 text-right font-medium text-neutral-700">ยอดที่ขาดรายได้ไป</th>
+                          <th className="px-4 py-3 text-right font-medium text-neutral-700">Commission Rate เฉลี่ย</th>
+                          <th className="px-4 py-3 text-right font-medium text-neutral-700">% ของยอดรายได้</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importResult.affiliateSummary.byShop
+                          .slice()
+                          .sort((a, b) => b.amount - a.amount)
+                          .map((shop) => {
+                            const isExpanded = selectedShop === shop.shopName;
+                            const products = (importResult.affiliateSummary?.products ?? [])
+                              .filter((p) => p.shopName === shop.shopName)
+                              .sort((a, b) => b.commission - a.commission);
+                            return (
+                              <Fragment key={shop.shopName}>
+                                <tr
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-expanded={isExpanded}
+                                  onClick={() =>
+                                    setSelectedShop((prev) => (prev === shop.shopName ? null : shop.shopName))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setSelectedShop((prev) => (prev === shop.shopName ? null : shop.shopName));
+                                    }
+                                  }}
+                                  className={`border-b border-neutral-100 transition-colors hover:bg-neutral-50 cursor-pointer select-none ${
+                                    isExpanded ? "bg-primary/5 border-l-4 border-l-primary" : ""
+                                  }`}
+                                >
+                                  <td className="px-2 py-3 text-neutral-500">
+                                    <ChevronDown
+                                      className={`size-5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                                      aria-hidden
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 font-medium text-neutral-900">{shop.shopName}</td>
+                                  <td className="px-4 py-3 text-right tabular-nums">{shop.orderCount.toLocaleString()}</td>
+                                  <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(shop.gmv)}</td>
+                                  <td className="px-4 py-3 text-right tabular-nums font-medium text-neutral-900">
+                                    {formatCurrency(shop.amount)}
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums text-amber-700">
+                                    {formatCurrency(shop.ineligibleAmount)}
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums">
+                                    {shop.gmv > 0 ? `${((shop.amount / shop.gmv) * 100).toFixed(1)}%` : "—"}
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums">{(shop.ratio * 100).toFixed(1)}%</td>
+                                </tr>
+                                {isExpanded && (
+                                  <tr key={`${shop.shopName}-detail`} className="bg-neutral-50/80">
+                                    <td colSpan={8} className="p-0 align-top">
+                                      <div className="border-t border-neutral-200 bg-white px-3 py-4 sm:px-4">
+                                        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                                          สินค้าในร้าน — {products.length} รายการ (ตารางหลัก = ผลรวมของร้าน)
+                                        </p>
+                                        <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 lg:grid-cols-3">
+                                          {products.map((p) => {
+                                            const productKey = `${shop.shopName}::${p.skuId}::${p.productName}`;
+                                            const isTitleExpanded = expandedProductTitleKey === productKey;
+                                            return (
+                                            <div
+                                              key={productKey}
+                                              className="min-w-0 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4"
+                                            >
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setExpandedProductTitleKey((k) => (k === productKey ? null : productKey))
+                                                }
+                                                className={`w-full text-left text-sm font-medium text-neutral-900 outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-1 rounded ${
+                                                  isTitleExpanded ? "break-words" : "truncate"
+                                                }`}
+                                                title={isTitleExpanded ? "คลิกเพื่อย่อ" : "คลิกเพื่อดูชื่อเต็ม"}
+                                              >
+                                                {p.productName}
+                                              </button>
+                                              <p className="mt-0.5 text-[10px] text-neutral-400 sm:text-xs" aria-hidden>
+                                                {isTitleExpanded ? "คลิกเพื่อย่อ" : "คลิกเพื่อดูชื่อเต็ม"}
+                                              </p>
+                                              {p.skuId ? (
+                                                <p className="mt-0.5 text-xs text-neutral-500">SKU: {p.skuId}</p>
+                                              ) : null}
+                                              <dl className="mt-3 space-y-1.5 text-xs">
+                                                <div className="flex justify-between gap-2">
+                                                  <dt className="text-neutral-500">จำนวนขาย</dt>
+                                                  <dd className="tabular-nums font-medium">{p.itemsSold.toLocaleString()}</dd>
+                                                </div>
+                                                <div className="flex justify-between gap-2">
+                                                  <dt className="text-neutral-500">ยอดขาย</dt>
+                                                  <dd className="tabular-nums">{formatCurrency(p.gmv)}</dd>
+                                                </div>
+                                                <div className="flex justify-between gap-2">
+                                                  <dt className="text-neutral-500">ค่าคอมที่ได้</dt>
+                                                  <dd className="tabular-nums font-medium text-emerald-700">
+                                                    {formatCurrency(p.commission)}
+                                                  </dd>
+                                                </div>
+                                                <div className="flex justify-between gap-2">
+                                                  <dt className="text-neutral-500">ค่าคอมที่ขาดรายได้ไป</dt>
+                                                  <dd className="tabular-nums font-medium text-amber-700">
+                                                    {p.ineligibleAmount != null && p.ineligibleAmount > 0
+                                                      ? formatCurrency(p.ineligibleAmount)
+                                                      : "—"}
+                                                  </dd>
+                                                </div>
+                                                <div className="flex justify-between gap-2 border-t border-neutral-100 pt-1.5">
+                                                  <dt className="text-neutral-500">Rate</dt>
+                                                  <dd className="tabular-nums">{(p.rate * 100).toFixed(1)}%</dd>
+                                                </div>
+                                              </dl>
+                                            </div>
+                                          );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {importResult.dataType === "order_transaction" && importResult.summary && (
               <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-2">
                 <p className="font-medium text-neutral-800">สรุป</p>
                 <p className="text-sm">จำนวนแถว: {importResult.summary.totalRows.toLocaleString()}</p>
@@ -392,7 +794,10 @@ export function ImportWizard({
                 )}
               </div>
             )}
-            {importResult.tier === "free" && importResult.daily && importResult.daily.length > 0 && (
+            {importResult.dataType === "order_transaction" &&
+              importResult.tier === "free" &&
+              importResult.daily &&
+              importResult.daily.length > 0 && (
               <div className="rounded-md border border-neutral-200 overflow-hidden">
                 <p className="bg-neutral-100 px-3 py-2 text-sm font-medium">สรุปตามวัน</p>
                 <div className="max-h-48 overflow-y-auto">
@@ -424,13 +829,16 @@ export function ImportWizard({
                 )}
               </div>
             )}
-            {importResult.tier === "paid" && importResult.items && importResult.items.length > 0 && (
+            {importResult.dataType === "order_transaction" &&
+              importResult.items &&
+              importResult.items.length > 0 && (
               <div className="rounded-md border border-neutral-200 overflow-hidden">
                 <p className="bg-neutral-100 px-3 py-2 text-sm font-medium">รายการตาม SKU ({importResult.items.length} รายการ)</p>
                 <div className="max-h-48 overflow-y-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-neutral-50 border-b border-neutral-200">
+                        <th className="px-2 py-1.5 text-left font-medium">วันที่</th>
                         <th className="px-2 py-1.5 text-left font-medium">SKU ID</th>
                         <th className="px-2 py-1.5 text-right font-medium">รายได้</th>
                         <th className="px-2 py-1.5 text-right font-medium">หัก</th>
@@ -441,6 +849,7 @@ export function ImportWizard({
                     <tbody>
                       {importResult.items.slice(0, 50).map((row, i) => (
                         <tr key={`${row.sku_id}-${i}`} className="border-b border-neutral-100">
+                          <td className="px-2 py-1.5 whitespace-nowrap">{row.date ?? "—"}</td>
                           <td className="px-2 py-1.5 truncate max-w-[120px]" title={row.sku_id}>{row.sku_id}</td>
                           <td className="px-2 py-1.5 text-right">{formatCurrency(row.revenue)}</td>
                           <td className="px-2 py-1.5 text-right">{formatCurrency(row.deductions)}</td>
@@ -456,11 +865,23 @@ export function ImportWizard({
                 )}
               </div>
             )}
-            <div className="rounded-md bg-neutral-50 p-3 text-sm">
-              <p>ผ่านการตรวจสอบ: {importResult.imported.toLocaleString()}</p>
-              <p>ข้าม (ข้อมูลไม่ครบ): {importResult.skipped}</p>
-            </div>
-            <div className="flex gap-2">
+            {importResult.dataType !== "affiliate_order" && (
+              <div className="rounded-md bg-neutral-50 p-3 text-sm">
+                <p>ผ่านการตรวจสอบ: {importResult.imported.toLocaleString()}</p>
+                <p>ข้าม (ข้อมูลไม่ครบ): {importResult.skipped}</p>
+              </div>
+            )}
+            <div className="flex gap-2 flex-wrap items-center">
+              {importResult.dataType === "order_transaction" && isOwnerRole && importResult.items?.length ? (
+                <button
+                  type="button"
+                  onClick={handleSaveToInventory}
+                  disabled={importInventoryMutation.isPending}
+                  className="btn-primary"
+                >
+                  {importInventoryMutation.isPending ? "กำลังบันทึก..." : "บันทึกเข้า Inventory"}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={handleReset}

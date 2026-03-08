@@ -13,19 +13,10 @@ import type {
   InventoryItemApi,
   InventoryCreateBodyApi,
   InventoryUpdateBodyApi,
+  InventoryImportPayloadApi,
+  InventoryImportResponseApi,
+  InventorySummaryApi,
 } from "@/types/api/inventory";
-import type {
-  OrderListResponseApi,
-  OrderApi,
-  OrderCreateBodyApi,
-  OrderStatusBodyApi,
-} from "@/types/api/orders";
-import type {
-  SupplierListResponseApi,
-  SupplierApi,
-  SupplierCreateBodyApi,
-  SupplierUpdateBodyApi,
-} from "@/types/api/suppliers";
 import type { ReportSummaryApi } from "@/types/api/reports";
 import type { UsersListResponseApi } from "@/types/api/users";
 import { apiRequest } from "@/lib/api-client";
@@ -74,6 +65,17 @@ export function useInventoryItem(id: string | null) {
   });
 }
 
+export function useInventorySummary(period: string = "current_month") {
+  return useQuery({
+    queryKey: ["inventory", "summary", period],
+    queryFn: () =>
+      apiRequest<InventorySummaryApi>(
+        `/api/inventory/summary?period=${encodeURIComponent(period)}`
+      ),
+    retry: false,
+  });
+}
+
 export function useCreateInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -113,137 +115,17 @@ export function useDeleteInventoryItem() {
   });
 }
 
-// ============== ORDERS (รอต่อ API) ==============
-
-export function useOrders(params?: {
-  status?: string;
-  cursor?: string;
-  limit?: number;
-  startDate?: string;
-  endDate?: string;
-}) {
-  const searchParams = new URLSearchParams();
-  if (params?.status) searchParams.set("status", params.status);
-  if (params?.cursor) searchParams.set("cursor", params.cursor);
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.startDate) searchParams.set("startDate", params.startDate);
-  if (params?.endDate) searchParams.set("endDate", params.endDate);
-  const qs = searchParams.toString();
-
-  return useQuery({
-    queryKey: ["orders", params],
-    queryFn: () =>
-      apiRequest<OrderListResponseApi>(
-        `/api/orders${qs ? `?${qs}` : ""}`
-      ),
-    retry: false,
-  });
-}
-
-export function useOrder(id: string | null) {
-  return useQuery({
-    queryKey: ["orders", id],
-    queryFn: () => apiRequest<OrderApi>(`/api/orders/${id}`),
-    enabled: !!id,
-    retry: false,
-  });
-}
-
-export function useCreateOrder() {
+export function useImportInventory() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: OrderCreateBodyApi) =>
-      apiRequest<OrderApi>(`/api/orders`, {
+    mutationFn: (payload: InventoryImportPayloadApi) =>
+      apiRequest<InventoryImportResponseApi>(`/api/inventory/import`, {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-    },
-  });
-}
-
-export function useUpdateOrderStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: OrderStatusBodyApi["status"] }) =>
-      apiRequest<OrderApi>(`/api/orders/${id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status } satisfies OrderStatusBodyApi),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-    },
-  });
-}
-
-// ============== SUPPLIERS (รอต่อ API) ==============
-
-export function useSuppliers(params?: {
-  search?: string;
-  cursor?: string;
-  limit?: number;
-}) {
-  const searchParams = new URLSearchParams();
-  if (params?.search) searchParams.set("search", params.search);
-  if (params?.cursor) searchParams.set("cursor", params.cursor);
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  const qs = searchParams.toString();
-
-  return useQuery({
-    queryKey: ["suppliers", params],
-    queryFn: () =>
-      apiRequest<SupplierListResponseApi>(
-        `/api/suppliers${qs ? `?${qs}` : ""}`
-      ),
-    retry: false,
-  });
-}
-
-export function useSupplier(id: string | null) {
-  return useQuery({
-    queryKey: ["suppliers", id],
-    queryFn: () => apiRequest<SupplierApi>(`/api/suppliers/${id}`),
-    enabled: !!id,
-    retry: false,
-  });
-}
-
-export function useCreateSupplier() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: SupplierCreateBodyApi) =>
-      apiRequest<SupplierApi>(`/api/suppliers`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-    },
-  });
-}
-
-export function useUpdateSupplier() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: SupplierUpdateBodyApi }) =>
-      apiRequest<SupplierApi>(`/api/suppliers/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-    },
-  });
-}
-
-export function useDeleteSupplier() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      apiRequest(`/api/suppliers/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", "summary"] });
     },
   });
 }

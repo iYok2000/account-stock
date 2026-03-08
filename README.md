@@ -26,6 +26,4 @@
 
 - **Dashboard** (`/`) — สรุปตัวเลข
 - **Inventory** (`/inventory`) — รายการสินค้า, Add/Edit/Delete
-- **Orders** (`/orders`) — รายการ order, Place Order
-- **Suppliers** (`/suppliers`) — placeholder
 - **Reports** (`/reports`) — placeholder

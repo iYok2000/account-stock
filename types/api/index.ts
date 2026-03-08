@@ -4,8 +4,6 @@
  */
 
 export * from "./inventory";
-export * from "./orders";
-export * from "./suppliers";
 export * from "./reports";
 export * from "./calculator";
 export * from "./users";

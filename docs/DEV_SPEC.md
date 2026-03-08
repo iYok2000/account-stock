@@ -28,16 +28,14 @@ account-stock-fe/
 │   │   ├── layout.tsx      # MainLayout
 │   │   ├── page.tsx        # Dashboard /
 │   │   ├── inventory/page.tsx
-│   │   ├── orders/page.tsx
-│   │   ├── suppliers/page.tsx
 │   │   ├── import/page.tsx
-│   │   ├── shops/page.tsx
+│   │   ├── shops/create/page.tsx
+│   │   ├── shops/me/page.tsx
 │   │   ├── campaigns/page.tsx
 │   │   ├── vouchers/page.tsx
 │   │   ├── fees/page.tsx
 │   │   ├── calculator/page.tsx
 │   │   ├── tax/page.tsx
-│   │   ├── funnels/page.tsx
 │   │   ├── reports/page.tsx
 │   │   ├── agents/page.tsx
 │   │   └── settings/page.tsx
@@ -46,7 +44,6 @@ account-stock-fe/
 │   ├── layout/             # Header, Sidebar, LayoutWithSidebar, CommandPalette, LanguageSwitcher
 │   ├── ui/                  # Button, Modal, Slider, StatusTag, NumberInput, Loading, Skeleton ฯลฯ
 │   ├── inventory/           # InventoryContent
-│   ├── orders/              # OrdersContent
 │   ├── calculator/          # SlidersPanel, ResultsPanel, AnalysisSection
 │   ├── upload/              # ImportWizard, FileDropzone, ColumnMapper, DataPreview, file-parser
 │   └── providers/           # IntlProviderWrapper
@@ -54,7 +51,7 @@ account-stock-fe/
 │   ├── utils.ts             # cn, formatCurrency ฯลฯ
 │   ├── calculator/engine.ts
 │   ├── upload/file-validator.ts
-│   ├── validators/          # inventory, order, supplier, report, sanitize
+│   ├── validators/          # inventory, report, sanitize
 │   ├── rbac/                # constants (NAV_PERMISSIONS), role-permissions, types
 │   └── hooks/use-api.ts
 ├── contexts/                # AuthContext, ToastContext
@@ -73,47 +70,48 @@ account-stock-fe/
 
 | กลุ่ม | เมนู | Path | หน้าที่ |
 |-------|------|------|--------|
-| — | Dashboard | `/` | สรุป KPI (— รอ API), chart placeholder, low stock/recent orders empty, quick actions |
-| — | Inventory | `/inventory` | รายการสินค้า + ค้นหา/filter + Add/Edit/Delete — empty state |
-| — | Orders | `/orders` | รายการ order + Place Order — empty state |
-| — | Suppliers | `/suppliers` | โครงตาราง, empty state |
+| — | Dashboard | `/` | สรุป KPI (— รอ API), chart placeholder, low stock empty, quick actions |
+| — | Inventory | `/inventory` | รายการสินค้า + ค้นหา/filter — empty state |
 | — | Import | `/import` | Wizard: ประเภท → อัปโหลด → mapping → result |
-| — | Shops | `/shops` | หน้า placeholder |
+| — | Inventory import save | (POST) `/api/inventory/import` | upsert SKU/วัน จากผล process |
+| — | สร้างร้านค้า | `/shops/create` | สร้างร้าน + สมาชิก (Root only) |
+| — | สมาชิกร้าน | `/shops/me` | แก้ชื่อร้าน + จัดการสมาชิก (SuperAdmin) |
 | โปรโมชั่น | Campaigns | `/campaigns` | หน้า placeholder |
 | โปรโมชั่น | Vouchers | `/vouchers` | หน้า placeholder |
 | โปรโมชั่น | Fees | `/fees` | หน้า placeholder |
 | วิเคราะห์ | Calculator | `/calculator` | Sliders ราคา/ต้นทุน/การตลาด, ผลลัพธ์, Breakeven, Sensitivity, Scenarios, Monte Carlo |
 | วิเคราะห์ | Tax | `/tax` | ภาษีบุคคลธรรมดา: bracket, ตัวเลขเสีย/ได้คืน, export copy |
-| วิเคราะห์ | Funnels | `/funnels` | หน้า placeholder |
 | วิเคราะห์ | Reports | `/reports` | โครงการ์ด, placeholder |
 | เครื่องมือ | Agents | `/agents` | หน้า placeholder |
-| เครื่องมือ | Settings | `/settings` | หน้า placeholder |
+| เครื่องมือ | Users | `/users` | รายชื่อผู้ใช้ (SuperAdmin) |
 
 ---
 
 ## หน้าหลัก (สรุป)
 
-- **Dashboard:** KPI cards (—), chart 7 วัน placeholder, สต็อกใกล้หมด/คำสั่งซื้อล่าสุด "ไม่มีข้อมูล — รอต่อ API", quick actions (Inventory, Orders, Import, Calculator).
-- **Inventory:** Toolbar (Search, Filter สถานะ/หมวด), ตาราง empty state, Add/Edit/Delete + confirmation, bulk actions (disable เมื่อไม่มีข้อมูล).
-- **Orders:** Toolbar (Search, Filter วันที่/สถานะ), ตาราง empty state, Place Order + confirmation.
-- **Suppliers / Shops / Campaigns / Vouchers / Fees / Funnels / Reports / Agents / Settings:** หน้าโครงหรือ placeholder พร้อมต่อ API ทีหลัง.
-- **Import:** Wizard เลือกประเภท → อัปโหลด → mapping คอลัมน์ → result.
+- **Dashboard:** KPI cards (—), chart 7 วัน placeholder, สต็อกใกล้หมด "ไม่มีข้อมูล — รอต่อ API", quick actions (Inventory, Import, Calculator).
+- **Inventory:** Toolbar (Search), ตาราง empty state, แก้ไขเฉพาะชื่อ/SKU, qty แสดงอย่างเดียว.
+- **Shops / Campaigns / Vouchers / Fees / Reports / Agents:** หน้าโครงหรือ placeholder พร้อมต่อ API ทีหลัง.
+- **Import:** Wizard เลือกประเภท → อัปโหลด → mapping คอลัมน์ → result → บันทึกเข้า Inventory (SKU/วัน).
 - **Calculator:** โหมด Simple/Advanced, Sliders (Pricing, Costs, Marketing, Returns), KPIs, Breakeven, Scenarios, Sensitivity, Monte Carlo (collapsible).
 - **Tax:** ภาษีบุคคลธรรมดา — bracket, slider รายได้, ตัวเลขเสีย/ได้คืน, tips, export copy.
 
 ---
 
-## RBAC
+## RBAC และ Auth
 
-- **lib/rbac:** `NAV_PERMISSIONS` map path → permission (เช่น `/inventory` → `inventory:read`). Resources: dashboard, inventory, orders, suppliers, shops, promotions, analysis, agents, settings.
-- **AuthContext:** `usePermissions()`, `can(permission)` — ใช้ใน Sidebar เพื่อซ่อนเมนูที่ไม่มีสิทธิ์.
-- ยังไม่ต่อ API — role/session เป็น mock เมื่อ backend ไม่มี; เมื่อต่อ API แล้วให้ backend เป็น source of truth.
+- **Roles (4 แบบ):** Root, SuperAdmin, Admin, Affiliate — ดู [SHOPS_AND_ROLES_SPEC.md](SHOPS_AND_ROLES_SPEC.md), [ROLES_SUMMARY.md](ROLES_SUMMARY.md).
+- **lib/rbac:** `NAV_PERMISSIONS` map path → permission (เช่น `/shops/create` → `shops:create`, `/shops/me` → `users:read`). Resources: dashboard, inventory, shops, promotions, analysis, agents, settings, users.
+- **AuthContext:** `usePermissions()`, `can(permission)` — ใช้ใน Sidebar เพื่อซ่อนเมนูที่ไม่มีสิทธิ์. Session มี `shopId`, `shopName` (null สำหรับ Root).
+- **Login:** Root login ด้วย env + รหัสยืนยัน (client หรือส่งไป POST /api/auth/login); user อื่นเรียก POST /api/auth/login แล้วได้ JWT — เก็บ token ด้วย `setAuthToken`, request ต่อไปส่ง Bearer.
+- **Route guard:** หน้าที่ต้องเช็คสิทธิ์ใช้ `RequirePermission(permission)` (เช่น `/shops/create` → `shops:create`, `/shops/me` → `users:read`, `/users` → `users:read`). Redirect เมื่อไม่มีสิทธิ์.
+- **Backend เป็น source of truth** — role/permissions จาก GET /api/auth/me หรือจาก JWT หลัง login.
 
 ---
 
 ## i18n
 
-- **next-intl:** `messages/th.json`, `messages/en.json`. Key แยก namespace: `nav.*`, `inventory.*`, `orders.*`, `calculator.*`, `tax.*`, `common.*`, `status.*` ฯลฯ
+- **next-intl:** `messages/th.json`, `messages/en.json`. Key แยก namespace: `nav.*`, `inventory.*`, `calculator.*`, `tax.*`, `common.*`, `status.*` ฯลฯ
 - Header: สลับภาษา (TH/EN). Sidebar: แสดงตามสิทธิ์.
 
 ---
@@ -133,7 +131,7 @@ account-stock-fe/
 
 | ด้าน | สถานะ |
 |------|--------|
-| แยกตาม feature (โฟลเดอร์ชัด) | ✅ inventory, orders, calculator, upload |
+| แยกตาม feature (โฟลเดอร์ชัด) | ✅ inventory, calculator, upload |
 | Route ต่อหน้า | ✅ `app/[locale]/<feature>/page.tsx` |
 | Dependency ของร่วม | ⚠️ หนัก — แยกไปที่อื่นต้องพก ui, contexts, utils |
 | RBAC / i18n | ✅ ใช้ร่วมกัน; แยก feature ต้อง slice permission/messages |
@@ -148,7 +146,7 @@ account-stock-fe/
 | **Tax** | ✅ ได้ (logic ในหน้า/ย้าย lib/tax + Slider + utils) | ✅ ง่าย |
 | **Inventory / Orders** | ⚠️ ได้แต่ต้องพก auth, toast, ui หลายตัว | ✅ ทำได้ |
 | **Dashboard** | ❌ ไม่แนะนำ (จุดรวมหลายฟีเจอร์) | ⚠️ ทำได้ถ้ามี API สรุป |
-| **Suppliers, Shops, Campaigns, Vouchers, Fees, Funnels, Reports, Agents, Settings** | ❌ ยังเป็นแค่โครง | ⚠️ เก็บใน app หลักก่อน |
+| **Suppliers, Shops, Campaigns, Vouchers, Fees, Reports, Agents** | ❌ ยังเป็นแค่โครง | ⚠️ เก็บใน app หลักก่อน |
 
 ### แนวทางเมื่อจะแยกโมดูลจริง
 

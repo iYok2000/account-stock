@@ -13,15 +13,17 @@ import type { PermissionString } from "@/lib/rbac/constants";
 import { getPermissionsForRoles } from "@/lib/rbac/role-permissions";
 import { apiRequest, setAuthToken, setOnUnauthorized } from "@/lib/api-client";
 import type { MeResponseApi } from "@/types/api/auth";
-import { env } from "@/lib/env";
+
+/** "need_confirm" = credentials match Root; show confirm code field and call login again with code. */
+export type LoginResult = boolean | "need_confirm";
 
 type AuthContextValue = {
   session: UserSession | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Dev/test: login with env credentials → SuperAdmin. Frontend-only; do not use in production. */
-  login: (username: string, password: string) => Promise<boolean>;
+  /** Login via backend. Returns true, false, or "need_confirm" when backend asks for confirm code (Root). */
+  login: (username: string, password: string, confirmCode?: string) => Promise<LoginResult>;
   logout: () => void;
 };
 
@@ -32,14 +34,14 @@ const SESSION_CACHE_KEY = "rbac_session";
 const AUTH_LOGGED_OUT_KEY = "auth_logged_out";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min; refetch after
 
-const ALL_ROLES: Role[] = ["SuperAdmin", "Admin", "Manager", "Staff", "Viewer"];
+const ALL_ROLES: Role[] = ["Root", "SuperAdmin", "Admin", "Affiliate"];
+const DEFAULT_MOCK_ROLE: Role = "Admin";
 
 function getMockRole(): Role {
-  if (typeof window === "undefined") return "Staff";
+  if (typeof window === "undefined") return DEFAULT_MOCK_ROLE;
   const stored = sessionStorage.getItem(MOCK_ROLE_KEY);
   if (stored && ALL_ROLES.includes(stored as Role)) return stored as Role;
-  const envRole = env().NEXT_PUBLIC_MOCK_ROLE;
-  return (ALL_ROLES.includes(envRole as Role) ? envRole : "Staff") as Role;
+  return DEFAULT_MOCK_ROLE;
 }
 
 function loadCachedSession(): UserSession | null {
@@ -90,54 +92,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: data.user?.displayName,
         tier: (data.tier === "paid" ? "paid" : "free") as UserSession["tier"],
         companyId: data.company_id ?? undefined,
+        shopId: data.shop_id ?? undefined,
+        shopName: data.shop_name,
       };
       setSession(session);
       saveCachedSession(session);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Auth failed";
       setError(msg);
-      // No backend or 401: use mock for dev unless user explicitly logged out
+      // Production: do not fall back to mock session
+      if (process.env.NODE_ENV === "production") {
+        setSession(null);
+        return;
+      }
+      // Dev: allow mock unless user explicitly logged out
       if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
         setSession(null);
-      } else {
-        const roles: Role[] = [getMockRole()];
-        const permissions = getPermissionsForRoles(roles);
-        const mock: UserSession = {
-          userId: "mock",
-          roles,
-          permissions,
-          displayName: `Mock ${roles[0]}`,
-          tier: "free",
-          companyId: "default",
-        };
-        setSession(mock);
+        return;
       }
+      const role = getMockRole();
+      const roles: Role[] = [role];
+      const permissions = getPermissionsForRoles(roles);
+      const mock: UserSession = {
+        userId: "mock",
+        roles,
+        permissions,
+        displayName: `Mock ${role}`,
+        tier: "free",
+        companyId: "default",
+        shopId: role === "Root" ? null : "mock-shop",
+        shopName: role === "Root" ? undefined : "Mock Shop",
+      };
+      setSession(mock);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
-    // Dev/test only — ปิดใน production build
-    if (typeof process !== "undefined" && process.env.NODE_ENV === "production") return false;
-    const { NEXT_PUBLIC_TEST_USER: envUser, NEXT_PUBLIC_TEST_PASS: envPass } = env();
-    const input = emailOrUsername.trim();
-    if (input !== envUser || password !== envPass) return false;
-    if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
-    const roles: Role[] = ["SuperAdmin"];
-    const permissions = getPermissionsForRoles(roles);
-    const newSession: UserSession = {
-      userId: "test",
-      roles,
-      permissions,
-      displayName: "SuperAdmin",
-      tier: "free",
-      companyId: "default",
-    };
-    setSession(newSession);
-    saveCachedSession(newSession);
-    return true;
-  }, []);
+  const login = useCallback(
+    async (
+      emailOrUsername: string,
+      password: string,
+      confirmCode?: string
+    ): Promise<LoginResult> => {
+      const payload: Record<string, string> = {
+        email: emailOrUsername.trim(),
+        password,
+      };
+      if (confirmCode) {
+        payload.confirm_code = confirmCode.trim();
+      }
+      try {
+        const { token } = await apiRequest<{ token: string }>("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setAuthToken(token);
+        await fetchSession();
+        if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
+        return true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message.toLowerCase() : "";
+        // Backend may reject Root without confirm_code; prompt UI to ask for it.
+        if (!confirmCode && msg.includes("confirm")) {
+          return "need_confirm";
+        }
+        return false;
+      }
+    },
+    [fetchSession]
+  );
 
   const logout = useCallback(() => {
     setAuthToken(null);
@@ -212,13 +236,15 @@ export function usePermissions() {
   );
 }
 
-/** User context from store (USER_SPEC: role, tier, company). Use with HOC or pages. */
+/** User context from store (role, tier, shopId). Use with HOC or pages. */
 export type UserContextValue = {
   userId: string;
   role: Role;
   roles: Role[];
   tier: "free" | "paid";
   companyId: string | undefined;
+  shopId: string | null | undefined;
+  shopName: string | undefined;
   displayName: string | undefined;
   permissions: PermissionString[];
 };
@@ -227,13 +253,15 @@ export function useUserContext(): UserContextValue | null {
   const { session } = useAuth();
   return useMemo(() => {
     if (!session) return null;
-    const role = session.roles[0] ?? "Viewer";
+    const role = session.roles[0] ?? "Affiliate";
     return {
       userId: session.userId,
       role,
       roles: session.roles,
       tier: session.tier ?? "free",
       companyId: session.companyId,
+      shopId: session.shopId,
+      shopName: session.shopName,
       displayName: session.displayName,
       permissions: session.permissions ?? [],
     };

@@ -6,7 +6,6 @@ const message = "Feature must not import from other features or layout/providers
 function restrictedPatterns(excludeFeature) {
   const targets = [
     ["@/components/inventory", "@/components/inventory/*"],
-    ["@/components/orders", "@/components/orders/*"],
     ["@/components/calculator", "@/components/calculator/*"],
     ["@/components/upload", "@/components/upload/*"],
     ["@/components/layout", "@/components/layout/*"],
@@ -27,9 +26,9 @@ const config = [
     },
   },
   {
-    files: ["components/orders/**/*.ts", "components/orders/**/*.tsx"],
+    files: [],
     rules: {
-      "no-restricted-imports": ["error", { patterns: restrictedPatterns("@/components/orders") }],
+      "no-restricted-imports": ["error", { patterns: [] }],
     },
   },
   {

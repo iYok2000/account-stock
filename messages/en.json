@@ -5,16 +5,15 @@
     "menu": "Menu",
     "dashboard": "Dashboard",
     "inventory": "Inventory",
-    "orders": "Orders",
     "import": "Import",
-    "suppliers": "Suppliers",
     "shops": "Shops",
+    "createShop": "Shop / Brand",
+    "shopMembers": "Shop members",
     "campaigns": "Campaigns",
     "vouchers": "Vouchers",
     "fees": "Fees",
     "calculator": "Calculator",
     "tax": "Tax",
-    "funnels": "UPSYD Funnel",
     "reports": "Reports",
     "agents": "AI Assistant",
     "settings": "Settings",
@@ -36,7 +35,10 @@
     "placeholderPass": "Password",
     "loginFailed": "Invalid email/username or password",
     "loading": "Signing in...",
-    "devOnlyHint": "Dev: use env test user (see .env.example)"
+    "devOnlyHint": "Dev: use env test user (see .env.example)",
+    "confirmCode": "Confirmation code",
+    "placeholderConfirmCode": "Enter confirmation code",
+    "backToLogin": "Back to login"
   },
   "users": {
     "title": "Users",
@@ -54,13 +56,61 @@
     "tableTier": "Tier",
     "tableCompany": "Company"
   },
+  "shopsCreate": {
+    "title": "Create shop",
+    "subtitle": "Create a new shop and add at least one SuperAdmin member (Root only).",
+    "shopName": "Shop name",
+    "shopNamePlaceholder": "Enter shop name",
+    "members": "Members",
+    "addMember": "Add member",
+    "membersHint": "At least one member must be SuperAdmin. Email is unique across the system.",
+    "email": "Email",
+    "password": "Password",
+    "needSuperAdmin": "At least one member must have role SuperAdmin.",
+    "create": "Create shop",
+    "creating": "Creating…",
+    "removeMember": "Remove member",
+    "success": "Shop created successfully.",
+    "successHint": "You can create another or go to the dashboard."
+  },
+  "shopsMe": {
+    "title": "Shop members",
+    "subtitle": "Edit shop name and manage members (SuperAdmin only).",
+    "shopName": "Shop name",
+    "saveName": "Save name",
+    "members": "Members",
+    "addMember": "Add member",
+    "email": "Email",
+    "password": "Password",
+    "role": "Role",
+    "addMemberHint": "New member will be linked to this shop. Role: Admin or Affiliate.",
+    "adding": "Adding…",
+    "empty": "No members yet.",
+    "error": "Failed to load or update."
+  },
   "dashboard": {
     "title": "Dashboard",
     "description": "Overview of your inventory and orders",
     "totalProducts": "Total Products",
     "lowStock": "Low Stock",
     "pendingOrders": "Pending Orders",
-    "ordersToday": "Orders Today"
+    "ordersToday": "Orders Today",
+    "importInsights": {
+      "title": "Sales from imported orders",
+      "subtitle": "Stored locally per shop after each import (Admin/SuperAdmin only).",
+      "noData": "No import data for this shop yet.",
+      "uniqueSkus": "Unique SKUs",
+      "unitsThisMonth": "Units sold this month",
+      "revenueThisMonth": "Revenue this month",
+      "netThisMonth": "Net this month",
+      "lastImport": "Last import",
+      "localOnlyHint": "Stored locally after import",
+      "topSkus": "Top SKUs this month",
+      "unknownDate": "unknown date",
+      "qty": "Qty: {count}",
+      "netLabel": "Net",
+      "noTopSkus": "No SKU breakdown yet (upload with SKU data)."
+    }
   },
   "inventory": {
     "title": "Inventory",
@@ -97,28 +147,6 @@
     "formStatus": "Status",
     "validationRequired": "This field is required",
     "validationSkuDuplicate": "This SKU already exists — must be unique"
-  },
-  "orders": {
-    "title": "Orders",
-    "placeOrder": "Place Order",
-    "search": "Search...",
-    "filterStatus": "All status",
-    "filterDateFrom": "From",
-    "filterDateTo": "To",
-    "empty": "No data yet — empty state",
-    "colId": "ID",
-    "colDate": "Date",
-    "colStatus": "Status",
-    "colAmount": "Amount",
-    "confirmSubmitOrder": "Confirm submit this order?",
-    "placeOrderFormTitle": "Place Order"
-  },
-  "suppliers": {
-    "title": "Suppliers",
-    "empty": "No data yet — empty state",
-    "colName": "Name",
-    "colContact": "Contact",
-    "placeholder": "Ready for API later"
   },
   "calculator": {
     "title": "Profit Calculator",

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Bot, Send, User, Sparkles, MessageSquare, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RequirePermission } from "@/components/auth/RequirePermission";
 
 type Message = {
   id: string;
@@ -105,7 +106,8 @@ export default function AgentsPage() {
   const currentAgentInfo = AGENT_TYPES.find((a) => a.id === selectedAgent);
 
   return (
-    <div className="space-y-6">
+    <RequirePermission permission="agents:read">
+      <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">AI ผู้ช่วย</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
@@ -237,6 +239,6 @@ export default function AgentsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </RequirePermission>
   );
 }

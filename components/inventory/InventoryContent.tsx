@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { ConfirmModal, FormModal } from "@/components/ui/Modal";
 import StatusTag, { type InventoryStatus } from "@/components/ui/StatusTag";
 import { useToast } from "@/contexts/ToastContext";
 import { ButtonLoading } from "@/components/ui/Loading";
-import NumberInput from "@/components/ui/NumberInput";
-import { usePermissions } from "@/contexts/AuthContext";
+import { usePermissions, useUserContext } from "@/contexts/AuthContext";
+import { loadInventorySnapshot } from "@/lib/inventory/import-snapshot";
+import { useInventory } from "@/lib/hooks/use-api";
 
 const LOW_STOCK_THRESHOLD = 5;
 function getStatusFromQty(qty: number): InventoryStatus {
@@ -29,29 +30,35 @@ type QuickFilter = "all" | "low_stock" | "out_of_stock";
 export default function InventoryContent() {
   const t = useTranslations("inventory");
   const tCommon = useTranslations("common");
-  const tStatus = useTranslations("status");
   const { showSuccess } = useToast();
   const { can } = usePermissions();
+  const user = useUserContext();
+  const { data: inventoryData } = useInventory();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
-  /** Draft qty per row while editing; commit on blur. Only show draft when that row is focused. */
-  const [editingQty, setEditingQty] = useState<Record<number, string>>({});
-  const [editingQtyRowId, setEditingQtyRowId] = useState<number | null>(null);
-  const [addItemOpen, setAddItemOpen] = useState(false);
   const [editItemOpen, setEditItemOpen] = useState(false);
   const [editItemId, setEditItemId] = useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [form, setForm] = useState({ name: "", sku: "", qty: "", status: "in_stock" as InventoryStatus });
+  const [form, setForm] = useState({ name: "", sku: "" });
 
   const filteredItems = useMemo(() => {
-    if (quickFilter === "all") return items;
-    return items.filter((i) => i.status === quickFilter);
-  }, [items, quickFilter]);
+    const term = searchTerm.trim().toLowerCase();
+    const bySearch = term
+      ? items.filter(
+          (i) =>
+            i.name.toLowerCase().includes(term) ||
+            i.sku.toLowerCase().includes(term)
+        )
+      : items;
+    if (quickFilter === "all") return bySearch;
+    return bySearch.filter((i) => i.status === quickFilter);
+  }, [items, searchTerm, quickFilter]);
 
   const stats = useMemo(() => ({
     total: items.length,
@@ -61,7 +68,6 @@ export default function InventoryContent() {
 
   const hasRows = filteredItems.length > 0;
   const allSelected = hasRows && selected.size === filteredItems.length;
-  const someSelected = selected.size > 0;
 
   const toggleAll = () => {
     if (allSelected) setSelected(new Set());
@@ -76,87 +82,36 @@ export default function InventoryContent() {
     });
   };
 
-  const updateItemQty = (id: number, qty: number) => {
-    const clamped = Math.max(0, qty);
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, qty: clamped, status: getStatusFromQty(clamped) } : i
-      )
-    );
-    setEditingQty((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+  // Bootstrap inventory list from latest import snapshot (per shop), if present
+  useEffect(() => {
+    if (inventoryData?.data?.length) {
+      const mapped = inventoryData.data.map((row, idx) => {
+        const qty = Math.max(0, Math.round(row.quantity));
+        return {
+          id: row.id ? Number(idx + 1) : idx + 1,
+          name: row.name || row.sku || "N/A",
+          sku: row.sku || `SKU-${idx + 1}`,
+          qty,
+          status: getStatusFromQty(qty),
+        };
+      });
+      setItems(mapped);
+      return;
+    }
+    const snapshot = loadInventorySnapshot(user?.shopId);
+    if (!snapshot || !snapshot.items) return;
+    const mapped: InventoryItem[] = snapshot.items.map((row, idx) => {
+      const qty = Math.max(0, Math.round(row.quantity));
+      return {
+        id: Number(idx + 1),
+        name: row.product_name || row.sku_id,
+        sku: row.sku_id,
+        qty,
+        status: getStatusFromQty(qty),
+      };
     });
-    showSuccess(tCommon("saved"));
-  };
-
-  /** แสดง draft เมื่อมี; ไม่มี draft แสดง row.qty (กดบันทึกก่อนถึงจะ commit จริง) */
-  const getRowQtyDisplay = (row: InventoryItem) => {
-    if (editingQty[row.id] !== undefined) return editingQty[row.id];
-    return String(row.qty);
-  };
-
-  const hasUnsavedQty = useCallback(
-    (row: InventoryItem) => {
-      if (editingQty[row.id] === undefined) return false;
-      const parsed = Math.max(0, parseInt(editingQty[row.id], 10) || 0);
-      return parsed !== row.qty;
-    },
-    [editingQty]
-  );
-
-  /** ตอนแก้จำนวน → เช็ค checkbox แถวนั้นอัตโนมัติ (บันทึกจะอิงจากที่เลือก) */
-  const handleRowQtyChange = (rowId: number, value: string) => {
-    setEditingQty((prev) => ({ ...prev, [rowId]: value }));
-    setSelected((prev) => new Set(prev).add(rowId));
-  };
-
-  const handleRowQtyFocus = (rowId: number) => {
-    setEditingQtyRowId(rowId);
-  };
-
-  /** Blur ไม่ commit — ต้องกดบันทึกหรือยกเลิกที่แถบรวม */
-  const handleRowQtyBlur = () => {
-    setEditingQtyRowId(null);
-  };
-
-  /** รายการที่เลือกและมีค่าแก้ (จริงๆ ต่างจากเดิม) — บันทึกเฉพาะพวกนี้, ค่าเดิมไม่ส่ง */
-  const selectedRowsWithUnsaved = useMemo(
-    () => filteredItems.filter((row) => selected.has(row.id) && hasUnsavedQty(row)),
-    [filteredItems, selected, hasUnsavedQty]
-  );
-  const hasAnyUnsavedSelected = selectedRowsWithUnsaved.length > 0;
-
-  /** บันทึกรวม: commit เฉพาะแถวที่เลือกและมีค่าเปลี่ยน (ค่าเดิมไม่ส่ง) */
-  const handleSaveEdits = () => {
-    selectedRowsWithUnsaved.forEach((row) => {
-      const raw = editingQty[row.id] ?? String(row.qty);
-      const qty = Math.max(0, parseInt(raw, 10) || 0);
-      updateItemQty(row.id, qty);
-    });
-    setSelected((prev) => {
-      const next = new Set(prev);
-      selectedRowsWithUnsaved.forEach((r) => next.delete(r.id));
-      return next;
-    });
-  };
-
-  /** ยกเลิกรวม: ทิ้ง draft และเอาแถวที่แก้ออกจาก selection */
-  const handleCancelEdits = () => {
-    const idsToClear = new Set(selectedRowsWithUnsaved.map((r) => r.id));
-    setEditingQty((prev) => {
-      const next = { ...prev };
-      idsToClear.forEach((id) => delete next[id]);
-      return next;
-    });
-    setSelected((prev) => {
-      const next = new Set(prev);
-      idsToClear.forEach((id) => next.delete(id));
-      return next;
-    });
-    setEditingQtyRowId(null);
-  };
+    setItems(mapped);
+  }, [user?.shopId, inventoryData?.data]);
 
   const validate = () => {
     const err: Record<string, string> = {};
@@ -170,33 +125,8 @@ export default function InventoryContent() {
       );
       if (isDuplicate) err.sku = t("validationSkuDuplicate");
     }
-    const n = parseInt(form.qty, 10);
-    if (Number.isNaN(n) || n < 0) err.qty = t("validationRequired");
     setFormErrors(err);
     return Object.keys(err).length === 0;
-  };
-
-  const handleAddItemSubmit = () => {
-    if (!validate()) return;
-    const qty = Math.max(0, parseInt(form.qty, 10) || 0);
-    setSubmitLoading(true);
-    setTimeout(() => {
-      setItems((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          name: form.name.trim(),
-          sku: form.sku.trim(),
-          qty,
-          status: getStatusFromQty(qty),
-        },
-      ]);
-      setSubmitLoading(false);
-      setAddItemOpen(false);
-      setForm({ name: "", sku: "", qty: "", status: "in_stock" });
-      setFormErrors({});
-      showSuccess(tCommon("saved"));
-    }, 500);
   };
 
   const handleDeleteConfirm = () => {
@@ -216,29 +146,17 @@ export default function InventoryContent() {
     }, 500);
   };
 
-  const openAddModal = () => {
-    setFormErrors({});
-    setForm({ name: "", sku: "", qty: "", status: "in_stock" });
-    setAddItemOpen(true);
-    setEditItemOpen(false);
-    setEditItemId(null);
-  };
-
   const openEditModal = (row: InventoryItem) => {
     setFormErrors({});
     setForm({
       name: row.name,
       sku: row.sku,
-      qty: String(row.qty),
-      status: row.status,
     });
     setEditItemId(row.id);
     setEditItemOpen(true);
-    setAddItemOpen(false);
   };
 
   const closeItemModal = () => {
-    setAddItemOpen(false);
     setEditItemOpen(false);
     setEditItemId(null);
     setFormErrors({});
@@ -247,7 +165,6 @@ export default function InventoryContent() {
   const handleEditItemSubmit = () => {
     if (!validate()) return;
     if (editItemId == null) return;
-    const qty = Math.max(0, parseInt(form.qty, 10) || 0);
     setSubmitLoading(true);
     setTimeout(() => {
       setItems((prev) =>
@@ -257,20 +174,13 @@ export default function InventoryContent() {
                 ...i,
                 name: form.name.trim(),
                 sku: form.sku.trim(),
-                qty,
-                status: getStatusFromQty(qty),
               }
             : i
         )
       );
-      setEditingQty((prev) => {
-        const next = { ...prev };
-        delete next[editItemId];
-        return next;
-      });
       setSubmitLoading(false);
       closeItemModal();
-      setForm({ name: "", sku: "", qty: "", status: "in_stock" });
+      setForm({ name: "", sku: "" });
       showSuccess(tCommon("saved"));
     }, 500);
   };
@@ -297,11 +207,6 @@ export default function InventoryContent() {
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
           {t("title")}
         </h1>
-        {can("inventory:create") && (
-          <button type="button" className="btn-primary" onClick={openAddModal}>
-            {t("addItem")}
-          </button>
-        )}
       </div>
 
       {/* Search + filters */}
@@ -309,14 +214,10 @@ export default function InventoryContent() {
         <input
           type="search"
           placeholder={t("search")}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="input-base min-w-[200px] max-w-xs flex-1 sm:flex-initial"
         />
-        <select className="input-base w-full max-w-[180px] sm:w-auto">
-          <option value="">{t("filterStatus")}</option>
-        </select>
-        <select className="input-base w-full max-w-[180px] sm:w-auto">
-          <option value="">{t("filterCategory")}</option>
-        </select>
       </div>
 
       {/* Quick filter chips — โฟกัสสต็อกต่ำ/หมดได้เร็ว */}
@@ -343,39 +244,6 @@ export default function InventoryContent() {
         ))}
       </div>
 
-      {/* แถบรวม: เลือกแล้ว + มีการแก้ไข → บันทึก/ยกเลิกที่เดียว (อิงจาก checkbox, ค่าเดิมไม่ส่ง) */}
-      {hasAnyUnsavedSelected && can("inventory:update") && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/50 p-4 md:gap-4">
-          <span className="text-sm font-medium text-amber-800">
-            {t("editedCount", { count: selectedRowsWithUnsaved.length })}
-          </span>
-          <button type="button" className="btn-primary" onClick={handleSaveEdits}>
-            {t("saveEdits")}
-          </button>
-          <button type="button" className="btn-secondary" onClick={handleCancelEdits}>
-            {t("cancelEdits")}
-          </button>
-        </div>
-      )}
-
-      {someSelected && (can("inventory:update") || can("inventory:export")) && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 md:gap-4">
-          <span className="text-sm font-medium text-neutral-600">
-            {selected.size} selected
-          </span>
-          {can("inventory:update") && (
-            <button type="button" className="btn-secondary" disabled>
-              {t("bulkReorder")}
-            </button>
-          )}
-          {can("inventory:export") && (
-            <button type="button" className="btn-secondary" disabled>
-              {t("bulkExport")}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Empty state เป็นมิตร — ชวนเพิ่มสินค้าแรก */}
       {items.length === 0 ? (
         <div className="card flex flex-col items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50/50 py-16 text-center">
@@ -384,15 +252,6 @@ export default function InventoryContent() {
           </div>
           <h2 className="text-lg font-semibold text-neutral-900">{t("empty")}</h2>
           <p className="mt-2 max-w-sm text-sm text-neutral-600">{t("emptyDescription")}</p>
-          {can("inventory:create") && (
-            <button
-              type="button"
-              className="btn-primary mt-6"
-              onClick={openAddModal}
-            >
-              {t("addFirstProduct")}
-            </button>
-          )}
         </div>
       ) : (
         <div className="card content-table-wrapper overflow-hidden p-0!">
@@ -443,21 +302,8 @@ export default function InventoryContent() {
                       </td>
                       <td className="table-cell text-neutral-900">{row.name}</td>
                       <td className="table-cell text-neutral-600">{row.sku}</td>
-                      <td
-                        className={`table-cell w-36 min-w-32 text-right align-middle ${hasUnsavedQty(row) ? "ring-2 ring-amber-400 ring-inset rounded-md bg-amber-50/30" : ""}`}
-                        title={hasUnsavedQty(row) ? t("unsavedHint") : undefined}
-                      >
-                        <NumberInput
-                          key={`qty-${row.id}`}
-                          value={getRowQtyDisplay(row) ?? String(row.qty ?? 0)}
-                          onChange={(v) => handleRowQtyChange(row.id, v)}
-                          onFocus={() => handleRowQtyFocus(row.id)}
-                          onBlur={handleRowQtyBlur}
-                          min={0}
-                          step={1}
-                          className="mx-auto w-full max-w-32"
-                          label={t("colQty")}
-                        />
+                      <td className="table-cell w-36 min-w-32 text-right align-middle text-neutral-900">
+                        {row.qty}
                       </td>
                       <td className="table-cell">
                         <StatusTag type="inventory" status={row.status} />
@@ -505,16 +351,11 @@ export default function InventoryContent() {
         </div>
       )}
 
-      <FormModal
-        open={addItemOpen || editItemOpen}
-        title={editItemOpen ? t("editItemFormTitle") : t("addItemFormTitle")}
-        onClose={closeItemModal}
-      >
+      <FormModal open={editItemOpen} title={t("editItemFormTitle")} onClose={closeItemModal}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (editItemOpen) handleEditItemSubmit();
-            else handleAddItemSubmit();
+            handleEditItemSubmit();
           }}
           className="flex flex-col gap-4"
         >
@@ -549,41 +390,6 @@ export default function InventoryContent() {
             {formErrors.sku && (
               <p className="mt-2 text-sm text-danger">{formErrors.sku}</p>
             )}
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-700">
-              {t("formQty")}
-            </label>
-            <NumberInput
-              value={form.qty}
-              onChange={(v) => setForm((f) => ({ ...f, qty: v }))}
-              min={0}
-              step={1}
-              error={!!formErrors.qty}
-              label={t("formQty")}
-            />
-            {formErrors.qty && (
-              <p className="mt-2 text-sm text-danger">{formErrors.qty}</p>
-            )}
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-700">
-              {t("formStatus")}
-            </label>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  status: e.target.value as InventoryStatus,
-                }))
-              }
-              className="input-base"
-            >
-              <option value="in_stock">{tStatus("in_stock")}</option>
-              <option value="low_stock">{tStatus("low_stock")}</option>
-              <option value="out_of_stock">{tStatus("out_of_stock")}</option>
-            </select>
           </div>
           <div className="mt-2 flex justify-end gap-4">
             <button

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type LoginResult } from "@/contexts/AuthContext";
 import { RequireGuest } from "@/components/auth/RequireGuest";
 
 export default function LoginPage() {
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
+  const [needConfirm, setNeedConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,12 +22,20 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const ok = await login(email.trim(), password);
-      if (ok) {
+      const result: LoginResult = await login(
+        email.trim(),
+        password,
+        needConfirm ? confirmCode : undefined
+      );
+      if (result === true) {
         router.replace("/");
-      } else {
-        setError(t("loginFailed"));
+        return;
       }
+      if (result === "need_confirm") {
+        setNeedConfirm(true);
+        return;
+      }
+      setError(t("loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -58,6 +68,7 @@ export default function LoginPage() {
                 placeholder={t("placeholderUser")}
                 className="input-base w-full h-10"
                 required
+                disabled={needConfirm}
               />
             </div>
             <div>
@@ -73,8 +84,33 @@ export default function LoginPage() {
                 placeholder={t("placeholderPass")}
                 className="input-base w-full h-10"
                 required
+                disabled={needConfirm}
               />
             </div>
+            {needConfirm && (
+              <div>
+                <label htmlFor="confirmCode" className="block text-sm font-medium text-foreground mb-1">
+                  {t("confirmCode")}
+                </label>
+                <input
+                  id="confirmCode"
+                  type="text"
+                  autoComplete="one-time-code"
+                  value={confirmCode}
+                  onChange={(e) => setConfirmCode(e.target.value)}
+                  placeholder={t("placeholderConfirmCode")}
+                  className="input-base w-full h-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => { setNeedConfirm(false); setConfirmCode(""); }}
+                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {t("backToLogin")}
+                </button>
+              </div>
+            )}
             {error && (
               <p className="text-sm text-red-600" role="alert">
                 {error}

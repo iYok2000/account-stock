@@ -11,4 +11,6 @@ export interface MeResponseApi {
   permissions?: string[];
   tier?: string;
   company_id?: string;
+  shop_id?: string | null;
+  shop_name?: string;
 }

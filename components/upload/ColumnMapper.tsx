@@ -27,6 +27,29 @@ export function ColumnMapper({
 }: ColumnMapperProps) {
   const fields = useMemo(() => getFieldsForType(dataType), [dataType]);
 
+  // Affiliate: ไม่ต้องให้ user เลือก mapping เอง — ระบบจับคู่ให้อัตโนมัติจาก header
+  if (dataType === "affiliate_order") {
+    const requiredLabels = fields.filter((f) => f.required).map((f) => f.label);
+    return (
+      <div className="space-y-3">
+        <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-sm text-primary-800">
+          <p className="font-medium">Affiliate Orders — ระบบจับคู่คอลัมน์ให้อัตโนมัติ</p>
+          <p className="mt-0.5 text-primary-700">
+            ใช้ header จากไฟล์ affiliate (เช่น <code>Shop name</code>,{" "}
+            <code>Total final earned amount</code>) เพื่อ map เข้ากับฟิลด์ในระบบอัตโนมัติ
+            ขั้นนี้ใช้สำหรับดูตัวอย่างข้อมูลเท่านั้น ไม่ต้องแก้ mapping เอง
+          </p>
+        </div>
+        <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+          <p className="font-medium">ฟิลด์ที่ระบบต้องใช้ (ต้องตรวจสอบให้ map ได้ครบ):</p>
+          <p className="mt-1">
+            {requiredLabels.join(", ")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Order Transaction: แสดงเฉพาะฟิลด์ในระบบ → เลือกคอลัมน์ในไฟล์ (จับคู่อัตโนมัติจากชื่อที่ตรงหรือใกล้เคียง)
   if (dataType === "order_transaction") {
     const requiredFields = fields.filter((f) => f.required);
@@ -81,7 +104,7 @@ export function ColumnMapper({
                       {headers.map((header, index) => {
                         const usedByOther = mappings.get(index) && mappings.get(index) !== f.field;
                         return (
-                          <option key={index} value={index} disabled={usedByOther}>
+                          <option key={index} value={index} disabled={!!usedByOther}>
                             {header || `(คอลัมน์ ${index + 1})`}
                             {usedByOther ? " — ใช้แล้ว" : ""}
                           </option>
@@ -130,7 +153,7 @@ export function ColumnMapper({
                         {headers.map((header, index) => {
                           const usedByOther = mappings.get(index) && mappings.get(index) !== f.field;
                           return (
-                            <option key={index} value={index} disabled={usedByOther}>
+                            <option key={index} value={index} disabled={!!usedByOther}>
                               {header || `(คอลัมน์ ${index + 1})`}
                               {usedByOther ? " — ใช้แล้ว" : ""}
                             </option>

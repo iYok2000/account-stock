@@ -5,16 +5,15 @@
     "menu": "เมนู",
     "dashboard": "Dashboard",
     "inventory": "สินค้าคงคลัง",
-    "orders": "คำสั่งซื้อ",
     "import": "นำเข้าข้อมูล",
-    "suppliers": "ผู้จัดส่ง",
     "shops": "ร้านค้า",
+    "createShop": "ร้านค้า / แบรนด์",
+    "shopMembers": "สมาชิกร้าน",
     "campaigns": "แคมเปญ",
     "vouchers": "โค้ดส่วนลด",
     "fees": "ค่าธรรมเนียม",
     "calculator": "คำนวณ",
     "tax": "ภาษี",
-    "funnels": "UPSYD Funnel",
     "reports": "รายงาน",
     "agents": "AI ผู้ช่วย",
     "settings": "ตั้งค่า",
@@ -36,7 +35,10 @@
     "placeholderPass": "รหัสผ่าน",
     "loginFailed": "อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
     "loading": "กำลังเข้าสู่ระบบ...",
-    "devOnlyHint": "Dev: ใช้ test user ตาม env (ดู .env.example)"
+    "devOnlyHint": "Dev: ใช้ test user ตาม env (ดู .env.example)",
+    "confirmCode": "รหัสยืนยัน",
+    "placeholderConfirmCode": "กรอกรหัสยืนยัน",
+    "backToLogin": "กลับไปล็อกอิน"
   },
   "users": {
     "title": "ผู้ใช้",
@@ -54,13 +56,61 @@
     "tableTier": "ระดับ",
     "tableCompany": "บริษัท"
   },
+  "shopsCreate": {
+    "title": "สร้างร้านค้า",
+    "subtitle": "สร้างร้านใหม่และใส่สมาชิกอย่างน้อย 1 คนเป็น SuperAdmin (เฉพาะ Root)",
+    "shopName": "ชื่อร้าน",
+    "shopNamePlaceholder": "กรอกชื่อร้าน",
+    "members": "สมาชิก",
+    "addMember": "เพิ่มสมาชิก",
+    "membersHint": "ต้องมีสมาชิกอย่างน้อย 1 คนเป็น SuperAdmin อีเมลไม่ซ้ำทั้งระบบ",
+    "email": "อีเมล",
+    "password": "รหัสผ่าน",
+    "needSuperAdmin": "ต้องมีสมาชิกอย่างน้อย 1 คนเป็น SuperAdmin",
+    "create": "สร้างร้าน",
+    "creating": "กำลังสร้าง…",
+    "removeMember": "ลบสมาชิก",
+    "success": "สร้างร้านสำเร็จ",
+    "successHint": "สร้างร้านเพิ่มหรือกลับไปแดชบอร์ด"
+  },
+  "shopsMe": {
+    "title": "สมาชิกร้าน",
+    "subtitle": "แก้ชื่อร้านและจัดการสมาชิก (เฉพาะ SuperAdmin)",
+    "shopName": "ชื่อร้าน",
+    "saveName": "บันทึกชื่อ",
+    "members": "สมาชิก",
+    "addMember": "เพิ่มสมาชิก",
+    "email": "อีเมล",
+    "password": "รหัสผ่าน",
+    "role": "บทบาท",
+    "addMemberHint": "สมาชิกใหม่จะผูกกับร้านนี้ บทบาท: Admin หรือ Affiliate",
+    "adding": "กำลังเพิ่ม…",
+    "empty": "ยังไม่มีสมาชิก",
+    "error": "โหลดหรืออัปเดตไม่สำเร็จ"
+  },
   "dashboard": {
     "title": "Dashboard",
     "description": "ภาพรวมของสินค้าคงคลังและคำสั่งซื้อของคุณ",
     "totalProducts": "สินค้าทั้งหมด",
     "lowStock": "สต็อกต่ำ",
     "pendingOrders": "รอจัดส่ง",
-    "ordersToday": "คำสั่งวันนี้"
+    "ordersToday": "คำสั่งวันนี้",
+    "importInsights": {
+      "title": "ยอดขายจากไฟล์นำเข้า",
+      "subtitle": "บันทึกไว้ในเครื่องตามร้าน หลังนำเข้า (เฉพาะเจ้าของ/แอดมิน)",
+      "noData": "ยังไม่มีข้อมูลนำเข้าของร้านนี้",
+      "uniqueSkus": "จำนวน SKU ไม่ซ้ำ",
+      "unitsThisMonth": "จำนวนชิ้นในเดือนนี้",
+      "revenueThisMonth": "รายได้เดือนนี้",
+      "netThisMonth": "สุทธิเดือนนี้",
+      "lastImport": "นำเข้าล่าสุด",
+      "localOnlyHint": "ข้อมูลเก็บในเครื่องหลังนำเข้า",
+      "topSkus": "สินค้าเด่นเดือนนี้",
+      "unknownDate": "ไม่ทราบวันที่",
+      "qty": "จำนวน {count} ชิ้น",
+      "netLabel": "สุทธิ",
+      "noTopSkus": "ยังไม่มีรายการ SKU (ต้องมีข้อมูล SKU/วันที่)"
+    }
   },
   "inventory": {
     "title": "สินค้าคงคลัง",
@@ -97,28 +147,6 @@
     "formStatus": "สถานะ",
     "validationRequired": "กรุณากรอกข้อมูล",
     "validationSkuDuplicate": "SKU นี้มีอยู่แล้ว — ห้ามซ้ำ"
-  },
-  "orders": {
-    "title": "คำสั่งซื้อ",
-    "placeOrder": "สร้างคำสั่งซื้อ",
-    "search": "ค้นหา...",
-    "filterStatus": "สถานะทั้งหมด",
-    "filterDateFrom": "จาก",
-    "filterDateTo": "ถึง",
-    "empty": "ยังไม่มีข้อมูล — แสดง empty state",
-    "colId": "เลขที่",
-    "colDate": "วันที่",
-    "colStatus": "สถานะ",
-    "colAmount": "ยอด",
-    "confirmSubmitOrder": "ยืนยันส่ง order นี้?",
-    "placeOrderFormTitle": "สร้างคำสั่งซื้อ"
-  },
-  "suppliers": {
-    "title": "ผู้จัดส่ง",
-    "empty": "ยังไม่มีข้อมูล",
-    "colName": "ชื่อ",
-    "colContact": "ติดต่อ",
-    "placeholder": "เตรียมสำหรับต่อ API ทีหลัง"
   },
   "calculator": {
     "title": "เครื่องคำนวณกำไร",
