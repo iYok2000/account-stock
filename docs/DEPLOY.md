@@ -13,7 +13,7 @@ Checklist และสิ่งที่ต้องตั้งก่อน dep
 - **Health:** `GET /health` ไม่ต้อง auth ใช้สำหรับ load balancer / health check
 - **Security:** JWT validation, RBAC, error responses แบบไม่ inject; ดู `docs/SECURITY.md`
 - **Migration:** รัน `go run ./cmd/migrate` ก่อนหรือหลัง deploy (ตาม flow ของ host)
-- **Import:** POST `/api/import/order-transaction` รับ payload จาก frontend; **Auth + orders:create** บังคับ (stub; ดู `docs/feature/03-import.md`)
+- **Import/Inventory:** POST `/api/inventory/import` (Auth + inventory:create) + GET `/api/inventory`, `/api/inventory/summary` (inventory:read) — ดู `docs/feature/03-import.md`
 
 ---
 

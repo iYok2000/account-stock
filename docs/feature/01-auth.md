@@ -1,54 +1,52 @@
 # Feature Spec — Auth
 
-API สำหรับ authentication และ current user context (ให้ frontend AuthContext / useUserContext ใช้).
+API สำหรับ authentication และ current user context. สอดคล้อง SHOPS_AND_ROLES_SPEC และ RBAC (4 roles, shop-scoped).
 
 ---
 
-## Route & Permission
+## Routes
 
 | Method | Path | Auth | Permission |
 |--------|------|------|------------|
-| GET | `/api/auth/me` | Required (Bearer JWT) | — (ทุก user ที่ล็อกอินเข้าได้) |
+| POST | `/api/auth/login` | ไม่ต้องส่ง JWT | — |
+| GET | `/api/auth/me` | Required (Bearer JWT) | — |
 
 ---
 
-## Request
+## POST /api/auth/login
 
-- **Header:** `Authorization: Bearer <JWT>`
-- **Body:** ไม่มี
+**Request (application/json):** `{ "email", "password", "confirm_code?" }`
+
+**Response (200):** `{ "token": "JWT string" }`
+
+**Logic:** ถ้า email+password ตรง ROOT_EMAIL/ROOT_PASSWORD → ต้องส่ง confirm_code ตรง ROOT_CONFIRM_CODE → ออก JWT role=Root. ไม่เช่นนั้นหา user ใน DB, ตรวจ bcrypt → ออก JWT มี role, shop_id, shop_name.
+
+**Error:** 401 — credentials ผิด หรือ confirm_code ไม่ตรง (Root)
 
 ---
 
-## Response (200)
+## GET /api/auth/me
+
+**Header:** `Authorization: Bearer <JWT>`
+
+**Response (200):**
 
 ```json
 {
   "user": { "id": "...", "displayName": "..." },
-  "roles": ["SuperAdmin"],
-  "permissions": ["dashboard:read", "..."],
+  "roles": ["Root"|"SuperAdmin"|"Admin"|"Affiliate"],
+  "permissions": ["..."],
   "tier": "free",
-  "company_id": "default"
+  "company_id": "",
+  "shop_id": "uuid or null",
+  "shop_name": "optional"
 }
 ```
 
-- ตรงกับ frontend `MeResponse` / AuthContext (ดู project-specific_context.md).
+**Error:** 401 — ไม่มี/ผิด token
 
 ---
 
-## Tenant scope
+## Env (Backend)
 
-- **ไม่ใช้ tenant scope** — endpoint นี้คืนข้อมูลของ “user ที่ล็อกอิน” เท่านั้น (จาก JWT). ไม่ query ข้อมูลแยกตาม company_id.
-
----
-
-## Error
-
-- **401:** ไม่มี token / token หมดอายุ / token ไม่ถูกต้อง
-
----
-
-## Acceptance criteria
-
-- [ ] GET /api/auth/me ด้วย Bearer ที่ valid คืน 200 และ JSON ตาม shape ด้านบน
-- [ ] ค่า roles, permissions มาจาก role ใน JWT (backend derive ตาม RBAC); tier, company_id จาก claims
-- [ ] ไม่มี token หรือ token ผิด → 401
+ROOT_EMAIL, ROOT_PASSWORD, ROOT_CONFIRM_CODE — server-side only.

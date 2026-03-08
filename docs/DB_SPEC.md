@@ -14,10 +14,10 @@ Spec สำหรับ layer ฐานข้อมูลของ **account-sto
 
 ---
 
-## 2. Multi-tenant (company_id)
+## 2. Multi-tenant (shop_id)
 
-- ตารางที่แยกตามเจ้า **ต้องมีคอลัมน์ `company_id`** (หรือ `tenant_id`) และเป็น index ตาม project-specific_context.
-- ทุก query / update / delete ที่เป็น tenant-scoped **ต้อง filter ตาม `company_id` จาก auth context** — ห้ามใช้ค่าจาก client ใน body/query param เป็น scope.
+- ตารางที่แยกตามร้าน **ต้องมีคอลัมน์ `shop_id`** (FK → shops.id) และเป็น index ตาม project-specific_context.
+- ทุก query / update / delete ที่เป็น tenant-scoped **ต้อง filter ตาม `shop_id` จาก auth context** — ห้ามใช้ค่าจาก client ใน body/query param เป็น scope. Root มี shop_id = null.
 - GORM: ใช้ `.Where("company_id = ?", companyID)` หรือ scope helper; **ห้าม** ต่อ string จาก user เข้า SQL (parameterized only ตาม SECURITY.md A03).
 
 ---
@@ -25,7 +25,7 @@ Spec สำหรับ layer ฐานข้อมูลของ **account-sto
 ## 3. โครงสร้างโฟลเดอร์ / package
 
 - **`internal/database`** — เปิด connection, ปิด, config; ไม่ใส่ business logic.
-- **`internal/model`** — GORM models เท่านั้น (struct, table name); ตาราง tenant-scoped มีฟิลด์ `CompanyID`.
+- **`internal/model`** — GORM models เท่านั้น (struct, table name); ตาราง tenant-scoped มีฟิลด์ `ShopID` (และตาราง `shops`). User มี `password_hash`, `shop_id` (nullable).
 - **`migrations/`** — SQL migration แบบ versioned (`.up.sql` / `.down.sql`) ใช้กับ Postgres และ Supabase เหมือนกัน; รันผ่าน `go run ./cmd/migrate` หรือ `migrate` CLI.
 
 ---
@@ -84,7 +84,7 @@ Spec สำหรับ layer ฐานข้อมูลของ **account-sto
 | ID | Criteria | วิธีตรวจ |
 |----|----------|----------|
 | AC1 | Server ต่อ PostgreSQL ได้เมื่อตั้ง `DATABASE_URL` (หรือ equiv.) | รัน server โดยมี env ถูกต้อง แล้วไม่ error ตอน startup |
-| AC2 | ตาราง tenant-scoped มี `company_id` และ query ใช้ค่าจาก auth context | Code review + ทดสอบว่า handler ส่ง company_id จาก middleware เท่านั้น |
+| AC2 | ตาราง tenant-scoped มี `shop_id` และ query ใช้ค่าจาก auth context | Code review + ทดสอบว่า handler ใช้ ShopID จาก middleware เท่านั้น |
 | AC3 | ไม่มี raw SQL ที่ต่อ string จาก user input | Code review + grep ว่ามีเฉพาะ parameterized / GORM builder |
 | AC4 | Config อ่านจาก env; มี `.env.example` ระบุ `DATABASE_URL` และ Supabase | ตรวจ `.env.example` และโค้ดที่เปิด DB |
 | AC5 | รัน migration up ได้กับทั้ง Postgres และ Supabase (DSN จาก env) | รัน `go run ./cmd/migrate` หรือ migrate CLI กับทั้งสองแบบ DSN |

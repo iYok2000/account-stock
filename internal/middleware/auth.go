@@ -43,11 +43,16 @@ func Auth(cfg auth.JWTConfig) func(http.Handler) http.Handler {
 				Role:        role,
 				Tier:        tier,
 				CompanyID:   claims.CompanyID,
+				ShopID:      claims.ShopID,
+				ShopName:    claims.ShopName,
 				DisplayName: claims.DisplayName,
 				Permissions: permissions,
 			}
 			if ctx.UserID == "" {
 				ctx.UserID = "unknown"
+			}
+			if ctx.CompanyID == "" && ctx.ShopID != "" {
+				ctx.CompanyID = ctx.ShopID
 			}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), authContextKey, ctx)))
 		})

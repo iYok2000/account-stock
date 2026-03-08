@@ -11,8 +11,8 @@ Checklist เพื่อให้ระบบ **พร้อมขึ้น pro
 | **APP_ENV=production** | Server ไม่รันถ้า JWT_SECRET เป็นค่า dev | บังคับใน main |
 | **JWT_SECRET** | ตั้งค่าใหม่ ไม่ใช้ default | ต้องตั้งบน host |
 | **CORS_ORIGIN** | ใส่ origin ของ frontend จริง | ต้องตั้งถ้า FE คนละ origin |
-| **Auth ทุก protected route** | ไม่มี endpoint ที่ควรต้อง auth แต่เปิดไว้ | GET /api/auth/me, GET /api/users, POST /api/import/order-transaction ผ่าน Auth |
-| **Permission ตาม RBAC** | แต่ละ route ตรวจ permission | users:read → /api/users; orders:create → /api/import/order-transaction |
+| **Auth ทุก protected route** | ไม่มี endpoint ที่ควรต้อง auth แต่เปิดไว้ | GET /api/auth/me, GET /api/users, POST /api/inventory/import, GET /api/inventory, GET /api/inventory/summary ผ่าน Auth |
+| **Permission ตาม RBAC** | แต่ละ route ตรวจ permission | users:read → /api/users; inventory:create/read → /api/inventory/* |
 | **Error responses** | ใช้ constant เท่านั้น ไม่ส่ง user input (SECURITY A03) | middleware.WriteJSONError |
 | **Tenant (company_id)** | ใช้จาก auth context เท่านั้น ไม่รับจาก client | ENTITY_SPEC §4; handler ใช้ TenantScope(ctx) เมื่อมี query tenant-scoped |
 
@@ -34,8 +34,10 @@ Checklist เพื่อให้ระบบ **พร้อมขึ้น pro
 |--------|------|------|------------|--------------|
 | GET | /health | ไม่มี | — | — |
 | GET | /api/auth/me | JWT | — | ไม่ใช้ (คืน company_id ใน response) |
-| GET | /api/users | JWT | users:read | ใช้เมื่อ query DB (SuperAdmin อาจข้าม company ตาม spec) |
-| POST | /api/import/order-transaction | JWT | orders:create | ใช้เมื่อบันทึก DB (company_id จาก context) |
+| GET | /api/users | JWT | users:read | ใช้เมื่อ query DB (SuperAdmin/ Admin; scope shop/company จาก context) |
+| POST | /api/inventory/import | JWT | inventory:create | บังคับใช้ shop/company จาก context |
+| GET | /api/inventory | JWT | inventory:read | บังคับใช้ shop/company จาก context |
+| GET | /api/inventory/summary | JWT | inventory:read | บังคับใช้ shop/company จาก context |
 
 ---
 
@@ -44,7 +46,7 @@ Checklist เพื่อให้ระบบ **พร้อมขึ้น pro
 - Refuse start เมื่อ APP_ENV=production และ JWT_SECRET เป็น default
 - CORS จาก env; default localhost/127.0.0.1
 - Auth middleware ใส่ CompanyID ลง context
-- RequirePermission สำหรับ /api/users (users:read), /api/import/order-transaction (orders:create)
+- RequirePermission สำหรับ /api/users (users:read), /api/inventory/import (inventory:create), /api/inventory, /api/inventory/summary (inventory:read)
 - WriteJSONError สำหรับ error ทุกจุด (ไม่ส่ง user input)
 - TenantScope(ctx) helper พร้อมใช้เมื่อ handler ต่อ DB
 

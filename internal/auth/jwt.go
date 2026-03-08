@@ -9,12 +9,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Claims holds JWT claims for user context (USER_SPEC, RBAC_SPEC).
+// Claims holds JWT claims for user context (SHOPS_AND_ROLES_SPEC).
 type Claims struct {
 	jwt.RegisteredClaims
 	Role        string `json:"role"`
 	Tier        string `json:"tier"`
-	CompanyID   string `json:"company_id"`
+	CompanyID   string `json:"company_id,omitempty"`
+	ShopID      string `json:"shop_id,omitempty"`
+	ShopName    string `json:"shop_name,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
 }
 
@@ -79,6 +81,8 @@ func ValidateToken(tokenString string, cfg JWTConfig) (*Claims, error) {
 const (
 	MaxClaimSubjectLen     = 256
 	MaxClaimCompanyIDLen   = 256
+	MaxClaimShopIDLen      = 256
+	MaxClaimShopNameLen    = 256
 	MaxClaimDisplayNameLen = 256
 )
 
@@ -90,6 +94,12 @@ func ValidateClaimLengths(claims *Claims) error {
 	if len(claims.CompanyID) > MaxClaimCompanyIDLen {
 		return fmt.Errorf("company_id too long")
 	}
+	if len(claims.ShopID) > MaxClaimShopIDLen {
+		return fmt.Errorf("shop_id too long")
+	}
+	if len(claims.ShopName) > MaxClaimShopNameLen {
+		return fmt.Errorf("shop_name too long")
+	}
 	if len(claims.DisplayName) > MaxClaimDisplayNameLen {
 		return fmt.Errorf("display_name too long")
 	}
@@ -98,6 +108,26 @@ func ValidateClaimLengths(claims *Claims) error {
 
 // MaxTokenLen prevents DoS from oversized Authorization header (OWASP A04).
 const MaxTokenLen = 8192
+
+// IssueToken creates a signed JWT for the given claims. Expires in 24h by default.
+func IssueToken(cfg JWTConfig, claims *Claims) (string, error) {
+	now := time.Now()
+	if claims.ExpiresAt == nil {
+		exp := now.Add(24 * time.Hour)
+		claims.ExpiresAt = jwt.NewNumericDate(exp)
+	}
+	if claims.IssuedAt == nil {
+		claims.IssuedAt = jwt.NewNumericDate(now)
+	}
+	if cfg.Issuer != "" {
+		claims.Issuer = cfg.Issuer
+	}
+	if cfg.Audience != "" {
+		claims.Audience = []string{cfg.Audience}
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(cfg.Secret)
+}
 
 // ParseBearer extracts "Bearer <token>" from Authorization header.
 // Rejects tokens longer than MaxTokenLen to prevent DoS.

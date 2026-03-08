@@ -12,6 +12,7 @@ const (
 	ErrInvalidToken     = "invalid or expired token"
 	ErrMethodNotAllowed = "method not allowed"
 	ErrInvalidJSON      = "invalid json"
+	ErrInternal         = "internal error"
 )
 
 type errorResponse struct {
@@ -24,6 +25,11 @@ func WriteJSONError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(errorResponse{Error: msg})
+}
+
+// WriteJSONErrorMsg allows safe custom message (already sanitized by caller).
+func WriteJSONErrorMsg(w http.ResponseWriter, msg string, code int) {
+	WriteJSONError(w, msg, code)
 }
 
 // writeJSONError is the internal version used by middleware (same implementation).

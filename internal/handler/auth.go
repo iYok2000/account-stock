@@ -3,12 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 
+	"account-stock-be/internal/auth"
+	"account-stock-be/internal/database"
 	"account-stock-be/internal/middleware"
+	"account-stock-be/internal/model"
 )
 
-// MeResponse matches frontend AuthContext / useUserContext expectations.
-// See project-specific_context.md and fe docs/USER_SPEC.md.
+// MeResponse matches frontend AuthContext / useUserContext (SHOPS_AND_ROLES_SPEC).
 type MeResponse struct {
 	User struct {
 		ID          string `json:"id"`
@@ -18,6 +22,8 @@ type MeResponse struct {
 	Permissions []string `json:"permissions"`
 	Tier        string   `json:"tier,omitempty"`
 	CompanyID   string   `json:"company_id,omitempty"`
+	ShopID      *string  `json:"shop_id,omitempty"`
+	ShopName    string   `json:"shop_name,omitempty"`
 }
 
 // Me handles GET /api/auth/me — returns current user context for frontend AuthContext.
@@ -34,6 +40,132 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	res.Permissions = ctx.Permissions
 	res.Tier = string(ctx.Tier)
 	res.CompanyID = ctx.CompanyID
+	if ctx.ShopID != "" {
+		res.ShopID = &ctx.ShopID
+	}
+	res.ShopName = ctx.ShopName
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+// LoginRequest body for POST /api/auth/login.
+type LoginRequest struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	ConfirmCode string `json:"confirm_code,omitempty"`
+}
+
+// LoginResponse body on success.
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+// Login handles POST /api/auth/login. Root: env ROOT_EMAIL, ROOT_PASSWORD, ROOT_CONFIRM_CODE. Others: DB user + bcrypt.
+func Login(w http.ResponseWriter, r *http.Request, jwtCfg auth.JWTConfig) {
+	if r.Method != http.MethodPost {
+		middleware.WriteJSONError(w, middleware.ErrMethodNotAllowed, http.StatusMethodNotAllowed)
+		return
+	}
+	var body LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		middleware.WriteJSONError(w, middleware.ErrInvalidJSON, http.StatusBadRequest)
+		return
+	}
+	email := strings.TrimSpace(body.Email)
+	password := body.Password
+	confirmCode := strings.TrimSpace(body.ConfirmCode)
+
+	appEnv := strings.ToLower(os.Getenv("APP_ENV"))
+	rootEmail := strings.TrimSpace(os.Getenv("ROOT_EMAIL"))
+	rootPassword := os.Getenv("ROOT_PASSWORD")
+	rootConfirm := strings.TrimSpace(os.Getenv("ROOT_CONFIRM_CODE"))
+
+	// Security: ใน production ต้องตั้งค่า Root เอง ไม่ใช้ค่า default; ถ้าไม่ตั้งให้ login ล้มเหลว
+	if appEnv == "production" {
+		if rootEmail == "" || rootPassword == "" || rootConfirm == "" ||
+			(rootEmail == "superadmin" && rootPassword == "pass@1congrate" && rootConfirm == "YIM2021") {
+			middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
+			return
+		}
+	} else {
+		// Dev fallback
+		if rootEmail == "" {
+			rootEmail = "superadmin"
+		}
+		if rootPassword == "" {
+			rootPassword = "pass@1congrate"
+		}
+		if rootConfirm == "" {
+			rootConfirm = "YIM2021"
+		}
+	}
+
+	if email == rootEmail && password == rootPassword {
+		if confirmCode != rootConfirm {
+			middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
+			return
+		}
+		claims := &auth.Claims{}
+		claims.Subject = "root"
+		claims.Role = string(auth.RoleRoot)
+		claims.Tier = string(auth.TierFree)
+		claims.DisplayName = "Root"
+		claims.CompanyID = "root"
+		token, err := auth.IssueToken(jwtCfg, claims)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(LoginResponse{Token: token})
+		return
+	}
+
+	db := database.DB()
+	if db == nil {
+		middleware.WriteJSONError(w, "service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var user model.User
+	if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+		middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+	if user.PasswordHash == "" || !auth.ComparePassword(user.PasswordHash, password) {
+		middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+	role, ok := auth.ValidRole(user.Role)
+	if !ok {
+		middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+	shopID := ""
+	shopName := ""
+	if user.ShopID != nil && *user.ShopID != "" {
+		shopID = *user.ShopID
+		var shop model.Shop
+		if err := db.Where("id = ?", shopID).First(&shop).Error; err == nil {
+			shopName = shop.Name
+		}
+	}
+	companyID := strings.TrimSpace(user.CompanyID)
+	if companyID == "" {
+		companyID = shopID // fallback: align company with shop when legacy data missing
+	}
+	claims := &auth.Claims{}
+	claims.Subject = user.ID
+	claims.Role = string(role)
+	claims.Tier = user.Tier
+	claims.ShopID = shopID
+	claims.ShopName = shopName
+	claims.DisplayName = user.DisplayName
+	claims.CompanyID = companyID
+	token, err := auth.IssueToken(jwtCfg, claims)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(LoginResponse{Token: token})
 }

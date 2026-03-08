@@ -6,7 +6,7 @@ import (
 )
 
 // Permission string format: resource:action (e.g. inventory:read).
-// Matches RBAC_SPEC and frontend lib/rbac/constants.
+// Matches SHOPS_AND_ROLES_SPEC and frontend lib/rbac/constants.
 const (
 	PermDashboardRead = "dashboard:read"
 
@@ -55,45 +55,32 @@ const (
 	PermUsersExport = "users:export"
 )
 
-// rolePermissions maps role to permissions (RBAC_SPEC §5 Role–Permission Matrix).
-// Admin = all except users; SuperAdmin = all including users.
+// rolePermissions maps role to permissions (SHOPS_AND_ROLES_SPEC, RBAC_SPEC §5).
 var rolePermissions = map[auth.Role][]string{
-	auth.RoleViewer: {
-		PermDashboardRead, PermInventoryRead, PermOrdersRead, PermSuppliersRead,
+	auth.RoleRoot: {
+		PermDashboardRead, PermShopsCreate,
 	},
-	auth.RoleStaff: {
-		PermDashboardRead, PermInventoryRead, PermInventoryCreate, PermInventoryUpdate, PermInventoryDelete, PermInventoryExport,
-		PermOrdersRead, PermOrdersCreate, PermOrdersUpdate, PermOrdersExport,
-		PermSuppliersRead,
-		PermShopsRead, PermPromotionsRead, PermAnalysisRead,
-	},
-	auth.RoleManager: {
-		PermDashboardRead, PermInventoryRead, PermInventoryCreate, PermInventoryUpdate, PermInventoryDelete, PermInventoryExport,
-		PermOrdersRead, PermOrdersCreate, PermOrdersUpdate, PermOrdersExport,
-		PermSuppliersRead, PermSuppliersCreate, PermSuppliersUpdate, PermSuppliersDelete,
-		PermShopsRead, PermShopsCreate, PermShopsUpdate, PermShopsDelete,
-		PermPromotionsRead, PermPromotionsCreate, PermPromotionsUpdate, PermPromotionsDelete, PermPromotionsExport,
-		PermAnalysisRead, PermAnalysisExport,
-		PermAgentsRead, PermSettingsRead,
+	auth.RoleAffiliate: {
+		PermDashboardRead, PermInventoryCreate,
 	},
 	auth.RoleAdmin: {
 		PermDashboardRead,
 		PermInventoryRead, PermInventoryCreate, PermInventoryUpdate, PermInventoryDelete, PermInventoryExport,
 		PermOrdersRead, PermOrdersCreate, PermOrdersUpdate, PermOrdersExport,
 		PermSuppliersRead, PermSuppliersCreate, PermSuppliersUpdate, PermSuppliersDelete,
-		PermShopsRead, PermShopsCreate, PermShopsUpdate, PermShopsDelete,
+		PermShopsRead,
 		PermPromotionsRead, PermPromotionsCreate, PermPromotionsUpdate, PermPromotionsDelete, PermPromotionsExport,
 		PermAnalysisRead, PermAnalysisExport,
 		PermAgentsRead, PermAgentsCreate, PermAgentsUpdate, PermAgentsDelete,
 		PermSettingsRead, PermSettingsUpdate,
-		// Admin does NOT have users:* per RBAC_SPEC
+		PermUsersRead, PermUsersCreate, PermUsersUpdate, PermUsersDelete, PermUsersExport,
 	},
 	auth.RoleSuperAdmin: {
 		PermDashboardRead,
 		PermInventoryRead, PermInventoryCreate, PermInventoryUpdate, PermInventoryDelete, PermInventoryExport,
 		PermOrdersRead, PermOrdersCreate, PermOrdersUpdate, PermOrdersExport,
 		PermSuppliersRead, PermSuppliersCreate, PermSuppliersUpdate, PermSuppliersDelete,
-		PermShopsRead, PermShopsCreate, PermShopsUpdate, PermShopsDelete,
+		PermShopsRead, PermShopsUpdate,
 		PermPromotionsRead, PermPromotionsCreate, PermPromotionsUpdate, PermPromotionsDelete, PermPromotionsExport,
 		PermAnalysisRead, PermAnalysisExport,
 		PermAgentsRead, PermAgentsCreate, PermAgentsUpdate, PermAgentsDelete,

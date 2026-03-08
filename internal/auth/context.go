@@ -2,20 +2,19 @@ package auth
 
 import "slices"
 
-// Role matches RBAC_SPEC (SuperAdmin, Admin, Manager, Staff, Viewer).
+// Role matches SHOPS_AND_ROLES_SPEC (Root, SuperAdmin, Admin, Affiliate).
 type Role string
 
 const (
+	RoleRoot       Role = "Root"
 	RoleSuperAdmin Role = "SuperAdmin"
 	RoleAdmin      Role = "Admin"
-	RoleManager    Role = "Manager"
-	RoleStaff      Role = "Staff"
-	RoleViewer     Role = "Viewer"
+	RoleAffiliate  Role = "Affiliate"
 )
 
-var validRoles = []Role{RoleSuperAdmin, RoleAdmin, RoleManager, RoleStaff, RoleViewer}
+var validRoles = []Role{RoleRoot, RoleSuperAdmin, RoleAdmin, RoleAffiliate}
 
-// ValidRole returns the role if it is in the allowlist; otherwise (RoleViewer, false).
+// ValidRole returns the role if it is in the allowlist; otherwise (RoleAffiliate, false).
 // Caller should reject token when ok is false to enforce Deny by Default (OWASP A01).
 func ValidRole(s string) (Role, bool) {
 	r := Role(s)
@@ -47,9 +46,9 @@ type Context struct {
 	UserID    string
 	Role      Role
 	Tier      Tier
-	CompanyID string
-	// DisplayName for /api/auth/me response
+	CompanyID string // legacy
+	ShopID    string // empty for Root
+	ShopName  string
 	DisplayName string
-	// Permissions for RBAC (resource:action); derived from role or from token.
 	Permissions []string
 }
