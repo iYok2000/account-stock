@@ -788,7 +788,7 @@ function ProductsContent() {
                     />
                     <Tooltip
                       contentStyle={{ fontSize: "0.75rem", borderRadius: "0.5rem", border: "1px solid hsl(var(--border))" }}
-                      formatter={(v: unknown, name: string) => [formatCurrency(Number(v)), name]}
+                      formatter={(v: unknown, name?: string) => [formatCurrency(Number(v)), name]}
                       labelFormatter={(label) => truncateName(String(label), 40)}
                     />
                     <Legend

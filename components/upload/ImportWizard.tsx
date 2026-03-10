@@ -65,7 +65,7 @@ interface ImportWizardProps {
 }
 
 import { apiRequest } from "@/lib/api-client";
-import type { InventoryImportPayloadApi } from "@/types/api/inventory";
+import type { InventoryImportPayloadApi, InventoryImportItemApi } from "@/types/api/inventory";
 import { useImportInventory } from "@/lib/hooks/use-api";
 import { useToast } from "@/contexts/ToastContext";
 import { useRouter } from "@/i18n/navigation";
@@ -206,7 +206,14 @@ export function ImportWizard({
       items,
     };
     try {
-      const payload: InventoryImportPayloadApi = { tier, items };
+      // Map SkuRow to InventoryImportItemApi (add required 'name' field)
+      const itemsPayload: InventoryImportItemApi[] = items.map(item => ({
+        ...item,
+        name: item.product_name && item.variation 
+          ? `${item.product_name} - ${item.variation}` 
+          : item.product_name || item.sku_id,
+      }));
+      const payload: InventoryImportPayloadApi = { tier, items: itemsPayload };
       await apiRequest("/api/inventory/import", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -291,7 +298,9 @@ export function ImportWizard({
       items: importResult.items.map((row) => ({
         date: row.date ?? null,
         sku_id: row.sku_id,
-        name: row.product_name || row.sku_id,
+        name: row.product_name && row.variation 
+          ? `${row.product_name} - ${row.variation}` 
+          : row.product_name || row.sku_id,
         seller_sku: row.seller_sku,
         product_name: row.product_name,
         variation: row.variation,

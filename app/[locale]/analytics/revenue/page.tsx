@@ -198,7 +198,7 @@ function RevenueContent() {
       settlement: p.settlement,
     })) ?? [];
 
-  const hasData = !!reconQuery.data?.hasData || !!dailyQuery.data?.hasData;
+  const hasData = !!reconQuery.data || !!dailyQuery.data?.hasData;
 
   const feeBreakdownSorted = recon ? sortFeeBreakdown(recon.feeBreakdown) : [];
 
