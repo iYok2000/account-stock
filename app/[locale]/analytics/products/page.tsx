@@ -557,24 +557,26 @@ function ProductsContent() {
 
               {/* Expanded detail panel */}
               {expandedTier && (() => {
-                const tierMap: Record<TierKey, { items: typeof productTiers.stars; label: string; color: string }> = {
+                type ColorKey = "emerald" | "amber" | "red" | "slate";
+                const tierMap: Record<TierKey, { items: typeof productTiers.stars; label: string; color: ColorKey }> = {
                   stars:    { items: productTiers.stars,    label: "Stars",      color: "emerald" },
                   watch:    { items: productTiers.watch,    label: "ควรดูแล",    color: "amber" },
                   losing:   { items: productTiers.losing,   label: "ขาดทุน",     color: "red" },
                   longTail: { items: productTiers.longTail, label: "Long Tail",  color: "slate" },
                 };
                 const { items, label, color } = tierMap[expandedTier];
-                const colorMap = {
+                const colorMap: Record<ColorKey, { header: string; row: string; badge: string }> = {
                   emerald: { header: "bg-emerald-50 border-emerald-200 text-emerald-700", row: "hover:bg-emerald-50/50", badge: "bg-emerald-100 text-emerald-700" },
                   amber:   { header: "bg-amber-50 border-amber-200 text-amber-700",       row: "hover:bg-amber-50/50",   badge: "bg-amber-100 text-amber-700" },
                   red:     { header: "bg-red-50 border-red-200 text-red-700",             row: "hover:bg-red-50/50",     badge: "bg-red-100 text-red-700" },
                   slate:   { header: "bg-muted/30 border-border text-muted-foreground",   row: "hover:bg-muted/20",      badge: "bg-muted text-muted-foreground" },
-                }[color];
+                };
+                const styles = colorMap[color];
                 const tierRevenue = items.reduce((s, p) => s + p.revenue, 0);
                 const tierQty = items.reduce((s, p) => s + p.qty, 0);
                 return (
                   <div className="border-t border-border">
-                    <div className={cn("flex items-center justify-between px-4 py-2 border-b text-xs font-medium", colorMap.header)}>
+                    <div className={cn("flex items-center justify-between px-4 py-2 border-b text-xs font-medium", styles.header)}>
                       <span>{label} — {items.length} SKU · รวม {formatCurrency(tierRevenue)} · {tierQty.toLocaleString()} ชิ้น</span>
                       <button onClick={() => setExpandedTier(null)} className="opacity-60 hover:opacity-100 transition-opacity text-xs underline underline-offset-2">ปิด</button>
                     </div>
@@ -592,7 +594,7 @@ function ProductsContent() {
                         </thead>
                         <tbody>
                           {[...items].sort((a, b) => b.revenue - a.revenue).map((p, i) => (
-                            <tr key={p.id} className={cn("border-b border-border last:border-b-0 transition-colors", colorMap.row)}>
+                            <tr key={p.id} className={cn("border-b border-border last:border-b-0 transition-colors", styles.row)}>
                               <td className="px-4 py-2.5">
                                 <span className="text-[11px] text-muted-foreground tabular-nums">{i + 1}</span>
                               </td>
