@@ -12,6 +12,7 @@ import (
 	"account-stock-be/internal/database"
 	"account-stock-be/internal/middleware"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -123,15 +124,15 @@ func ImportInventory(w http.ResponseWriter, r *http.Request) {
 	tx := db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "shop_id"}, {Name: "date"}, {Name: "sku_id"}},
 		DoUpdates: clause.Assignments(map[string]interface{}{
-			"seller_sku":   clause.Expr("EXCLUDED.seller_sku"),
-			"product_name": clause.Expr("EXCLUDED.product_name"),
-			"variation":    clause.Expr("EXCLUDED.variation"),
-			"quantity":     clause.Expr("EXCLUDED.quantity"),
-			"revenue":      clause.Expr("EXCLUDED.revenue"),
-			"deductions":   clause.Expr("EXCLUDED.deductions"),
-			"refund":       clause.Expr("EXCLUDED.refund"),
-			"net":          clause.Expr("EXCLUDED.net"),
-			"updated_at":   clause.Expr("now()"),
+			"seller_sku":   gorm.Expr("EXCLUDED.seller_sku"),
+			"product_name": gorm.Expr("EXCLUDED.product_name"),
+			"variation":    gorm.Expr("EXCLUDED.variation"),
+			"quantity":     gorm.Expr("EXCLUDED.quantity"),
+			"revenue":      gorm.Expr("EXCLUDED.revenue"),
+			"deductions":   gorm.Expr("EXCLUDED.deductions"),
+			"refund":       gorm.Expr("EXCLUDED.refund"),
+			"net":          gorm.Expr("EXCLUDED.net"),
+			"updated_at":   gorm.Expr("now()"),
 		}),
 	}).Create(&rows)
 	if tx.Error != nil {
@@ -243,16 +244,10 @@ func InventorySummary(w http.ResponseWriter, r *http.Request) {
 		LastDate   *time.Time
 	}
 	var a agg
-	if err := db.Raw(`
-		SELECT
-		  COUNT(DISTINCT sku_id) AS unique_skus,
-		  COALESCE(SUM(quantity),0) AS units,
-		  COALESCE(SUM(revenue),0) AS revenue,
-		  COALESCE(SUM(net),0) AS net,
-		  MAX(date) AS last_date
-		FROM import_sku_row
-		WHERE shop_id = ? AND date >= ?
-	`, ctx.ShopID, startDate).Scan(&a).Error; err != nil {
+	if err := db.Table("import_sku_row").
+		Select("COUNT(DISTINCT sku_id) AS unique_skus, COALESCE(SUM(quantity),0) AS units, COALESCE(SUM(revenue),0) AS revenue, COALESCE(SUM(net),0) AS net, MAX(date) AS last_date").
+		Where("shop_id = ? AND date >= ?", ctx.ShopID, startDate).
+		Scan(&a).Error; err != nil {
 		middleware.WriteJSONError(w, middleware.ErrInternal, http.StatusInternalServerError)
 		return
 	}
@@ -268,19 +263,13 @@ func InventorySummary(w http.ResponseWriter, r *http.Request) {
 		Date     string  `json:"date"`
 	}
 	var topRows []top
-	if err := db.Raw(`
-		SELECT sku_id AS sku,
-		       COALESCE(MAX(product_name), sku_id) AS name,
-		       SUM(quantity) AS quantity,
-		       SUM(revenue) AS revenue,
-		       SUM(net) AS net,
-		       MAX(date)::text AS date
-		FROM import_sku_row
-		WHERE shop_id = ? AND date >= ?
-		GROUP BY sku_id
-		ORDER BY revenue DESC NULLS LAST
-		LIMIT 5
-	`, ctx.ShopID, startDate).Scan(&topRows).Error; err != nil {
+	if err := db.Table("import_sku_row").
+		Select("sku_id AS sku, COALESCE(MAX(product_name), sku_id) AS name, SUM(quantity) AS quantity, SUM(revenue) AS revenue, SUM(net) AS net, MAX(date)::text AS date").
+		Where("shop_id = ? AND date >= ?", ctx.ShopID, startDate).
+		Group("sku_id").
+		Order("revenue DESC NULLS LAST").
+		Limit(5).
+		Scan(&topRows).Error; err != nil {
 		middleware.WriteJSONError(w, middleware.ErrInternal, http.StatusInternalServerError)
 		return
 	}
@@ -359,12 +348,13 @@ func validAmount(v float64, allowZero bool) bool {
 }
 
 func periodStart(period string) time.Time {
-	now := time.Now().UTC()
+	bkk := time.FixedZone("Asia/Bangkok", 7*3600)
+	now := time.Now().In(bkk)
 	switch period {
 	case "current_month":
-		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, bkk)
 	default:
-		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, bkk)
 	}
 }
 

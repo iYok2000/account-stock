@@ -12,6 +12,10 @@ import (
 	"account-stock-be/internal/model"
 )
 
+const defaultRootCompanyID = "YPC"
+const defaultRootShopID = "00000000-0000-0000-0000-000000000001" // UUID string to match import_sku_row.shop_id (uuid)
+const defaultRootShopName = "YPC Affiliate"
+
 // MeResponse matches frontend AuthContext / useUserContext (SHOPS_AND_ROLES_SPEC).
 type MeResponse struct {
 	User struct {
@@ -105,12 +109,18 @@ func Login(w http.ResponseWriter, r *http.Request, jwtCfg auth.JWTConfig) {
 			middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
 			return
 		}
+		// Ensure default company/shop exist so Root has scoped shop data for dashboard/inventory
+		if db := database.DB(); db != nil {
+			_, _, _ = ensureRootDefaultShop(db)
+		}
 		claims := &auth.Claims{}
 		claims.Subject = "root"
 		claims.Role = string(auth.RoleRoot)
 		claims.Tier = string(auth.TierFree)
+		claims.CompanyID = defaultRootCompanyID
+		claims.ShopID = defaultRootShopID
+		claims.ShopName = defaultRootShopName
 		claims.DisplayName = "Root"
-		claims.CompanyID = "root"
 		token, err := auth.IssueToken(jwtCfg, claims)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)

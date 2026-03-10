@@ -2,7 +2,8 @@
 
 CREATE TABLE IF NOT EXISTS import_sku_row (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+    -- shops.id เป็น VARCHAR(36) จึงต้องใช้ชนิดเดียวกันเพื่อทำ FK ได้
+    shop_id VARCHAR(36) NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
     date DATE NOT NULL,
     sku_id TEXT NOT NULL,
     seller_sku TEXT,

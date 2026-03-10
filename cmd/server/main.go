@@ -37,6 +37,18 @@ func main() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	// Consent / legal acknowledgment (PDPA)
+	mux.HandleFunc("/api/consent/pdpa", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handler.GetPDPAConsent(w, r)
+		case http.MethodPost:
+			handler.PostPDPAConsent(w, r)
+		default:
+			middleware.WriteJSONError(w, middleware.ErrMethodNotAllowed, http.StatusMethodNotAllowed)
+		}
+	})
+
 	// API: auth — POST /api/auth/login (no JWT); GET /api/auth/me (JWT required)
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		handler.Login(w, r, jwtCfg)
@@ -44,12 +56,6 @@ func main() {
 	apiAuth := http.NewServeMux()
 	apiAuth.HandleFunc("/me", middleware.RequireAuthContext(handler.Me))
 	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", middleware.Auth(jwtCfg)(apiAuth)))
-
-	// API: import — Auth + inventory:create (order transaction)
-	// Legacy endpoint kept for backward compatibility (no-op if not used)
-	importHandler := http.HandlerFunc(handler.ImportOrderTransaction)
-	importChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermInventoryCreate)(middleware.Tenant(importHandler)))
-	mux.Handle("/api/import/order-transaction", importChain)
 
 	// API: inventory import (SKU/day source of truth)
 	invImportHandler := http.HandlerFunc(handler.ImportInventory)
@@ -98,10 +104,45 @@ func main() {
 	shopsMeMembersChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermUsersCreate)(middleware.Tenant(shopsMeMembersHandler)))
 	mux.Handle("/api/shops/me/members", shopsMeMembersChain)
 
-	// API: self delete
-	selfDeleteHandler := http.HandlerFunc(handler.DeleteSelf)
-	selfDeleteChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermUsersDelete)(middleware.Tenant(selfDeleteHandler)))
-	mux.Handle("/api/users/me", selfDeleteChain)
+	// API: self (PATCH update display/password, DELETE self)
+	selfHandler := http.HandlerFunc(handler.Self)
+	selfChain := middleware.Auth(jwtCfg)(middleware.Tenant(selfHandler))
+	mux.Handle("/api/users/me", selfChain)
+
+	// API: dashboard (overview + revenue + low stock)
+	dashboardOverview := http.HandlerFunc(handler.DashboardOverview)
+	dashboardOverviewChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermDashboardRead)(middleware.Tenant(dashboardOverview)))
+	mux.Handle("/api/dashboard/overview", dashboardOverviewChain)
+
+	dashboardRevenue := http.HandlerFunc(handler.DashboardRevenue7d)
+	dashboardRevenueChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermDashboardRead)(middleware.Tenant(dashboardRevenue)))
+	mux.Handle("/api/dashboard/revenue-7d", dashboardRevenueChain)
+
+	dashboardLowStock := http.HandlerFunc(handler.DashboardLowStock)
+	dashboardLowStockChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermDashboardRead)(middleware.Tenant(dashboardLowStock)))
+	mux.Handle("/api/dashboard/low-stock", dashboardLowStockChain)
+
+	dashboardKPIs := http.HandlerFunc(handler.DashboardKPIs)
+	dashboardKPIsChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermDashboardRead)(middleware.Tenant(dashboardKPIs)))
+	mux.Handle("/api/dashboard/kpis", dashboardKPIsChain)
+
+	// API: affiliate import (Affiliate uploads) — use inventory:create permission
+	affiliateImportHandler := http.HandlerFunc(handler.AffiliateImport)
+	affiliateImportChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermInventoryCreate)(middleware.Tenant(affiliateImportHandler)))
+	mux.Handle("/api/affiliate/import", affiliateImportChain)
+
+	// API: analytics (reconciliation, daily metrics, product metrics)
+	analyticsRecon := http.HandlerFunc(handler.AnalyticsReconciliation)
+	analyticsReconChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermAnalyticsRead)(middleware.Tenant(analyticsRecon)))
+	mux.Handle("/api/analytics/reconciliation", analyticsReconChain)
+
+	analyticsDaily := http.HandlerFunc(handler.AnalyticsDailyMetrics)
+	analyticsDailyChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermAnalyticsRead)(middleware.Tenant(analyticsDaily)))
+	mux.Handle("/api/analytics/daily-metrics", analyticsDailyChain)
+
+	analyticsProducts := http.HandlerFunc(handler.AnalyticsProductMetrics)
+	analyticsProductsChain := middleware.Auth(jwtCfg)(middleware.RequirePermission(rbac.PermAnalyticsRead)(middleware.Tenant(analyticsProducts)))
+	mux.Handle("/api/analytics/product-metrics", analyticsProductsChain)
 
 	port := os.Getenv("PORT")
 	if port == "" {

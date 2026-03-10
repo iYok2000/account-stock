@@ -45,6 +45,8 @@ const (
 	PermAgentsUpdate = "agents:update"
 	PermAgentsDelete = "agents:delete"
 
+	PermAnalyticsRead = "analytics:read"
+
 	PermSettingsRead   = "settings:read"
 	PermSettingsUpdate = "settings:update"
 
@@ -58,10 +60,21 @@ const (
 // rolePermissions maps role to permissions (SHOPS_AND_ROLES_SPEC, RBAC_SPEC §5).
 var rolePermissions = map[auth.Role][]string{
 	auth.RoleRoot: {
-		PermDashboardRead, PermShopsCreate,
+		// Root = full access to all resources/actions
+		PermDashboardRead,
+		PermInventoryRead, PermInventoryCreate, PermInventoryUpdate, PermInventoryDelete, PermInventoryExport,
+		PermOrdersRead, PermOrdersCreate, PermOrdersUpdate, PermOrdersExport,
+		PermSuppliersRead, PermSuppliersCreate, PermSuppliersUpdate, PermSuppliersDelete,
+		PermShopsRead, PermShopsCreate, PermShopsUpdate, PermShopsDelete,
+		PermPromotionsRead, PermPromotionsCreate, PermPromotionsUpdate, PermPromotionsDelete, PermPromotionsExport,
+		PermAnalysisRead, PermAnalysisExport,
+		PermAgentsRead, PermAgentsCreate, PermAgentsUpdate, PermAgentsDelete,
+		PermAnalyticsRead,
+		PermSettingsRead, PermSettingsUpdate,
+		PermUsersRead, PermUsersCreate, PermUsersUpdate, PermUsersDelete, PermUsersExport,
 	},
 	auth.RoleAffiliate: {
-		PermDashboardRead, PermInventoryCreate,
+		PermDashboardRead, PermInventoryCreate, PermAnalyticsRead,
 	},
 	auth.RoleAdmin: {
 		PermDashboardRead,

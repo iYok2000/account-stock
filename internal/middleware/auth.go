@@ -15,25 +15,25 @@ const authContextKey contextKey = "auth"
 // Auth extracts user context from JWT (Bearer token) and sets it on the request context.
 // Returns 401 if Authorization header is missing or token is invalid/expired.
 func Auth(cfg auth.JWTConfig) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
+		return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, ok := auth.ParseBearer(r.Header.Get("Authorization"))
 			if !ok || token == "" {
-				writeJSONError(w, ErrUnauthorized, http.StatusUnauthorized)
+				WriteJSONErrorMsg(w, "missing or invalid Authorization header", http.StatusUnauthorized)
 				return
 			}
 			claims, err := auth.ValidateToken(token, cfg)
 			if err != nil {
-				writeJSONError(w, ErrInvalidToken, http.StatusUnauthorized)
+				WriteJSONErrorMsg(w, "invalid or expired token", http.StatusUnauthorized)
 				return
 			}
 			role, ok := auth.ValidRole(claims.Role)
 			if !ok {
-				writeJSONError(w, ErrInvalidToken, http.StatusUnauthorized)
+				WriteJSONErrorMsg(w, "invalid role in token", http.StatusUnauthorized)
 				return
 			}
 			if err := auth.ValidateClaimLengths(claims); err != nil {
-				writeJSONError(w, ErrInvalidToken, http.StatusUnauthorized)
+				WriteJSONErrorMsg(w, ErrInvalidToken, http.StatusUnauthorized)
 				return
 			}
 			permissions := rbac.PermissionsForRole(role)

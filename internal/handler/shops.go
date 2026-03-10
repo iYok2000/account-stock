@@ -141,6 +141,33 @@ type MemberItem struct {
 	Role  string `json:"role"`
 }
 
+// ensureRootDefaultShop creates default company/shop for Root (YPC / YP-SHOP) if missing.
+func ensureRootDefaultShop(db *gorm.DB) (companyID, shopID string, err error) {
+	companyID = defaultRootCompanyID
+	shopID = defaultRootShopID
+	// company
+	var company model.Company
+	if err = db.Where("id = ?", companyID).First(&company).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return "", "", err
+		}
+		if err = db.Create(&model.Company{ID: companyID, Name: defaultRootShopName}).Error; err != nil {
+			return "", "", err
+		}
+	}
+	// shop
+	var shop model.Shop
+	if err = db.Where("id = ? AND company_id = ?", shopID, companyID).First(&shop).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return "", "", err
+		}
+		if err = db.Create(&model.Shop{ID: shopID, CompanyID: companyID, Name: defaultRootShopName}).Error; err != nil {
+			return "", "", err
+		}
+	}
+	return companyID, shopID, nil
+}
+
 // GetShopsMe handles GET /api/shops/me. SuperAdmin of that shop (users:read).
 func GetShopsMe(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -148,7 +175,7 @@ func GetShopsMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := middleware.GetContext(r.Context())
-	if ctx == nil || ctx.ShopID == "" {
+	if ctx == nil {
 		middleware.WriteJSONError(w, middleware.ErrForbidden, http.StatusForbidden)
 		return
 	}
@@ -157,13 +184,24 @@ func GetShopsMe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	shopID := ctx.ShopID
+	companyID := ctx.CompanyID
+	// Root: always ensure default shop/company exists (even if token already has shop_id)
+	if ctx.Role == auth.RoleRoot {
+		var err error
+		companyID, shopID, err = ensureRootDefaultShop(db)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
 	var shop model.Shop
-	if err := db.Where("id = ? AND company_id = ?", ctx.ShopID, ctx.CompanyID).First(&shop).Error; err != nil {
+	if err := db.Where("id = ? AND company_id = ?", shopID, companyID).First(&shop).Error; err != nil {
 		middleware.WriteJSONError(w, "shop not found", http.StatusNotFound)
 		return
 	}
 	var users []model.User
-	if err := db.Where("shop_id = ? AND company_id = ?", ctx.ShopID, ctx.CompanyID).Find(&users).Error; err != nil {
+	if err := db.Where("shop_id = ? AND company_id = ?", shopID, companyID).Find(&users).Error; err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -187,7 +225,7 @@ func PatchShopsMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := middleware.GetContext(r.Context())
-	if ctx == nil || ctx.ShopID == "" {
+	if ctx == nil {
 		middleware.WriteJSONError(w, middleware.ErrForbidden, http.StatusForbidden)
 		return
 	}
@@ -206,7 +244,19 @@ func PatchShopsMe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if err := db.Model(&model.Shop{}).Where("id = ?", ctx.ShopID).Update("name", name).Error; err != nil {
+	shopID := ctx.ShopID
+	companyID := ctx.CompanyID
+	if ctx.Role == auth.RoleRoot {
+		var err error
+		companyID, shopID, err = ensureRootDefaultShop(db)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+	if err := db.Model(&model.Shop{}).
+		Where("id = ? AND company_id = ?", shopID, companyID).
+		Update("name", name).Error; err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -224,7 +274,7 @@ type PostShopsMeMembersRequest struct {
 // SuperAdmin only (users:create). Role must be Admin or Affiliate when creating/updating.
 func ShopsMeMembers(w http.ResponseWriter, r *http.Request) {
 	ctx := middleware.GetContext(r.Context())
-	if ctx == nil || ctx.ShopID == "" {
+	if ctx == nil {
 		middleware.WriteJSONError(w, middleware.ErrForbidden, http.StatusForbidden)
 		return
 	}
@@ -232,6 +282,16 @@ func ShopsMeMembers(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		return
+	}
+	shopID := ctx.ShopID
+	companyID := ctx.CompanyID
+	if ctx.Role == auth.RoleRoot {
+		var err error
+		companyID, shopID, err = ensureRootDefaultShop(db)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	switch r.Method {
@@ -252,7 +312,7 @@ func ShopsMeMembers(w http.ResponseWriter, r *http.Request) {
 		}
 		hash, err := auth.HashPassword(body.Password)
 		if err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			middleware.WriteJSONErrorMsg(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		uid := newID()
@@ -262,15 +322,15 @@ func ShopsMeMembers(w http.ResponseWriter, r *http.Request) {
 			PasswordHash: hash,
 			Role:         body.Role,
 			Tier:         "free",
-			ShopID:       &ctx.ShopID,
-			CompanyID:    ctx.CompanyID,
+			ShopID:       &shopID,
+			CompanyID:    companyID,
 		}
 		if err := db.Create(&u).Error; err != nil {
 			if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 				middleware.WriteJSONError(w, "email already exists", http.StatusBadRequest)
 				return
 			}
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			middleware.WriteJSONErrorMsg(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -295,9 +355,9 @@ func ShopsMeMembers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := db.Model(&model.User{}).
-			Where("id = ? AND shop_id = ? AND company_id = ?", body.ID, ctx.ShopID, ctx.CompanyID).
+			Where("id = ? AND shop_id = ? AND company_id = ?", body.ID, shopID, companyID).
 			Update("role", body.Role).Error; err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			middleware.WriteJSONErrorMsg(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -314,9 +374,9 @@ func ShopsMeMembers(w http.ResponseWriter, r *http.Request) {
 			middleware.WriteJSONError(w, "id required", http.StatusBadRequest)
 			return
 		}
-		if err := db.Where("id = ? AND shop_id = ? AND company_id = ?", body.ID, ctx.ShopID, ctx.CompanyID).
+		if err := db.Where("id = ? AND shop_id = ? AND company_id = ?", body.ID, shopID, companyID).
 			Delete(&model.User{}).Error; err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			middleware.WriteJSONErrorMsg(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
