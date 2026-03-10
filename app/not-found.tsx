@@ -1,9 +1,10 @@
-import { FileQuestion } from "lucide-react";
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 
-export default function GlobalNotFound() {
+export default async function GlobalNotFound() {
+  const locale = await getLocale();
   return (
-    <html lang="th">
+    <html lang={locale}>
       <body style={{ fontFamily: "system-ui, sans-serif", background: "#faf9f7" }}>
         <div
           style={{

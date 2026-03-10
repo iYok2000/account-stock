@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { UserCog, Loader2, ShieldAlert, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { RequirePermission } from "@/components/auth/RequirePermission";
@@ -9,9 +10,10 @@ import { apiRequest } from "@/lib/api-client";
 function UsersPageContent() {
   const t = useTranslations("users");
   const userContext = useUserContext();
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const isRoot = session?.roles.includes("Root") ?? false;
 
   return (
     <div className="space-y-6">
@@ -39,36 +41,38 @@ function UsersPageContent() {
         </div>
       )}
 
-      <div className="card border-destructive/20 bg-destructive/5 space-y-3">
-        <div className="flex items-center gap-2 text-destructive">
-          <ShieldAlert className="h-5 w-5" />
-          <p className="font-semibold">ลบบัญชีผู้ใช้</p>
+      {!isRoot && (
+        <div className="card border-destructive/20 bg-destructive/5 space-y-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <ShieldAlert className="h-5 w-5" />
+            <p className="font-semibold">ลบบัญชีผู้ใช้</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            การลบจะเป็นการลบร้าน/ข้อมูลที่ผูกกับคุณ (soft delete, ลบจริงหลัง 7 วัน) ถ้าคุณเป็นเจ้าของร้านจะต้องยืนยันว่าลบร้านและสินค้าที่เกี่ยวข้องทั้งหมด
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!confirm("ยืนยันลบบัญชี? หากคุณเป็นเจ้าของร้าน ระบบจะลบร้านและข้อมูลที่เกี่ยวข้องทั้งหมด (soft delete)")) return;
+              setDeleting(true);
+              setError("");
+              try {
+                await apiRequest("/api/users/me", { method: "DELETE" });
+                logout();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "ลบไม่สำเร็จ");
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            disabled={deleting}
+            className="btn-primary bg-destructive hover:bg-destructive/90 border border-destructive/60 disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" /> ลบบัญชี</>}
+          </button>
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        <p className="text-sm text-muted-foreground">
-          การลบจะเป็นการลบร้าน/ข้อมูลที่ผูกกับคุณ (soft delete, ลบจริงหลัง 7 วัน) ถ้าคุณเป็นเจ้าของร้านจะต้องยืนยันว่าลบร้านและสินค้าที่เกี่ยวข้องทั้งหมด
-        </p>
-        <button
-          type="button"
-          onClick={async () => {
-            if (!confirm("ยืนยันลบบัญชี? หากคุณเป็นเจ้าของร้าน ระบบจะลบร้านและข้อมูลที่เกี่ยวข้องทั้งหมด (soft delete)")) return;
-            setDeleting(true);
-            setError("");
-            try {
-              await apiRequest("/api/users/me", { method: "DELETE" });
-              logout();
-            } catch (e) {
-              setError(e instanceof Error ? e.message : "ลบไม่สำเร็จ");
-            } finally {
-              setDeleting(false);
-            }
-          }}
-          disabled={deleting}
-          className="btn-primary bg-destructive hover:bg-destructive/90 border border-destructive/60 disabled:opacity-50"
-        >
-          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" /> ลบบัญชี</>}
-        </button>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
+      )}
     </div>
   );
 }

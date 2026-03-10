@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Info } from "lucide-react";
 import { Slider } from "@/components/ui/Slider";
 import { formatCurrency } from "@/lib/utils";
-import { FEE, type SliderKey } from "@/lib/calculator/engine";
+import { FEE, CATEGORY_RATES, type SliderKey } from "@/lib/calculator/engine";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -83,12 +83,21 @@ export function SlidersPanel(p: Props) {
         <Info className="h-3 w-3 shrink-0 mt-0.5" />
         <span>
           {t("feeNote", {
-            c: (FEE.COMMISSION * 100).toFixed(1),
-            v: (FEE.VAT * 100).toFixed(1),
-            pay: (FEE.PAYMENT * 100).toFixed(1),
+            c:    (FEE.COMMISSION      * 100).toFixed(1),
+            cgf:  (FEE.COMMERCE_GROWTH * 100).toFixed(1),
+            infra:(FEE.INFRASTRUCTURE  * 100).toFixed(2),
+            pay:  (FEE.PAYMENT         * 100).toFixed(2),
+            v:    (FEE.VAT             * 100).toFixed(1),
             mode: p.priceMode === "list" ? t("feeNoteList") : t("feeNoteSelling"),
           })}
-          <span className="ml-2 inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">Default</span>
+          <span className="ml-2 inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">General</span>
+        </span>
+      </div>
+      <div className="flex items-start gap-2 text-[10px] text-muted-foreground/70">
+        <Info className="h-2.5 w-2.5 shrink-0 mt-0.5" />
+        <span>
+          Beauty: Commission {(CATEGORY_RATES.beauty.commission * 100).toFixed(1)}% + CGF {(CATEGORY_RATES.beauty.commerceGrowth * 100).toFixed(1)}%
+          {" · "}Food: Commission {(CATEGORY_RATES.food.commission * 100).toFixed(1)}% + CGF {(CATEGORY_RATES.food.commerceGrowth * 100).toFixed(1)}%
         </span>
       </div>
     </div>

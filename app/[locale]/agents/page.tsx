@@ -239,6 +239,7 @@ export default function AgentsPage() {
           </div>
         </div>
       </div>
+      </div>
     </RequirePermission>
   );
 }

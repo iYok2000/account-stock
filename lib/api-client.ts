@@ -26,35 +26,66 @@ export function getApiBase(): string {
   return env().NEXT_PUBLIC_API_URL;
 }
 
+export type ApiRequestOptions = RequestInit & {
+  /**
+   * true = endpoint นี้เป็น auth-critical (เช่น /api/auth/me)
+   * เมื่อได้ 401 พร้อมมี token จะ trigger onUnauthorized → logout
+   *
+   * false (default) = data endpoint; ได้ 401 แค่ throw error
+   * ไม่ logout เพราะ backend อาจยังไม่ implement หรือ token expire เฉพาะ route นั้น
+   */
+  authEndpoint?: boolean;
+};
+
 /**
- * fetch ไปที่ backend — ใส่ Authorization: Bearer เมื่อมี token; ถ้าได้ 401 เรียก onUnauthorized แล้ว throw
+ * fetch ไปที่ backend — ใส่ Authorization: Bearer เมื่อมี token
+ * ถ้าได้ 401 และ authEndpoint=true (เฉพาะ /api/auth/me) → เรียก onUnauthorized แล้ว throw
+ * Data endpoints (dashboard, inventory ฯลฯ) ได้ 401 → แค่ throw ไม่ logout
  */
 export async function apiRequest<T>(
   pathOrFullUrl: string,
-  options?: RequestInit
+  options?: ApiRequestOptions
 ): Promise<T> {
+  const { authEndpoint = false, ...fetchOptions } = options ?? {};
+
+  // เผื่อกรณี component เรียก apiRequest เร็วเกินกว่าที่ AuthProvider จะ setAuthToken ให้
+  // ดึง token จาก sessionStorage มาก่อน แล้ว cache ไว้ในตัวแปรโมดูล
+  if (!authToken && typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem("auth_token");
+      if (cached) {
+        authToken = cached;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   const base = getApiBase();
   const url = pathOrFullUrl.startsWith("http") ? pathOrFullUrl : `${base}${pathOrFullUrl}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
-    ...(options?.headers as Record<string, string> | undefined),
+    ...(fetchOptions?.headers as Record<string, string> | undefined),
   };
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
   // Cross-origin: ใช้ omit เพื่อไม่ให้เบราว์เซอร์ต้องการ Access-Control-Allow-Credentials (auth ใช้ Bearer ใน header)
-  const credentials = base ? "omit" as RequestCredentials : "include";
+  const credentials = base ? ("omit" as RequestCredentials) : "include";
   const res = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers,
     credentials,
   });
   if (res.status === 401) {
     const hadToken = !!authToken;
-    authToken = null;
-    // เคลียร์ session เฉพาะเมื่อเราส่ง token ไปแล้ว (token หมดอายุ/ไม่ถูกต้อง). ถ้าไม่มี token แล้วได้ 401 = โหมด mock; อย่าเคลียร์ session จะได้ไม่เด้งไป login
-    if (hadToken) onUnauthorized?.();
+    // authEndpoint=true เท่านั้นที่ถือว่า token ใช้ไม่ได้แล้ว → clear + logout
+    // data endpoints (dashboard, inventory ฯลฯ) ได้ 401 → แค่ throw แต่ยังเก็บ token ไว้
+    if (authEndpoint) {
+      authToken = null;
+      if (hadToken) onUnauthorized?.();
+    }
     const body: ApiErrorBody = await res.json().catch(() => ({ error: "Unauthorized" }));
     throw new Error(body.error ?? "Unauthorized");
   }

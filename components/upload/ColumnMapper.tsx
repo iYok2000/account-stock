@@ -33,7 +33,7 @@ export function ColumnMapper({
     return (
       <div className="space-y-3">
         <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-sm text-primary-800">
-          <p className="font-medium">Affiliate Orders — ระบบจับคู่คอลัมน์ให้อัตโนมัติ</p>
+          <p className="font-medium">Affiliate Orders — Column auto-mapping ระบบจับคู่คอลัมน์ให้อัตโนมัติ</p>
           <p className="mt-0.5 text-primary-700">
             ใช้ header จากไฟล์ affiliate (เช่น <code>Shop name</code>,{" "}
             <code>Total final earned amount</code>) เพื่อ map เข้ากับฟิลด์ในระบบอัตโนมัติ

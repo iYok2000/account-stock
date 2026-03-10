@@ -26,6 +26,10 @@ function ShopMembersContent() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!userContext) {
+      setLoading(true);
+      return;
+    }
     let cancelled = false;
     setError("");
     (async () => {
@@ -44,7 +48,7 @@ function ShopMembersContent() {
       }
     })();
     return () => { cancelled = true; };
-  }, [t, userContext?.shopName]);
+  }, [t, userContext]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();

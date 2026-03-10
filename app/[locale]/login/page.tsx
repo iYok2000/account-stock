@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth, type LoginResult } from "@/contexts/AuthContext";
 import { RequireGuest } from "@/components/auth/RequireGuest";
+import { FormModal } from "@/components/ui/Modal";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
@@ -13,29 +14,39 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmCode, setConfirmCode] = useState("");
-  const [needConfirm, setNeedConfirm] = useState(false);
+  const [pendingRoot, setPendingRoot] = useState<{ email: string; password: string } | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // ถ้าเป็น Root (superadmin) แต่ยังไม่ได้กรอกรหัสยืนยัน ให้เปิด modal ขอรหัสก่อน
+    if (trimmedEmail === "superadmin" && !confirmCode) {
+      setPendingRoot({ email: trimmedEmail, password });
+      setShowConfirmModal(true);
+      return;
+    }
+
     setLoading(true);
     try {
       const result: LoginResult = await login(
-        email.trim(),
+        trimmedEmail,
         password,
-        needConfirm ? confirmCode : undefined
+        confirmCode ? confirmCode.trim() : undefined
       );
       if (result === true) {
         router.replace("/");
         return;
       }
-      if (result === "need_confirm") {
-        setNeedConfirm(true);
-        return;
+      setError(result === "need_confirm" ? t("confirmRequired") : t("loginFailed"));
+      if (result === "need_confirm" && trimmedEmail === "superadmin") {
+        setPendingRoot({ email: trimmedEmail, password });
+        setShowConfirmModal(true);
       }
-      setError(t("loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -68,7 +79,6 @@ export default function LoginPage() {
                 placeholder={t("placeholderUser")}
                 className="input-base w-full h-10"
                 required
-                disabled={needConfirm}
               />
             </div>
             <div>
@@ -84,33 +94,8 @@ export default function LoginPage() {
                 placeholder={t("placeholderPass")}
                 className="input-base w-full h-10"
                 required
-                disabled={needConfirm}
               />
             </div>
-            {needConfirm && (
-              <div>
-                <label htmlFor="confirmCode" className="block text-sm font-medium text-foreground mb-1">
-                  {t("confirmCode")}
-                </label>
-                <input
-                  id="confirmCode"
-                  type="text"
-                  autoComplete="one-time-code"
-                  value={confirmCode}
-                  onChange={(e) => setConfirmCode(e.target.value)}
-                  placeholder={t("placeholderConfirmCode")}
-                  className="input-base w-full h-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => { setNeedConfirm(false); setConfirmCode(""); }}
-                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  {t("backToLogin")}
-                </button>
-              </div>
-            )}
             {error && (
               <p className="text-sm text-red-600" role="alert">
                 {error}
@@ -125,11 +110,68 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
-            {t("devOnlyHint")}
-          </p>
         </div>
       </div>
+
+      <FormModal
+        open={showConfirmModal}
+        title={t("confirmCodeTitle")}
+        onClose={() => { setShowConfirmModal(false); setConfirmCode(""); setPendingRoot(null); }}
+      >
+        <p className="text-sm text-muted-foreground mb-3">{t("confirmCodeHint")}</p>
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-foreground">
+            {t("confirmCode")}
+            <input
+              type="text"
+              autoComplete="one-time-code"
+              value={confirmCode}
+              onChange={(e) => setConfirmCode(e.target.value)}
+              placeholder={t("placeholderConfirmCode")}
+              className="input-base w-full mt-1"
+            />
+          </label>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => { setShowConfirmModal(false); setConfirmCode(""); setPendingRoot(null); }}
+              className="btn-secondary"
+            >
+              {t("backToLogin")}
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={loading || !confirmCode.trim()}
+              onClick={async () => {
+                if (!pendingRoot) {
+                  setShowConfirmModal(false);
+                  return;
+                }
+                setLoading(true);
+                setError("");
+                try {
+                  const result = await login(
+                    pendingRoot.email,
+                    pendingRoot.password,
+                    confirmCode.trim()
+                  );
+                  if (result === true) {
+                    setShowConfirmModal(false);
+                    router.replace("/");
+                    return;
+                  }
+                  setError(t("loginFailed"));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              {loading ? t("loading") : t("submitConfirmCode")}
+            </button>
+          </div>
+        </div>
+      </FormModal>
     </RequireGuest>
   );
 }

@@ -10,6 +10,7 @@ import {
   validateRows,
   aggregateOrderTransaction,
   aggregateAffiliateOrders,
+  buildAffiliateImportItems,
   type ParsedData,
   type DataType,
   type ImportTier,
@@ -17,6 +18,7 @@ import {
   type DailyRow,
   type SkuRow,
   type AffiliateSummary,
+  type AffiliateImportItem,
 } from "./file-parser";
 import { formatCurrency } from "@/lib/utils";
 import { useUserContext } from "@/contexts/AuthContext";
@@ -29,20 +31,17 @@ type Step = "select-type" | "upload" | "mapping" | "result";
 const DATA_TYPE_OPTIONS: {
   type: DataType;
   label: string;
-  icon: string;
   description: string;
 }[] = [
   {
-    type: "order_transaction",
-    label: "Order Transaction (Owner)",
-    icon: "📋",
-    description: "นำเข้ารายการขาย/คำสั่งซื้อ เพื่อสรุปยอดขายตาม SKU และรายได้",
+    type: "affiliate_order",
+    label: "Affiliate Orders / คอมมิชชัน (Affiliate)",
+    description: "Import affiliate file (XLSX) เพื่อนสรุปคอมมิชชันตามร้านและสินค้า",
   },
   {
-    type: "affiliate_order",
-    label: "Affiliate Orders / Commission",
-    icon: "🤝",
-    description: "นำเข้าไฟล์ affiliate (XLSX) เพื่อสรุปคอมมิชชันตามร้านและสินค้า",
+    type: "order_transaction",
+    label: "Order Transaction (Owner)",
+    description: "Import order transaction file เพื่อนำเข้ารายการขาย/คำสั่งซื้อ และสรุปยอดขายตาม SKU และรายได้",
   },
 ];
 
@@ -65,17 +64,18 @@ interface ImportWizardProps {
   defaultDataType?: DataType;
 }
 
-import { apiRequest, getApiBase } from "@/lib/api-client";
-import type { ImportOrderTransactionPayloadApi, ImportOrderTransactionResponseApi } from "@/types/api/import";
+import { apiRequest } from "@/lib/api-client";
 import type { InventoryImportPayloadApi } from "@/types/api/inventory";
 import { useImportInventory } from "@/lib/hooks/use-api";
 import { useToast } from "@/contexts/ToastContext";
+import { useRouter } from "@/i18n/navigation";
 
 export function ImportWizard({
   onClose,
   onImportComplete,
   defaultDataType,
 }: ImportWizardProps) {
+  const router = useRouter();
   const user = useUserContext();
   const role = user?.role ?? "Affiliate";
   const shopId = user?.shopId ?? null;
@@ -106,11 +106,31 @@ export function ImportWizard({
   const [selectedShop, setSelectedShop] = useState<string | null>(null);
   const [chartHoverShop, setChartHoverShop] = useState<string | null>(null);
   const [expandedProductTitleKey, setExpandedProductTitleKey] = useState<string | null>(null);
+  const [affiliateSaved, setAffiliateSaved] = useState(false);
+  const [inventorySaved, setInventorySaved] = useState(false);
+  const [affiliateItems, setAffiliateItems] = useState<AffiliateImportItem[] | null>(null);
+
+  const toFriendlyError = (msg: string) => {
+    const lower = msg.toLowerCase();
+    if (lower.includes("order_id") && lower.includes("sku_id")) {
+      return "ไฟล์ขาด Order ID หรือ SKU: โปรดตรวจ mapping และข้อมูลแถวว่าง";
+    }
+    if (
+      lower.includes("date") &&
+      (lower.includes("not-null") || lower.includes("null value"))
+    ) {
+      return "ข้อมูลวันที่ไม่ครบหรือรูปแบบไม่ถูกต้อง (ต้องเป็น YYYY-MM-DD)";
+    }
+    return msg;
+  };
 
   const handleSelectType = (type: DataType) => {
     setDataType(type);
     setStep("upload");
     setError(null);
+    setAffiliateSaved(false);
+    setAffiliateItems(null);
+    setInventorySaved(false);
   };
 
   const handleFileAccepted = useCallback(
@@ -157,6 +177,8 @@ export function ImportWizard({
     if (!parsedData || !validation || validation.errors.length > 0) return;
     if (dataType === "affiliate_order") {
       const affiliateSummary = aggregateAffiliateOrders(parsedData.rows, mappings);
+      const itemsPayload = buildAffiliateImportItems(parsedData.rows, mappings);
+      setAffiliateItems(itemsPayload);
       const result: ImportResult = {
         imported: validation.validCount,
         skipped: validation.invalidRows.length,
@@ -165,21 +187,9 @@ export function ImportWizard({
         affiliateSummary,
         dataType: "affiliate_order",
       };
+      setAffiliateSaved(false);
       setImportResult(result);
       setSelectedShop(null);
-      setStep("result");
-      onImportComplete?.(result);
-      return;
-    }
-    if (dataType !== "order_transaction") {
-      const result: ImportResult = {
-        imported: validation.validCount,
-        skipped: validation.invalidRows.length,
-        duplicates: 0,
-        errors: [],
-        dataType,
-      };
-      setImportResult(result);
       setStep("result");
       onImportComplete?.(result);
       return;
@@ -196,13 +206,8 @@ export function ImportWizard({
       items,
     };
     try {
-      const payload: ImportOrderTransactionPayloadApi = {
-        tier,
-        items,
-        summary,
-        daily,
-      };
-      await apiRequest<ImportOrderTransactionResponseApi>("/api/import/order-transaction", {
+      const payload: InventoryImportPayloadApi = { tier, items };
+      await apiRequest("/api/inventory/import", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -218,15 +223,15 @@ export function ImportWizard({
         dataType: "order_transaction",
       };
       saveImportSnapshot(snapshot);
+      setInventorySaved(true);
+      setAffiliateSaved(false);
       setImportResult(result);
       setStep("result");
       onImportComplete?.(result);
     } catch (err) {
-      const base = getApiBase();
-      const url = base ? `${base}/api/import/order-transaction` : "(base URL ว่าง — ตั้ง NEXT_PUBLIC_API_URL ใน .env.local แล้ว restart frontend)";
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการส่งข้อมูล";
-      const hint = msg === "Failed to fetch" ? ` ${url}` : msg;
-      setError(hint);
+      setError(toFriendlyError(msg));
+      setInventorySaved(false);
       saveImportSnapshot(snapshot);
       setImportResult({
         imported: validation.validCount,
@@ -243,7 +248,7 @@ export function ImportWizard({
     } finally {
       setIsLoading(false);
     }
-  }, [parsedData, validation, dataType, tier, mappings, onImportComplete]);
+  }, [parsedData, validation, dataType, tier, mappings, onImportComplete, shopId]);
 
   const handleReset = () => {
     setStep(defaultDataType ? "upload" : "select-type");
@@ -252,6 +257,32 @@ export function ImportWizard({
     setError(null);
     setImportResult(null);
     setParseWarnings([]);
+    setAffiliateSaved(false);
+    setAffiliateItems(null);
+    setInventorySaved(false);
+  };
+
+  const handleSaveAffiliate = async () => {
+    if (!affiliateItems || affiliateItems.length === 0) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await apiRequest("/api/affiliate/import", {
+        method: "POST",
+        body: JSON.stringify({ items: affiliateItems }),
+      });
+      setAffiliateSaved(true);
+      showSuccess("บันทึกผลการนำเข้า Affiliate ลงระบบแล้ว");
+      router.push("/");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "บันทึกไม่สำเร็จ";
+      setAffiliateSaved(false);
+      const friendly = toFriendlyError(msg);
+      setError(friendly);
+      showError(friendly);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSaveToInventory = async () => {
@@ -274,6 +305,7 @@ export function ImportWizard({
     try {
       await importInventoryMutation.mutateAsync(payload);
       showSuccess("บันทึกเข้า inventory สำเร็จ");
+      router.push("/");
     } catch (e) {
       showError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
     }
@@ -282,7 +314,7 @@ export function ImportWizard({
   const stepDescriptions: Record<Step, string> = {
     "select-type": "เลือกประเภทข้อมูลที่ต้องการนำเข้า (Owner vs Affiliate)",
     upload: `อัพโหลดไฟล์ ${DATA_TYPE_OPTIONS.find((d) => d.type === dataType)?.label ?? ""}`,
-    mapping: "ตรวจสอบจับคู่ฟิลด์ (ตรง/ใกล้เคียง)",
+    mapping: "",
     result: "ผลการตรวจสอบ",
   };
 
@@ -312,11 +344,6 @@ export function ImportWizard({
         )}
       </div>
 
-      <div className="border-b border-neutral-100 bg-neutral-50 px-6 py-2">
-        <p className="text-xs text-neutral-600">
-          นำเข้า Order Transaction (Owner) หรือ Affiliate Orders (Affiliate) เพื่อสรุปยอดขายและคอมมิชชัน
-        </p>
-      </div>
 
       <div className="space-y-4 p-6">
         {step === "select-type" && (
@@ -326,13 +353,10 @@ export function ImportWizard({
                 key={opt.type}
                 type="button"
                 onClick={() => handleSelectType(opt.type)}
-                className="flex items-center gap-4 rounded-lg border border-neutral-200 p-4 text-left transition-colors hover:border-primary hover:bg-neutral-50"
+                className="group flex flex-col items-start gap-1.5 rounded-xl border border-neutral-200 bg-white p-4 text-left text-sm transition-colors hover:border-primary/60 hover:bg-neutral-50"
               >
-                <span className="text-2xl">{opt.icon}</span>
-                <div>
-                  <p className="font-medium">{opt.label}</p>
-                  <p className="text-sm text-neutral-500">{opt.description}</p>
-                </div>
+                <p className="font-semibold text-neutral-900">{opt.label}</p>
+                <p className="text-xs text-neutral-500 leading-relaxed">{opt.description}</p>
               </button>
             ))}
           </div>
@@ -401,17 +425,40 @@ export function ImportWizard({
               )}
             </div>
 
-            <div>
-              <p className="mb-3 text-sm font-medium">
-                {dataType === "order_transaction" ? "ฟิลด์ในระบบ ↔ คอลัมน์ในไฟล์" : "จับคู่คอลัมน์"}
-              </p>
-              <ColumnMapper
-                headers={parsedData.headers}
-                mappings={mappings}
-                onMappingChange={handleMappingChange}
-                dataType={dataType}
-              />
-            </div>
+            {dataType === "affiliate_order" ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50/80 p-4">
+                  <h3 className="text-sm font-semibold text-neutral-800">Affiliate Orders — ระบบจับคู่คอลัมน์ให้อัตโนมัติ</h3>
+                  <p className="mt-2 text-sm text-neutral-600">
+                    ใช้ header จากไฟล์ affiliate (เช่น Shop name, Total final earned amount) เพื่อ map เข้ากับฟิลด์ในระบบอัตโนมัติ
+                    ขั้นนี้ใช้สำหรับดูตัวอย่างข้อมูลเท่านั้น ไม่ต้องแก้ mapping เอง
+                  </p>
+                  <p className="mt-3 text-xs font-medium text-neutral-700">ฟิลด์ที่ระบบต้องใช้ (ต้อง map ได้ครบ):</p>
+                  <ul className="mt-1.5 list-inside list-disc text-sm text-neutral-600">
+                    <li>Order ID</li>
+                    <li>Product name</li>
+                    <li>Shop name</li>
+                    <li>Total final earned amount (ยอดสุทธิรายได้)</li>
+                    <li>Order settlement status</li>
+                  </ul>
+                  {validation && validation.errors.length > 0 && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      ยังจับคู่ไม่ครบ: {validation.errors.join(" ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="mb-3 text-sm font-medium">ฟิลด์ในระบบ ↔ คอลัมน์ในไฟล์</p>
+                <ColumnMapper
+                  headers={parsedData.headers}
+                  mappings={mappings}
+                  onMappingChange={handleMappingChange}
+                  dataType={dataType}
+                />
+              </div>
+            )}
 
             <DataPreview
               headers={parsedData.headers}
@@ -463,7 +510,7 @@ export function ImportWizard({
                 disabled={!validation || validation.errors.length > 0}
                 className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
               >
-                Process และส่งไปบันทึก
+                {dataType === "affiliate_order" ? "Process" : "Process และส่งไปบันทึก"}
               </button>
             </div>
           </div>
@@ -482,7 +529,7 @@ export function ImportWizard({
             {/* Affiliate result: สรุป + ตารางร้าน (แสดงก่อน) */}
             {importResult.dataType === "affiliate_order" && importResult.affiliateSummary && (
               <div className="space-y-6">
-                <h3 className="text-base font-semibold text-neutral-800">สรุปผลนำเข้า Affiliate</h3>
+                <h3 className="text-base font-semibold text-neutral-800">Summary — นำเข้า Affiliate Orders</h3>
                 {(() => {
                   const totalAll = importResult.affiliateSummary.totalCommission || 0;
                   const totalEligible = importResult.affiliateSummary.totalEligibleCommission ?? totalAll;
@@ -504,7 +551,7 @@ export function ImportWizard({
                           {formatCurrency(totalEligible)}
                         </p>
                         <p className="mt-1 text-xs text-neutral-500">
-                          ไม่รวม Ineligible · จาก {importResult.imported.toLocaleString()} แถว
+                          Est. standard + Est. Shop Ads · จาก {importResult.imported.toLocaleString()} แถว
                         </p>
                       </div>
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
@@ -530,105 +577,6 @@ export function ImportWizard({
                     {formatCurrency(importResult.affiliateSummary.potentialGainIfIneligibleSettled)} บาท
                   </p>
                 </div>
-
-                {/* กราฟร้านค้าที่ทำเงิน: Stacked bar (แกน Y = ร้าน), แท่งซ้อน + ความกว้างขั้นต่ำ + Hover แสดงค่า */}
-                {importResult.affiliateSummary.byShop.length > 0 && (() => {
-                  const topShops = [...importResult.affiliateSummary.byShop]
-                    .sort((a, b) => b.amount - a.amount)
-                    .slice(0, 15);
-                  const maxTotal = Math.max(
-                    1,
-                    ...topShops.map((s) => s.gmv + s.amount + s.ineligibleAmount)
-                  );
-                  const MIN_BAR_PCT = 28;
-                  return (
-                    <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white p-4 shadow-sm">
-                      <p className="mb-3 font-medium text-neutral-800">กราฟร้านค้าที่ทำเงิน (Stacked)</p>
-                      <div className="mb-3 flex flex-wrap gap-4 text-xs">
-                        <span className="flex items-center gap-1.5">
-                          <span className="inline-block h-3 w-5 rounded-sm bg-neutral-400" aria-hidden /> ยอดขาย (GMV)
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="inline-block h-3 w-5 rounded-sm bg-emerald-500" aria-hidden /> ยอดรายได้จริง
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="inline-block h-3 w-5 rounded-sm bg-amber-500" aria-hidden /> ค่าคอมที่หายไป
-                        </span>
-                      </div>
-                      <div className="flex gap-3 overflow-x-auto">
-                        <div className="shrink-0 text-xs text-neutral-600" style={{ width: 132 }}>
-                          {topShops.map((shop) => (
-                            <div
-                              key={shop.shopName}
-                              className="flex h-8 items-center justify-end pr-2"
-                              style={{ minHeight: 32 }}
-                            >
-                              <span className="truncate text-right" title={shop.shopName}>
-                                {shop.shopName.length > 16 ? shop.shopName.slice(0, 14) + "…" : shop.shopName}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="min-w-0 flex-1" style={{ minWidth: 240 }}>
-                          {topShops.map((shop) => {
-                            const total = shop.gmv + shop.amount + shop.ineligibleAmount;
-                            const pct = total / maxTotal;
-                            const barWidthPct = total > 0 ? Math.max(MIN_BAR_PCT, pct * 100) : 0;
-                            const wGmv = total > 0 ? (shop.gmv / total) * barWidthPct : 0;
-                            const wAmount = total > 0 ? (shop.amount / total) * barWidthPct : 0;
-                            const wIneligible = total > 0 ? (shop.ineligibleAmount / total) * barWidthPct : 0;
-                            return (
-                              <div
-                                key={shop.shopName}
-                                className="flex h-8 items-stretch rounded overflow-hidden bg-neutral-100 mb-0.5 cursor-pointer transition-colors hover:bg-neutral-200"
-                                style={{ minHeight: 32 }}
-                                onMouseEnter={() => setChartHoverShop(shop.shopName)}
-                                onMouseLeave={() => setChartHoverShop(null)}
-                              >
-                                <div
-                                  className="bg-neutral-400 shrink-0 transition-all"
-                                  style={{ width: `${wGmv}%`, minWidth: shop.gmv > 0 ? 4 : 0 }}
-                                />
-                                <div
-                                  className="bg-emerald-500 shrink-0 transition-all"
-                                  style={{ width: `${wAmount}%`, minWidth: shop.amount > 0 ? 4 : 0 }}
-                                />
-                                <div
-                                  className="bg-amber-500 shrink-0 transition-all"
-                                  style={{ width: `${wIneligible}%`, minWidth: shop.ineligibleAmount > 0 ? 4 : 0 }}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      {chartHoverShop && (() => {
-                        const shop = topShops.find((s) => s.shopName === chartHoverShop);
-                        if (!shop) return null;
-                        return (
-                          <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3 shadow-md text-sm">
-                            <p className="font-medium text-neutral-800 border-b border-neutral-100 pb-2 mb-2">{shop.shopName}</p>
-                            <ul className="space-y-1 text-neutral-700">
-                              <li className="flex justify-between gap-4">
-                                <span className="text-neutral-500">ยอดขาย (GMV)</span>
-                                <span className="tabular-nums font-medium">{formatCurrency(shop.gmv)}</span>
-                              </li>
-                              <li className="flex justify-between gap-4">
-                                <span className="text-neutral-500">ยอดรายได้จริง</span>
-                                <span className="tabular-nums font-medium text-emerald-700">{formatCurrency(shop.amount)}</span>
-                              </li>
-                              <li className="flex justify-between gap-4">
-                                <span className="text-neutral-500">ค่าคอมที่หายไป</span>
-                                <span className="tabular-nums font-medium text-amber-700">{formatCurrency(shop.ineligibleAmount)}</span>
-                              </li>
-                            </ul>
-                          </div>
-                        );
-                      })()}
-                      <p className="mt-3 text-xs text-neutral-500">แกน Y = ร้าน · แท่งอย่างน้อย {MIN_BAR_PCT}% ความกว้าง · โฮเวอร์ดูค่า (15 ร้าน)</p>
-                    </div>
-                  );
-                })()}
 
                 <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white shadow-sm">
                   <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
@@ -872,6 +820,18 @@ export function ImportWizard({
               </div>
             )}
             <div className="flex gap-2 flex-wrap items-center">
+              {importResult.dataType === "affiliate_order" && importResult.affiliateSummary && !affiliateSaved && (
+                <button
+                  type="button"
+                  onClick={handleSaveAffiliate}
+                  className="btn-primary"
+                >
+                  บันทึก
+                </button>
+              )}
+              {importResult.dataType === "affiliate_order" && affiliateSaved && (
+                <span className="text-sm text-neutral-500">บันทึกแล้ว — ต้องการบันทึกชุดใหม่ให้กด &quot;นำเข้าไฟล์ใหม่&quot;</span>
+              )}
               {importResult.dataType === "order_transaction" && isOwnerRole && importResult.items?.length ? (
                 <button
                   type="button"

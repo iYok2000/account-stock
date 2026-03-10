@@ -89,7 +89,7 @@ account-stock-fe/
 
 ## หน้าหลัก (สรุป)
 
-- **Dashboard:** KPI cards (—), chart 7 วัน placeholder, สต็อกใกล้หมด "ไม่มีข้อมูล — รอต่อ API", quick actions (Inventory, Import, Calculator).
+- **Dashboard:** KPI cards (—), chart 7 วัน placeholder, สต็อกใกล้หมด "ไม่มีข้อมูล — รอต่อ API", quick actions ที่กรองตามสิทธิ์ของ role (เช่น Admin, SuperAdmin เห็น Inventory, Import, Calculator; Affiliate เห็นเฉพาะ Import Affiliate).
 - **Inventory:** Toolbar (Search), ตาราง empty state, แก้ไขเฉพาะชื่อ/SKU, qty แสดงอย่างเดียว.
 - **Shops / Campaigns / Vouchers / Fees / Reports / Agents:** หน้าโครงหรือ placeholder พร้อมต่อ API ทีหลัง.
 - **Import:** Wizard เลือกประเภท → อัปโหลด → mapping คอลัมน์ → result → บันทึกเข้า Inventory (SKU/วัน).

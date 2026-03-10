@@ -20,6 +20,8 @@ import {
   Bot,
   UserCog,
   X,
+  BarChart3,
+  Settings,
 } from "lucide-react";
 import { usePermissions } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
@@ -51,6 +53,7 @@ const NAV_GROUPS = [
   {
     label: "วิเคราะห์",
     items: [
+      { href: "/analytics", key: "analytics", icon: BarChart3 },
       { href: "/calculator", key: "calculator", icon: Calculator },
       { href: "/tax", key: "tax", icon: Receipt },
       { href: "/reports", key: "reports", icon: FileText },
@@ -60,6 +63,7 @@ const NAV_GROUPS = [
     label: "เครื่องมือ",
     items: [
       { href: "/users", key: "users", icon: UserCog },
+      { href: "/settings", key: "settings", icon: Settings },
     ],
   },
 ] as const;

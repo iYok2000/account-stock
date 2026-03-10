@@ -51,7 +51,7 @@ export type InventoryImportItemApi = {
   net?: number;
 };
 
-export type InventoryImportPayloadApi = { items: InventoryImportItemApi[] };
+export type InventoryImportPayloadApi = { items: InventoryImportItemApi[]; tier?: "free" | "paid" };
 export type InventoryImportResponseApi = { ok?: boolean; imported?: number; updated?: number; errors?: string[] };
 
 export type InventorySummaryApi = {

@@ -10,82 +10,103 @@ import {
 } from "react";
 import type { UserSession, Role } from "@/lib/rbac/types";
 import type { PermissionString } from "@/lib/rbac/constants";
-import { getPermissionsForRoles } from "@/lib/rbac/role-permissions";
+import { ROLE_PERMISSIONS, getPermissionsForRoles } from "@/lib/rbac/role-permissions";
 import { apiRequest, setAuthToken, setOnUnauthorized } from "@/lib/api-client";
 import type { MeResponseApi } from "@/types/api/auth";
 
 /** "need_confirm" = credentials match Root; show confirm code field and call login again with code. */
 export type LoginResult = boolean | "need_confirm";
 
+/**
+ * roleView — เฉพาะ Root เท่านั้นที่ใช้
+ * "root"      = มุมมองปกติ (full Root permissions)
+ * "owner"     = มุมมอง SuperAdmin (เจ้าของร้าน)
+ * "affiliate" = มุมมอง Affiliate (แอฟฟิลิเอต)
+ */
+export type RoleView = "root" | "owner" | "affiliate";
+
+const ROLE_VIEW_LABELS: Record<RoleView, string> = {
+  root: "Root",
+  owner: "เจ้าของร้าน",
+  affiliate: "Affiliate",
+};
+export { ROLE_VIEW_LABELS };
+
 type AuthContextValue = {
   session: UserSession | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Login via backend. Returns true, false, or "need_confirm" when backend asks for confirm code (Root). */
   login: (username: string, password: string, confirmCode?: string) => Promise<LoginResult>;
   logout: () => void;
+  /** สลับบทบาทที่ Root ใช้มอง UI — ไม่กระทบ session จริง */
+  roleView: RoleView;
+  setRoleView: (view: RoleView) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const MOCK_ROLE_KEY = "rbac_mock_role";
 const SESSION_CACHE_KEY = "rbac_session";
 const AUTH_LOGGED_OUT_KEY = "auth_logged_out";
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min; refetch after
-
-const ALL_ROLES: Role[] = ["Root", "SuperAdmin", "Admin", "Affiliate"];
-const DEFAULT_MOCK_ROLE: Role = "Admin";
-
-function getMockRole(): Role {
-  if (typeof window === "undefined") return DEFAULT_MOCK_ROLE;
-  const stored = sessionStorage.getItem(MOCK_ROLE_KEY);
-  if (stored && ALL_ROLES.includes(stored as Role)) return stored as Role;
-  return DEFAULT_MOCK_ROLE;
-}
+const AUTH_TOKEN_KEY = "auth_token";
+const ROLE_VIEW_KEY = "root_role_view";
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function loadCachedSession(): UserSession | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
     if (!raw) return null;
-    const { session, ts } = JSON.parse(raw) as {
-      session: UserSession;
-      ts: number;
-    };
+    const { session, ts } = JSON.parse(raw) as { session: UserSession; ts: number };
     if (Date.now() - ts > CACHE_TTL_MS) return null;
     return session;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+function loadCachedToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return sessionStorage.getItem(AUTH_TOKEN_KEY); }
+  catch { return null; }
+}
+
+function loadCachedRoleView(): RoleView {
+  if (typeof window === "undefined") return "root";
+  try {
+    const saved = sessionStorage.getItem(ROLE_VIEW_KEY);
+    if (saved === "affiliate" || saved === "owner") return saved;
+  } catch { /* ignore */ }
+  return "root";
 }
 
 function saveCachedSession(session: UserSession) {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(
-      SESSION_CACHE_KEY,
-      JSON.stringify({ session, ts: Date.now() })
-    );
-  } catch {
-    // ignore
-  }
+    sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ session, ts: Date.now() }));
+  } catch { /* ignore */ }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleView, setRoleViewState] = useState<RoleView>("root");
+
+  const setRoleView = useCallback((view: RoleView) => {
+    setRoleViewState(view);
+    if (typeof window !== "undefined") {
+      if (view === "root") sessionStorage.removeItem(ROLE_VIEW_KEY);
+      else sessionStorage.setItem(ROLE_VIEW_KEY, view);
+    }
+  }, []);
 
   const fetchSession = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Prefer backend; fallback to mock (security: backend must enforce all checks)
-      const data = await apiRequest<MeResponseApi>("/api/auth/me");
+      const data = await apiRequest<MeResponseApi>("/api/auth/me", { authEndpoint: true });
       const roles = (data.roles ?? []) as Role[];
       const permissions = (data.permissions ?? []) as PermissionString[];
-      const session: UserSession = {
+      const newSession: UserSession = {
         userId: data.user?.id ?? "unknown",
         roles,
         permissions,
@@ -95,68 +116,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         shopId: data.shop_id ?? undefined,
         shopName: data.shop_name,
       };
-      setSession(session);
-      saveCachedSession(session);
+      setSession(newSession);
+      saveCachedSession(newSession);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Auth failed";
-      setError(msg);
-      // Production: do not fall back to mock session
-      if (process.env.NODE_ENV === "production") {
+      const msg = (e instanceof Error ? e.message : "Auth failed").toLowerCase();
+      setError(e instanceof Error ? e.message : "Auth failed");
+      const isAuthError = msg.includes("unauthorized") || msg.includes("forbidden");
+      if (isAuthError) {
         setSession(null);
-        return;
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(AUTH_LOGGED_OUT_KEY, "1");
+          sessionStorage.removeItem(SESSION_CACHE_KEY);
+        }
       }
-      // Dev: allow mock unless user explicitly logged out
-      if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
-        setSession(null);
-        return;
-      }
-      const role = getMockRole();
-      const roles: Role[] = [role];
-      const permissions = getPermissionsForRoles(roles);
-      const mock: UserSession = {
-        userId: "mock",
-        roles,
-        permissions,
-        displayName: `Mock ${role}`,
-        tier: "free",
-        companyId: "default",
-        shopId: role === "Root" ? null : "mock-shop",
-        shopName: role === "Root" ? undefined : "Mock Shop",
-      };
-      setSession(mock);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const login = useCallback(
-    async (
-      emailOrUsername: string,
-      password: string,
-      confirmCode?: string
-    ): Promise<LoginResult> => {
-      const payload: Record<string, string> = {
-        email: emailOrUsername.trim(),
-        password,
-      };
-      if (confirmCode) {
-        payload.confirm_code = confirmCode.trim();
-      }
+    async (emailOrUsername: string, password: string, confirmCode?: string): Promise<LoginResult> => {
+      const payload: Record<string, string> = { email: emailOrUsername.trim(), password };
+      if (confirmCode) payload.confirm_code = confirmCode.trim();
       try {
         const { token } = await apiRequest<{ token: string }>("/api/auth/login", {
           method: "POST",
           body: JSON.stringify(payload),
+          authEndpoint: true,
         });
         setAuthToken(token);
+        if (typeof window !== "undefined") sessionStorage.setItem(AUTH_TOKEN_KEY, token);
         await fetchSession();
         if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
         return true;
       } catch (err) {
         const msg = err instanceof Error ? err.message.toLowerCase() : "";
-        // Backend may reject Root without confirm_code; prompt UI to ask for it.
-        if (!confirmCode && msg.includes("confirm")) {
-          return "need_confirm";
-        }
+        if (!confirmCode && msg.includes("confirm")) return "need_confirm";
         return false;
       }
     },
@@ -167,36 +162,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(null);
     setSession(null);
     setError(null);
+    setRoleViewState("root");
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(SESSION_CACHE_KEY);
-      sessionStorage.removeItem(MOCK_ROLE_KEY);
+      sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      sessionStorage.removeItem(ROLE_VIEW_KEY);
       sessionStorage.setItem(AUTH_LOGGED_OUT_KEY, "1");
     }
   }, []);
 
   useEffect(() => {
-    setOnUnauthorized(() => setSession(null));
+    setOnUnauthorized(() => {
+      setSession(null);
+      setAuthToken(null);
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(SESSION_CACHE_KEY);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    });
     return () => setOnUnauthorized(null);
   }, []);
 
   useEffect(() => {
-    const cached = loadCachedSession();
-    if (cached) {
-      setSession(cached);
-      setIsLoading(false);
-      return;
+    if (typeof window !== "undefined") {
+      const cachedToken = loadCachedToken();
+      if (cachedToken) setAuthToken(cachedToken);
+      // Restore roleView ที่ Root เลือกไว้
+      setRoleViewState(loadCachedRoleView());
     }
+    const cached = loadCachedSession();
+    if (cached) setSession(cached);
     void fetchSession();
   }, [fetchSession]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, isLoading, error, refetch: fetchSession, login, logout }),
-    [session, isLoading, error, fetchSession, login, logout]
+    () => ({ session, isLoading, error, refetch: fetchSession, login, logout, roleView, setRoleView }),
+    [session, isLoading, error, fetchSession, login, logout, roleView, setRoleView]
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -205,38 +209,43 @@ export function useAuth() {
   return ctx;
 }
 
-/** Memoized permission checks (O(1)); use for UI only — backend must enforce. */
+/** Memoized permission checks (O(1)) — สำหรับ Root จะ override ตาม roleView */
 export function usePermissions() {
-  const { session } = useAuth();
+  const { session, roleView } = useAuth();
+  const isRoot = session?.roles.includes("Root") ?? false;
+
+  const effectivePermissions = useMemo<PermissionString[]>(() => {
+    if (!session) return [];
+    if (!isRoot || roleView === "root") return session.permissions;
+    if (roleView === "affiliate") return ROLE_PERMISSIONS["Affiliate"];
+    return ROLE_PERMISSIONS["SuperAdmin"]; // owner
+  }, [session, isRoot, roleView]);
+
   const permSet = useMemo(
-    () => new Set<PermissionString>(session?.permissions ?? []),
-    [session?.permissions]
+    () => new Set<PermissionString>(effectivePermissions),
+    [effectivePermissions]
   );
 
   const can = useCallback(
     (permission: PermissionString) => permSet.has(permission),
     [permSet]
   );
-
   const canAny = useCallback(
-    (permissions: PermissionString[]) =>
-      permissions.some((p) => permSet.has(p)),
+    (permissions: PermissionString[]) => permissions.some((p) => permSet.has(p)),
     [permSet]
   );
-
   const canAll = useCallback(
-    (permissions: PermissionString[]) =>
-      permissions.every((p) => permSet.has(p)),
+    (permissions: PermissionString[]) => permissions.every((p) => permSet.has(p)),
     [permSet]
   );
 
   return useMemo(
-    () => ({ can, canAny, canAll, permissions: session?.permissions ?? [] }),
-    [can, canAny, canAll, session?.permissions]
+    () => ({ can, canAny, canAll, permissions: effectivePermissions }),
+    [can, canAny, canAll, effectivePermissions]
   );
 }
 
-/** User context from store (role, tier, shopId). Use with HOC or pages. */
+/** User context — สำหรับ Root จะ override role/permissions ตาม roleView */
 export type UserContextValue = {
   userId: string;
   role: Role;
@@ -247,13 +256,32 @@ export type UserContextValue = {
   shopName: string | undefined;
   displayName: string | undefined;
   permissions: PermissionString[];
+  /** true = Root กำลังดูในมุมมอง role อื่น */
+  isViewingAs: boolean;
 };
 
 export function useUserContext(): UserContextValue | null {
-  const { session } = useAuth();
+  const { session, roleView } = useAuth();
+  const isRoot = session?.roles.includes("Root") ?? false;
+
   return useMemo(() => {
     if (!session) return null;
-    const role = session.roles[0] ?? "Affiliate";
+    const isViewingAs = isRoot && roleView !== "root";
+
+    let role: Role;
+    let permissions: PermissionString[];
+
+    if (!isRoot || roleView === "root") {
+      role = session.roles[0] ?? "Affiliate";
+      permissions = session.permissions;
+    } else if (roleView === "affiliate") {
+      role = "Affiliate";
+      permissions = getPermissionsForRoles(["Affiliate"]);
+    } else {
+      role = "SuperAdmin";
+      permissions = getPermissionsForRoles(["SuperAdmin"]);
+    }
+
     return {
       userId: session.userId,
       role,
@@ -263,7 +291,8 @@ export function useUserContext(): UserContextValue | null {
       shopId: session.shopId,
       shopName: session.shopName,
       displayName: session.displayName,
-      permissions: session.permissions ?? [],
+      permissions,
+      isViewingAs,
     };
-  }, [session]);
+  }, [session, isRoot, roleView]);
 }

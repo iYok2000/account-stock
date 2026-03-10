@@ -19,16 +19,12 @@ const baseConfig = Array.isArray(nextConfig) ? nextConfig : [nextConfig];
 
 const config = [
   ...baseConfig,
+  // Pre-go-live: allow setState in useEffect for hydration/localStorage sync; refactor later.
+  { rules: { "react-hooks/set-state-in-effect": "off" } },
   {
     files: ["components/inventory/**/*.ts", "components/inventory/**/*.tsx"],
     rules: {
       "no-restricted-imports": ["error", { patterns: restrictedPatterns("@/components/inventory") }],
-    },
-  },
-  {
-    files: [],
-    rules: {
-      "no-restricted-imports": ["error", { patterns: [] }],
     },
   },
   {

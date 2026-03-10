@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { formatCurrency, cn } from "@/lib/utils";
 import { FEE, type CalcResult } from "@/lib/calculator/engine";
+import { Info } from "lucide-react";
 
 interface Props {
   result: CalcResult;
@@ -55,10 +56,13 @@ export function ResultsPanel(p: Props) {
         <Row label={t("productCost")}  amount={p.productCost} />
         <Row label={t("packagingCost")} amount={p.packagingCost} />
         <Row label={t("shippingCost")} amount={p.shippingCost} />
-        <Row label={`Commission (${(FEE.COMMISSION * 100).toFixed(1)}%)`}   amount={result.commissionPerUnit} />
-        <Row label={`VAT (${(FEE.VAT * 100).toFixed(1)}%)`}                amount={result.commissionVatPerUnit} />
-        <Row label={t("paymentFee", { r: (FEE.PAYMENT * 100).toFixed(1) })} amount={result.paymentFeePerUnit} />
-        <Row label={`Affiliate (${p.affiliateRate}%)`}                      amount={result.affiliateFeePerUnit} />
+        <Row label={`Commission (${(FEE.COMMISSION * 100).toFixed(1)}%)`}                      amount={result.commissionPerUnit} />
+        <Row label={`VAT (${(FEE.VAT * 100).toFixed(1)}%)`}                                   amount={result.commissionVatPerUnit} />
+        <Row label={t("commerceGrowthFee", { r: (FEE.COMMERCE_GROWTH * 100).toFixed(1) })}    amount={result.commerceGrowthPerUnit} />
+        <Row label={t("infrastructureFee", { r: (FEE.INFRASTRUCTURE  * 100).toFixed(2) })}    amount={result.infrastructurePerUnit} />
+        <Row label={t("paymentFee",         { r: (FEE.PAYMENT         * 100).toFixed(2) })}    amount={result.paymentFeePerUnit} />
+        <Row label={`Affiliate (${p.affiliateRate}%)`}                                         amount={result.affiliateFeePerUnit} />
+        {result.voucherCostPerUnit > 0 && <Row label={t("voucherCost")} amount={result.voucherCostPerUnit} />}
         {p.adSpend > 0 && <Row label={t("adSpend")} amount={p.adSpend} />}
 
         <div className="flex justify-between py-2 border-t border-border font-medium">
@@ -85,9 +89,27 @@ export function ResultsPanel(p: Props) {
           </div>
         )}
 
-        <div className="space-y-1 pt-1">
+        <div className="space-y-2 pt-1">
+          {/* Gross Margin */}
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Profit Margin</span>
+            <span
+              className="text-sm text-muted-foreground flex items-center gap-1 cursor-help"
+              title="(รายได้ − ต้นทุนสินค้า) ÷ รายได้ — ก่อนหักค่าธรรมเนียม Platform"
+            >
+              {t("grossMarginLabel")} <Info className="h-3 w-3 shrink-0" />
+            </span>
+            <span className={cn("font-medium tabular-nums", result.grossMargin >= 50 ? "text-green-600" : result.grossMargin >= 30 ? "text-amber-600" : "text-red-600")}>
+              {result.grossMargin.toFixed(1)}%
+            </span>
+          </div>
+          {/* Net Margin */}
+          <div className="flex justify-between">
+            <span
+              className="text-sm text-muted-foreground flex items-center gap-1 cursor-help"
+              title="หลังหักค่าธรรมเนียม Platform ทั้งหมด (Commission + CGF + Infra + Transaction)"
+            >
+              {t("netMarginLabel")} <Info className="h-3 w-3 shrink-0" />
+            </span>
             <span className={cn("font-medium tabular-nums", marginColor)}>{result.profitMargin.toFixed(1)}%</span>
           </div>
           <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden">

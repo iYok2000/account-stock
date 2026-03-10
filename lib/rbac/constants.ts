@@ -8,6 +8,7 @@ export const RESOURCES = [
   "shops",      // sales channels
   "promotions", // campaigns, vouchers, fees
   "analysis",   // calculator, tax, reports
+  "analytics",  // analytics hub — Root + Affiliate only (phase 1)
   "agents",     // AI assistant / automation (ไม่มีเมนูใน v1)
   "users",      // user management — Admin/SuperAdmin
 ] as const;
@@ -43,5 +44,7 @@ export const NAV_PERMISSIONS: Record<string, PermissionString> = {
   "/calculator": "analysis:read",
   "/tax": "analysis:read",
   "/reports": "analysis:read",
+  "/analytics": "analytics:read",
   "/users": "users:read",
+  "/settings": "dashboard:read",
 } as const;

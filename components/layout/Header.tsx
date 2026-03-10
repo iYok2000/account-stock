@@ -4,6 +4,7 @@ import { Bell, Menu, Search } from "lucide-react";
 import AppSwitcher from "../AppSwitcher";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { UserMenu } from "./UserMenu";
+import { RoleViewSwitcher } from "./RoleViewSwitcher";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -40,6 +41,8 @@ export function Header({ onMenuClick }: HeaderProps) {
             ⌘K
           </kbd>
         </button>
+
+        <RoleViewSwitcher />
 
         <AppSwitcher />
 

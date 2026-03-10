@@ -185,7 +185,7 @@ export const ORDER_FIELDS = [
 /**
  * Affiliate columns in use:
  * - Order ID, SKU ID, Price (ยอด + คำนวณ % กับ earn จริง), Product name, Shop name,
- * - Items sold, Content type, Order settlement status (Ineligible ไม่นำมาคิดรายได้),
+ * - Items sold, Content type, Order settlement status; ยอดรายได้ที่นำมาคิด = Est. standard + Est. Shop Ads (ทุกแถว),
  * - Total final earned amount (ยอดสุทธิรายได้), Order date
  */
 export const AFFILIATE_FIELDS = [
@@ -199,6 +199,7 @@ export const AFFILIATE_FIELDS = [
   { field: "commission_amount", label: "Total final earned amount (ยอดสุทธิรายได้)", required: true },
   { field: "commission_status", label: "Order settlement status", required: true },
   { field: "standard_commission", label: "Est. standard commission (ยอดใช้เมื่อ Ineligible)", required: false },
+  { field: "shop_ads_commission", label: "Est. Shop Ads commission", required: false },
   { field: "order_date", label: "Order date", required: false },
   // Optional / fallback for GMV if needed
   { field: "gmv", label: "GMV", required: false },
@@ -252,6 +253,7 @@ const AFFILIATE_HEADER_KEYWORDS: Record<string, string[]> = {
   commission_amount: ["total final earned amount"],
   commission_status: ["order settlement status"],
   standard_commission: ["est. standard commission", "est.standard commission", "est standard commission"],
+  shop_ads_commission: ["est. shop ads commission", "shop ads commission"],
   order_date: ["order date", "order date"],
   gmv: ["gmv"],
   commission_base: ["actual commission base", "commission base"],
@@ -403,7 +405,7 @@ function parseNumAffiliate(val: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Normalize date string to YYYY-MM-DD (supports DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, YYYY/MM/DD). */
+/** Normalize date string to YYYY-MM-DD (supports DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, YYYY/MM/DD, DD/MM/YY). */
 function normalizeDateString(val: string): string | null {
   const s = String(val ?? "").trim();
   if (!s) return null;
@@ -416,6 +418,15 @@ function normalizeDateString(val: string): string | null {
   if (dmy) {
     const [, d, m, y] = dmy;
     return `${y}-${m}-${d}`;
+  }
+  const dmy2 = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2})$/);
+  if (dmy2) {
+    const [, d, m, y2] = dmy2;
+    const y = Number(y2);
+    const fullYear = y >= 50 ? 1900+y : 2000+y; // assume 00-49 -> 2000+, 50-99 -> 1900+
+    const dd = d.padStart(2, "0");
+    const mm = m.padStart(2, "0");
+    return `${fullYear}-${mm}-${dd}`;
   }
   return null;
 }
@@ -485,7 +496,7 @@ export interface AffiliateProductSummary {
 export interface AffiliateSummary {
   /** คอมมิชชันรวมทุกสถานะ (รวม Ineligible) */
   totalCommission: number;
-  /** ยอดรายได้ที่นำมาคิด = รวมเฉพาะที่สถานะไม่ใช่ Ineligible */
+  /** ยอดรายได้ที่นำมาคิด = ผลรวม Est. standard commission + Est. Shop Ads commission ทั้งหมด (ทุกแถว) */
   totalEligibleCommission: number;
   avgCommissionRate: number;
   byStatus: AffiliateStatusSummary[];
@@ -493,6 +504,25 @@ export interface AffiliateSummary {
   products: AffiliateProductSummary[];
   potentialGainIfIneligibleSettled: number;
 }
+
+export type AffiliateImportItem = {
+  affiliate_shop: string;
+  order_id: string;
+  settlement_status: string;
+  sku_id: string;
+  product_name: string;
+  items_sold: number;
+  gmv: number;
+  commission_amount: number;
+  standard_commission: number;
+  shop_ads_commission: number;
+  commission_base: number;
+  commission_rate: number;
+  ineligible_amount: number;
+  content_type: string;
+  order_date: string | null;
+  settlement_date: string | null;
+};
 
 export interface OrderTransactionSummary {
   totalRows: number;
@@ -659,6 +689,9 @@ export function aggregateAffiliateOrders(
   /** Order settlement status = Ineligible → นำยอด (Total final earned amount) มาคำนวณเป็น "ยอดที่ไม่ได้รับ" */
   const isIneligible = (s: string) => String(s).toLowerCase().includes("ineligible");
 
+  /** ยอดรายได้ที่นำมาคิด = Est. standard commission + Est. Shop Ads commission (ทุกแถว) */
+  const rowEligibleAmount = (std: number, shopAds: number) => std + shopAds;
+
   rows.forEach((row) => {
     const shopName = get(row, "shop_name") || "Unknown";
     const productName = get(row, "product_name") || "Unknown";
@@ -667,8 +700,8 @@ export function aggregateAffiliateOrders(
 
     /** ยอดจากคอลัมน์ Total final earned amount (เมื่อ Settled มีค่า, เมื่อ Ineligible มักไม่มีค่า) */
     const commissionAmount = parseNumAffiliate(get(row, "commission_amount"));
-    /** เมื่อ Ineligible ให้ใช้ Est. standard commission แทน เพราะ Total final earned amount จะไม่มีค่า */
     const standardCommission = parseNumAffiliate(get(row, "standard_commission"));
+    const shopAdsCommission = parseNumAffiliate(get(row, "shop_ads_commission"));
     const commissionBase = parseNumAffiliate(get(row, "commission_base"));
     const itemsSold = parseNumAffiliate(get(row, "items_sold"));
     const price = parseNumAffiliate(get(row, "price"));
@@ -677,7 +710,11 @@ export function aggregateAffiliateOrders(
     const orderId = get(row, "order_id") || "";
 
     const isIneligibleRow = isIneligible(status);
-    const amountForRow = isIneligibleRow ? (standardCommission || commissionAmount) : commissionAmount;
+    const amountForRow = isIneligibleRow
+      ? (standardCommission || shopAdsCommission || commissionAmount)
+      : commissionAmount;
+    /** ยอดรายได้ที่นำมาคิดต่อแถว = Est. standard + Est. Shop Ads (ตาม spec) */
+    const eligibleForRow = rowEligibleAmount(standardCommission, shopAdsCommission);
 
     // Standard field may be a percentage string like "15%"
     const rawRate = get(row, "commission_rate");
@@ -689,9 +726,7 @@ export function aggregateAffiliateOrders(
     }
 
     totalCommission += amountForRow;
-    if (!isIneligibleRow) {
-      totalEligibleCommission += commissionAmount;
-    }
+    totalEligibleCommission += eligibleForRow;
     totalBase += commissionBase;
 
     byStatus.set(status, (byStatus.get(status) ?? 0) + amountForRow);
@@ -705,10 +740,9 @@ export function aggregateAffiliateOrders(
     };
     if (orderId) shopAgg.orderIds.add(orderId);
     shopAgg.orderCount = shopAgg.orderIds.size;
-    if (!isIneligibleRow) {
-      shopAgg.amount += commissionAmount;
-    } else {
-      /** Order settlement status = Ineligible → ใช้ Est. standard commission เป็น "ยอดที่ขาดรายได้ไป" (Total final earned amount มักไม่มีค่า) */
+    /** ยอดรายได้ที่นำมาคิดต่อร้าน = ผลรวม Est. standard + Est. Shop Ads ของแถวในร้าน */
+    shopAgg.amount += eligibleForRow;
+    if (isIneligibleRow) {
       shopAgg.ineligibleAmount += amountForRow;
     }
     shopAgg.gmv += gmv;
@@ -729,9 +763,9 @@ export function aggregateAffiliateOrders(
       };
     prodAgg.itemsSold += itemsSold;
     prodAgg.gmv += gmv;
-    if (!isIneligibleRow) {
-      prodAgg.commission += commissionAmount;
-    } else {
+    /** ค่าคอมที่นำมาคิดต่อสินค้า = Est. standard + Est. Shop Ads */
+    prodAgg.commission += eligibleForRow;
+    if (isIneligibleRow) {
       prodAgg.ineligibleAmount += amountForRow;
     }
     if (rate > 0) {
@@ -793,4 +827,74 @@ export function aggregateAffiliateOrders(
     products: productsArr,
     potentialGainIfIneligibleSettled: ineligible,
   };
+}
+
+/** สร้าง payload สำหรับส่งไปบันทึก affiliate_sku_row */
+export function buildAffiliateImportItems(
+  rows: string[][],
+  mappings: Map<number, string>
+): AffiliateImportItem[] {
+  const get = (row: string[], field: string) => {
+    const col = getCol(mappings, field);
+    if (col === undefined) return "";
+    return String(row[col] ?? "").trim();
+  };
+  const isIneligible = (s: string) => String(s).toLowerCase().includes("ineligible");
+
+  const items: AffiliateImportItem[] = [];
+  for (const row of rows) {
+    const affiliateShop = get(row, "shop_name") || "Unknown";
+    const orderId = get(row, "order_id");
+    if (!orderId) continue; // ต้องมี order_id
+
+    const skuId = get(row, "sku_id");
+    const productName = get(row, "product_name") || "Unknown";
+    const status = get(row, "commission_status") || "Unknown";
+    const contentType = get(row, "content_type");
+
+    const commissionAmount = parseNumAffiliate(get(row, "commission_amount"));
+    const standardCommission = parseNumAffiliate(get(row, "standard_commission"));
+    const shopAdsCommission = parseNumAffiliate(get(row, "shop_ads_commission"));
+    const commissionBase = parseNumAffiliate(get(row, "commission_base"));
+    const itemsSold = parseNumAffiliate(get(row, "items_sold"));
+    const price = parseNumAffiliate(get(row, "price"));
+    const gmv = parseNumAffiliate(get(row, "gmv")) || (price * (itemsSold || 1)) || commissionBase;
+
+    let commissionRate = 0;
+    const rawRate = get(row, "commission_rate");
+    if (rawRate) {
+      const cleaned = rawRate.replace("%", "").trim();
+      const n = Number(cleaned);
+      if (Number.isFinite(n)) commissionRate = n > 1 ? n / 100 : n; // รองรับ "15%" หรือ "0.15"
+    }
+
+    const eligible = standardCommission || shopAdsCommission || commissionAmount;
+    const ineligibleAmount = isIneligible(status) ? Math.max(eligible - commissionAmount, 0) : 0;
+
+    // ถ้าไม่มี/parse ไม่ได้ ให้ fallback เป็นวันที่วันนี้ (UTC) เพื่อไม่ให้ BE ได้ null
+    const orderDate =
+      normalizeDateString(get(row, "order_date")) ||
+      new Date().toISOString().slice(0, 10);
+    const settlementDate = normalizeDateString(get(row, "settlement_date"));
+
+    items.push({
+      affiliate_shop: affiliateShop,
+      order_id: orderId,
+      settlement_status: status,
+      sku_id: skuId,
+      product_name: productName,
+      items_sold: itemsSold,
+      gmv,
+      commission_amount: commissionAmount,
+      standard_commission: standardCommission,
+      shop_ads_commission: shopAdsCommission,
+      commission_base: commissionBase,
+      commission_rate: commissionRate,
+      ineligible_amount: ineligibleAmount,
+      content_type: contentType,
+      order_date: orderDate,
+      settlement_date: settlementDate,
+    });
+  }
+  return items;
 }

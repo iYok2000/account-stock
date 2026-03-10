@@ -1,6 +1,7 @@
 # Feature Spec — Inventory (สินค้าคงคลัง)
 
-สรุปฟีเจอร์จากโค้ด
+สรุปฟีเจอร์จากโค้ด  
+**Last Updated:** 2026-03-10
 
 ---
 
@@ -16,6 +17,12 @@
 - **รายการแรกไม่ยาก** — หน้า empty state ชวนเพิ่มสินค้าแรก, ฟอร์มเพิ่มไม่ยาวเกิน
 
 ดังนั้น UI ควรมี: **summary ด้านบน** (ทั้งหมด / สต็อกต่ำ / หมด), **quick filter** (ทั้งหมด | สต็อกต่ำ | หมด), **แก้จำนวนในแถวได้เลย**, **empty state เป็นมิตร + CTA เพิ่มสินค้าแรก**.
+
+### View Mode (2 โหมด)
+- **Card view (default):** แสดงเป็น card grid — เห็นสินค้าเยอะในหน้าเดียว, มองเป็นแค็ตตาล็อกได้
+- **Table view:** แสดงเป็นตาราง — เหมาะกับการเปรียบเทียบหลายคอลัมน์
+- ปุ่ม toggle (LayoutGrid | List icon) อยู่ใน toolbar ฝั่งขวา
+- สถานะ default: card view
 
 ---
 
@@ -59,7 +66,18 @@
 - ไอคอน + หัวข้อ `inventory.empty` + คำอธิบาย `inventory.emptyDescription`
 - ปุ่ม CTA **เพิ่มสินค้าแรก** → เปิด Form เพิ่มสินค้า (เมื่อ `can("inventory:create")`)
 
-### 7. ตารางสินค้า
+### 7a. Card Grid View (default)
+- **Grid:** 2 col mobile, 3 col tablet, 4 col desktop, 5 col xl
+- **แต่ละ card:**
+  - ขอบบน 3px สีตามสถานะ: เขียว (in_stock), amber (low_stock), แดง (out_of_stock)
+  - บล็อกด้านบน: placeholder icon พื้นหลังสีอ่อนตามสถานะ
+  - ชื่อสินค้า (semibold, truncate), SKU (monospace, muted)
+  - จำนวน (ตัวเลขใหญ่สีตามสถานะ) + ป้ายหน่วย "ชิ้น"
+  - StatusTag + action buttons (Pencil, Trash) เปิดด้วย group-hover
+  - Checkbox top-left สำหรับ bulk select
+  - เมื่อเลือก: ring-2 ring-primary
+
+### 7b. ตารางสินค้า (Table View)
 - **คอลัมน์:** Checkbox (select all / per row), ชื่อ, SKU, **จำนวน (แก้ในแถวได้เลย — NumberInput)**, สถานะ, Actions
 - **Checkbox:** เลือกทั้งหมด / เลือกทีละแถว (ตาม filteredItems)
 - **จำนวน:** แก้ในแถวได้ (stepper + พิมพ์). **กดบันทึกก่อนถึงจะ commit** — พิมพ์หรือ +/- เป็น draft; แถวที่แก้จะถูกเช็ค (checkbox) อัตโนมัติ. Blur ไม่ commit อัตโนมัติ.
@@ -93,7 +111,15 @@
 ## ไฟล์ที่เกี่ยวข้อง
 
 - `app/[locale]/inventory/page.tsx` — หน้า (client, render InventoryContent)
-- `components/inventory/InventoryContent.tsx` — เนื้อหาทั้งหมด (client)
+- `components/inventory/InventoryContent.tsx` — เนื้อหาทั้งหมด (client); ประกอบด้วย card view + table view + toolbar + modals
 - `components/ui/NumberInput.tsx` — ช่องจำนวน (stepper + พิมพ์)
 - `components/ui/Modal.tsx` — FormModal, ConfirmModal
 - `components/ui/StatusTag.tsx` — แสดงสถานะ
+
+## Design Tokens สำหรับ Card View
+
+| สถานะ | border-top | bg ไอคอน | สีตัวเลข qty |
+|--------|-----------|-----------|-------------|
+| in_stock | `border-t-green-400` | `bg-green-50` | `text-green-700` |
+| low_stock | `border-t-amber-400` | `bg-amber-50` | `text-amber-700` |
+| out_of_stock | `border-t-red-400` | `bg-red-50` | `text-red-600` |

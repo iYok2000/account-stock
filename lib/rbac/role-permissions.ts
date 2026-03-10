@@ -11,25 +11,23 @@ const allResourceActions: PermissionString[] = RESOURCES.flatMap((r) =>
   ACTIONS.map((a) => toPermission(r, a))
 );
 
-// Root: platform only — create shops + dashboard
-const rootPermissions: PermissionString[] = [
-  "dashboard:read",
-  "shops:create",
-];
+// Root: full access to all resources/actions
+const rootPermissions: PermissionString[] = allResourceActions;
 
-// Affiliate: only Dashboard + Import (affiliate flow)
+// Affiliate: Dashboard + Import + analytics (phase 1)
 const affiliatePermissions: PermissionString[] = [
   "dashboard:read",
   "inventory:create",
+  "analytics:read",
 ];
 
-// Admin: all except shops:update (per RBAC_SPEC 2026-03-05 Admin มี users:*)
+// Admin: all except shops:update (analytics now allowed)
 const adminPermissions: PermissionString[] = allResourceActions.filter(
   (p) => p !== "shops:update"
 );
 
-// SuperAdmin: all permissions (shop-scoped; includes users:*, shops:update)
-const superAdminPermissions: PermissionString[] = [...allResourceActions];
+// SuperAdmin: all permissions
+const superAdminPermissions: PermissionString[] = allResourceActions;
 
 export const ROLE_PERMISSIONS: Record<Role, PermissionString[]> = {
   Root: rootPermissions,

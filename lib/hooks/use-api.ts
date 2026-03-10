@@ -19,6 +19,17 @@ import type {
 } from "@/types/api/inventory";
 import type { ReportSummaryApi } from "@/types/api/reports";
 import type { UsersListResponseApi } from "@/types/api/users";
+import type {
+  DashboardOverviewApi,
+  DashboardRevenue7dApi,
+  DashboardLowStockResponseApi,
+} from "@/types/api/dashboard";
+import type { DashboardKpisApi } from "@/types/api/dashboard-kpis";
+import type {
+  AnalyticsReconciliationApi,
+  AnalyticsDailyMetricsApi,
+  AnalyticsProductMetricsApi,
+} from "@/types/api/analytics";
 import { apiRequest } from "@/lib/api-client";
 
 // ============== USERS (GET /api/users — SuperAdmin, พร้อมใช้ที่ backend) ==============
@@ -139,6 +150,81 @@ export function useReportSummary(period: string = "30d") {
       apiRequest<ReportSummaryApi>(
         `/api/reports/summary?period=${encodeURIComponent(period)}`
       ),
+    retry: false,
+  });
+}
+
+// ============== DASHBOARD ==============
+
+export function useDashboardOverview() {
+  return useQuery({
+    queryKey: ["dashboard", "overview"],
+    queryFn: () => apiRequest<DashboardOverviewApi>("/api/dashboard/overview"),
+    retry: false,
+  });
+}
+
+export function useDashboardRevenue7d() {
+  return useQuery({
+    queryKey: ["dashboard", "revenue-7d"],
+    queryFn: () => apiRequest<DashboardRevenue7dApi>("/api/dashboard/revenue-7d"),
+    retry: false,
+  });
+}
+
+export function useDashboardLowStock(limit: number = 5) {
+  return useQuery({
+    queryKey: ["dashboard", "low-stock", limit],
+    queryFn: () =>
+      apiRequest<DashboardLowStockResponseApi>(
+        `/api/dashboard/low-stock?limit=${limit}`
+      ),
+    retry: false,
+  });
+}
+
+export function useDashboardKpis() {
+  return useQuery({
+    queryKey: ["dashboard", "kpis"],
+    queryFn: () => apiRequest<DashboardKpisApi>("/api/dashboard/kpis"),
+    retry: false,
+  });
+}
+
+// ============== ANALYTICS ==============
+
+export function useAnalyticsReconciliation(params?: { from?: string; to?: string }) {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  const qs = search.toString();
+  return useQuery({
+    queryKey: ["analytics", "reconciliation", params],
+    queryFn: () => apiRequest<AnalyticsReconciliationApi>(`/api/analytics/reconciliation${qs ? `?${qs}` : ""}`),
+    retry: false,
+  });
+}
+
+export function useAnalyticsDailyMetrics(params?: { from?: string; to?: string }) {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  const qs = search.toString();
+  return useQuery({
+    queryKey: ["analytics", "daily-metrics", params],
+    queryFn: () => apiRequest<AnalyticsDailyMetricsApi>(`/api/analytics/daily-metrics${qs ? `?${qs}` : ""}`),
+    retry: false,
+  });
+}
+
+export function useAnalyticsProductMetrics(params?: { from?: string; to?: string }) {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  const qs = search.toString();
+  return useQuery({
+    queryKey: ["analytics", "product-metrics", params],
+    queryFn: () => apiRequest<AnalyticsProductMetricsApi>(`/api/analytics/product-metrics${qs ? `?${qs}` : ""}`),
     retry: false,
   });
 }

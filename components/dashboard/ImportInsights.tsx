@@ -19,11 +19,8 @@ export function ImportInsights() {
   const [snapshot, setSnapshot] = useState<ImportSnapshot | null>(null);
   const summaryQuery = useInventorySummary();
 
-  const role = user?.role;
-  if (!user || (role !== "Admin" && role !== "SuperAdmin")) return null;
-
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !user?.shopId) return;
     setSnapshot(loadImportSnapshot(user.shopId ?? null));
   }, [user?.shopId]);
 
@@ -86,7 +83,10 @@ export function ImportInsights() {
       }));
 
     return { uniqueSkus, unitsThisMonth, revenueThisMonth, netThisMonth, topSkus };
-  }, [snapshot, currentMonthKey]);
+  }, [snapshot, currentMonthKey, summaryQuery.data]);
+
+  const role = user?.role;
+  if (!user || (role !== "Admin" && role !== "SuperAdmin")) return null;
 
   if (!snapshot) {
     return (

@@ -60,6 +60,19 @@
 
 ---
 
+## External Links (ทางการ)
+
+| ปุ่ม | URL | หมายเหตุ |
+|------|-----|----------|
+| เครื่องคำนวณ กรมสรรพากร | https://www.rd.go.th/26237.html | Spreadsheet ช่วยคำนวณรายการทางภาษี |
+| ยื่นแบบภาษีออนไลน์ (e-Filing) | https://efiling.rd.go.th/rd-cms/ | ยื่นแบบ ภ.ง.ด.90/91 ออนไลน์ |
+| ผู้สอบบัญชีรับอนุญาต FAP | https://www.fap.or.th/ | หา CPA สำหรับกรณีซับซ้อน |
+| จดทะเบียน VAT | https://www.rd.go.th/7058.html | วิธีจดทะเบียนภาษีมูลค่าเพิ่ม (สำหรับรายได้ >฿1.8M) |
+
+VAT warning link ใช้ URL เดียวกัน: `https://www.rd.go.th/7058.html`
+
+---
+
 ## ไฟล์ที่เกี่ยวข้อง
 
 - `app/[locale]/tax/page.tsx` — หน้าภาษี (client)

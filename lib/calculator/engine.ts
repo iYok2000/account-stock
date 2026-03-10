@@ -1,9 +1,21 @@
 // ─── Default fee constants (TikTok Shop Thailand fallback) ───────────────────
 export const FEE = {
-  COMMISSION: 0.04,
-  PAYMENT: 0.02,
-  VAT: 0.07,
+  COMMISSION:      0.04,    // ค่าคอมมิชชัน (category-specific, default general)
+  COMMERCE_GROWTH: 0.04,    // Commerce Growth Fee (CGF): 2–6.5% ตามหมวด
+  INFRASTRUCTURE:  0.0044,  // Infrastructure Fee: 0.44% คงที่
+  PAYMENT:         0.0284,  // Transaction Fee: ~2.84% (แก้จาก 2% → ค่าจริง)
+  VAT:             0.07,    // VAT 7% คำนวณบน Commission เท่านั้น
 } as const;
+
+// ─── Category-based commission + CGF rate presets ─────────────────────────────
+export const CATEGORY_RATES = {
+  beauty:      { commission: 0.064, commerceGrowth: 0.065 }, // ~12.9% total platform
+  fashion:     { commission: 0.050, commerceGrowth: 0.050 },
+  electronics: { commission: 0.030, commerceGrowth: 0.030 },
+  food:        { commission: 0.020, commerceGrowth: 0.020 },
+  general:     { commission: 0.040, commerceGrowth: 0.040 }, // default
+} as const;
+export type ProductCategory = keyof typeof CATEGORY_RATES;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type SliderKey = "productCost" | "shippingCost" | "affiliateRate" | "adSpend" | "packagingCost" | "returnRate";
@@ -16,20 +28,32 @@ export interface CalcParams {
   adSpend: number;
   packagingCost: number;
   quantity: number;
-  returnRate: number; // 0–1
-  commissionFeeRate?: number;
-  paymentFeeRate?: number;
-  commissionVatRate?: number;
+  returnRate: number;              // 0–1
+  commissionFeeRate?: number;      // override FEE.COMMISSION
+  commerceGrowthRate?: number;     // override FEE.COMMERCE_GROWTH
+  infrastructureRate?: number;     // override FEE.INFRASTRUCTURE
+  paymentFeeRate?: number;         // override FEE.PAYMENT
+  commissionVatRate?: number;      // override FEE.VAT
+  voucherSellerCost?: number;      // ส่วนที่ผู้ขายออกเองต่อออเดอร์ (฿)
+  platformShippingDiscount?: number; // ค่าส่งที่ TikTok ออกให้ต่อออเดอร์ (฿)
 }
 
 export interface CalcResult {
+  // ─── Per-unit fees ───────────────────────────────────────────────────────
   commissionPerUnit: number;
   commissionVatPerUnit: number;
+  commerceGrowthPerUnit: number;  // NEW
+  infrastructurePerUnit: number;  // NEW
   paymentFeePerUnit: number;
   affiliateFeePerUnit: number;
+  voucherCostPerUnit: number;     // NEW
   totalCostPerUnit: number;
   profitPerUnit: number;
-  profitMargin: number;
+  // ─── Margins ─────────────────────────────────────────────────────────────
+  grossMargin: number;            // NEW (revenueNet - COGS) / revenueNet × 100
+  grossProfit: number;            // NEW revenueNet - totalProductCost
+  profitMargin: number;           // net margin
+  // ─── Totals ──────────────────────────────────────────────────────────────
   revenueGross: number;
   revenueNet: number;
   totalProductCost: number;
@@ -37,15 +61,21 @@ export interface CalcResult {
   totalPlatformFees: number;
   totalCost: number;
   netProfit: number;
+  // ─── Counts ──────────────────────────────────────────────────────────────
   quantity: number;
   returnedUnits: number;
   effectiveUnits: number;
+  // ─── Projections ─────────────────────────────────────────────────────────
   monthlyRevenue: number;
   monthlyProfit: number;
   monthlyCost: number;
   yearlyProfit: number;
+  // ─── Ratios ──────────────────────────────────────────────────────────────
   platformFeesPct: number;
   shippingPct: number;
+  settlementGapPct: number;       // NEW (fees+shipping) / revenue
+  roas: number;                   // NEW revenue / adSpend (0 if no ad)
+  cac: number;                    // NEW adSpend per effective unit
 }
 
 // ─── Core calculation ─────────────────────────────────────────────────────────
@@ -53,46 +83,69 @@ export function calculateLocal(p: CalcParams): CalcResult {
   const {
     sellingPrice, productCost, shippingCost, affiliateRate,
     adSpend, packagingCost, quantity, returnRate,
-    commissionFeeRate = FEE.COMMISSION,
-    paymentFeeRate = FEE.PAYMENT,
-    commissionVatRate = FEE.VAT,
+    commissionFeeRate    = FEE.COMMISSION,
+    commerceGrowthRate   = FEE.COMMERCE_GROWTH,
+    infrastructureRate   = FEE.INFRASTRUCTURE,
+    paymentFeeRate       = FEE.PAYMENT,
+    commissionVatRate    = FEE.VAT,
+    voucherSellerCost    = 0,
+    platformShippingDiscount = 0,
   } = p;
 
-  const returnedUnits = Math.round(quantity * returnRate);
+  const returnedUnits  = Math.round(quantity * returnRate);
   const effectiveUnits = quantity - returnedUnits;
   const revenueForFees = sellingPrice * effectiveUnits;
 
-  const commission = revenueForFees * commissionFeeRate;
+  // Platform fees
+  const commission    = revenueForFees * commissionFeeRate;
   const commissionVat = commission * commissionVatRate;
-  const paymentFee = revenueForFees * paymentFeeRate;
-  const affiliateFee = revenueForFees * (affiliateRate / 100);
-  const totalPlatformFees = commission + commissionVat + paymentFee + affiliateFee;
+  const commerceGrowth = revenueForFees * commerceGrowthRate;
+  const infrastructure = revenueForFees * infrastructureRate;
+  const paymentFee    = revenueForFees * paymentFeeRate;
+  const affiliateFee  = revenueForFees * (affiliateRate / 100);
+  const totalPlatformFees = commission + commissionVat + commerceGrowth + infrastructure + paymentFee + affiliateFee;
 
+  // Shipping — net of platform subsidy
+  const netShippingPerUnit = Math.max(0, shippingCost - platformShippingDiscount);
   const totalProductCost = (productCost + packagingCost) * quantity;
-  const totalShipping = shippingCost * quantity;
+  const totalShipping    = netShippingPerUnit * quantity;
+  const totalVoucherCost = voucherSellerCost * effectiveUnits;
+  const totalAdSpend     = adSpend * quantity;
+
   const revenueGross = sellingPrice * quantity;
-  const revenueNet = sellingPrice * effectiveUnits;
-  const totalCost = totalProductCost + totalShipping + totalPlatformFees + adSpend * quantity;
-  const netProfit = revenueNet - totalCost;
-  const netMargin = revenueNet > 0 ? (netProfit / revenueNet) * 100 : 0;
+  const revenueNet   = sellingPrice * effectiveUnits;
+  const grossProfit  = revenueNet - totalProductCost;
+  const grossMargin  = revenueNet > 0 ? (grossProfit / revenueNet) * 100 : 0;
+
+  const totalCost  = totalProductCost + totalShipping + totalPlatformFees + totalVoucherCost + totalAdSpend;
+  const netProfit  = revenueNet - totalCost;
+  const netMargin  = revenueNet > 0 ? (netProfit / revenueNet) * 100 : 0;
 
   const pu = (v: number) => (effectiveUnits > 0 ? v / effectiveUnits : 0);
 
   return {
-    commissionPerUnit: pu(commission),
+    commissionPerUnit:    pu(commission),
     commissionVatPerUnit: pu(commissionVat),
-    paymentFeePerUnit: pu(paymentFee),
-    affiliateFeePerUnit: pu(affiliateFee),
-    totalCostPerUnit: effectiveUnits > 0 ? totalCost / effectiveUnits : 0,
-    profitPerUnit: sellingPrice - (effectiveUnits > 0 ? totalCost / effectiveUnits : 0),
-    profitMargin: netMargin,
+    commerceGrowthPerUnit: pu(commerceGrowth),
+    infrastructurePerUnit: pu(infrastructure),
+    paymentFeePerUnit:    pu(paymentFee),
+    affiliateFeePerUnit:  pu(affiliateFee),
+    voucherCostPerUnit:   voucherSellerCost,
+    totalCostPerUnit:     effectiveUnits > 0 ? totalCost / effectiveUnits : 0,
+    profitPerUnit:        sellingPrice - (effectiveUnits > 0 ? totalCost / effectiveUnits : 0),
+    grossMargin,
+    grossProfit,
+    profitMargin:         netMargin,
     revenueGross, revenueNet, totalProductCost, totalShipping,
     totalPlatformFees, totalCost, netProfit,
     quantity, returnedUnits, effectiveUnits,
     monthlyRevenue: revenueNet, monthlyProfit: netProfit,
-    monthlyCost: totalCost, yearlyProfit: netProfit * 12,
-    platformFeesPct: revenueNet > 0 ? (totalPlatformFees / revenueNet) * 100 : 0,
-    shippingPct: revenueNet > 0 ? (totalShipping / revenueNet) * 100 : 0,
+    monthlyCost: totalCost,     yearlyProfit: netProfit * 12,
+    platformFeesPct:    revenueNet > 0 ? (totalPlatformFees / revenueNet) * 100 : 0,
+    shippingPct:        revenueNet > 0 ? (totalShipping / revenueNet) * 100 : 0,
+    settlementGapPct:   revenueNet > 0 ? ((totalPlatformFees + totalShipping) / revenueNet) * 100 : 0,
+    roas:               totalAdSpend > 0 ? revenueNet / totalAdSpend : 0,
+    cac:                effectiveUnits > 0 ? totalAdSpend / effectiveUnits : 0,
   };
 }
 
@@ -111,7 +164,7 @@ export function calcBreakEven(p: {
   activePrice: number; productCost: number; packagingCost: number;
   shippingCost: number; adSpend: number; affiliateRate: number; returnRate: number; profitPerUnit: number;
 }) {
-  const feeRate = FEE.COMMISSION * (1 + FEE.VAT) + FEE.PAYMENT + p.affiliateRate / 100;
+  const feeRate = FEE.COMMISSION * (1 + FEE.VAT) + FEE.COMMERCE_GROWTH + FEE.INFRASTRUCTURE + FEE.PAYMENT + p.affiliateRate / 100;
   const fixed = p.productCost + p.packagingCost + p.shippingCost + p.adSpend;
   const minPrice = fixed / (1 - feeRate);
   const maxCOGS = Math.max(0, p.activePrice * (1 - feeRate) - p.packagingCost - p.shippingCost - p.adSpend);

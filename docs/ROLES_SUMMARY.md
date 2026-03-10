@@ -50,12 +50,12 @@
 |----------------|-------------------|---------------------------|
 | สร้างร้านค้า | shops:create | **Root** เท่านั้น |
 | Dashboard | dashboard:read | Affiliate, Admin, SuperAdmin |
-| Inventory | inventory:read | Affiliate ขึ้นไป |
+| Inventory | inventory:read | Admin, SuperAdmin |
 | **Import** | inventory:create / affiliate | Admin, SuperAdmin → Order Transaction + Affiliate; **Affiliate** → เฉพาะ Affiliate |
 | จัดการร้าน / สมาชิก | users:read, shops:update | **SuperAdmin** เท่านั้น |
 | Shops (ดูร้าน) | shops:read | Affiliate ขึ้นไป |
 | Campaigns / Vouchers / Fees | promotions:read | Affiliate ขึ้นไป |
-| Calculator, Tax, Reports | analysis:read | Affiliate ขึ้นไป |
+| Calculator, Tax, Reports | analysis:read | Admin, SuperAdmin |
 | Settings | settings:read | Admin, SuperAdmin |
 
 ---
