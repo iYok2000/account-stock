@@ -100,7 +100,7 @@ func main() {
 
 	mux.Handle(
 		"/api/auth/",
-		http.StripPrefix("/api/auth", middleware.Auth(jwtCfg)(apiAuth)),
+		http.StripPrefix("/api/auth", middleware.Auth(jwtCfg)(middleware.Tenant(apiAuth))),
 	)
 
 	// -----------------------------
@@ -110,8 +110,8 @@ func main() {
 	invImportHandler := http.HandlerFunc(handler.ImportInventory)
 	invImportChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermInventoryCreate)(
-				middleware.Tenant(invImportHandler),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermInventoryCreate)(invImportHandler),
 			),
 		)
 
@@ -120,8 +120,8 @@ func main() {
 	invListHandler := http.HandlerFunc(handler.InventoryList)
 	invListChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermInventoryRead)(
-				middleware.Tenant(invListHandler),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermInventoryRead)(invListHandler),
 			),
 		)
 
@@ -130,8 +130,8 @@ func main() {
 	invSummaryHandler := http.HandlerFunc(handler.InventorySummary)
 	invSummaryChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermInventoryRead)(
-				middleware.Tenant(invSummaryHandler),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermInventoryRead)(invSummaryHandler),
 			),
 		)
 
@@ -154,8 +154,8 @@ func main() {
 
 	usersChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermUsersRead)(
-				middleware.Tenant(usersHandler),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermUsersRead)(usersHandler),
 			),
 		)
 
@@ -167,8 +167,8 @@ func main() {
 
 	shopsCreateChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermShopsCreate)(
-				middleware.Tenant(http.HandlerFunc(handler.CreateShops)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermShopsCreate)(http.HandlerFunc(handler.CreateShops)),
 			),
 		)
 
@@ -193,8 +193,8 @@ func main() {
 
 	shopsMeChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermShopsUpdate)(
-				middleware.Tenant(shopsMeHandler),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermShopsUpdate)(shopsMeHandler),
 			),
 		)
 
@@ -204,8 +204,8 @@ func main() {
 
 	shopsMeMembersChain :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermUsersCreate)(
-				middleware.Tenant(shopsMeMembersHandler),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermUsersCreate)(shopsMeMembersHandler),
 			),
 		)
 
@@ -230,8 +230,8 @@ func main() {
 
 	dashboardOverview :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermDashboardRead)(
-				middleware.Tenant(http.HandlerFunc(handler.DashboardOverview)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermDashboardRead)(http.HandlerFunc(handler.DashboardOverview)),
 			),
 		)
 
@@ -239,8 +239,8 @@ func main() {
 
 	dashboardRevenue :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermDashboardRead)(
-				middleware.Tenant(http.HandlerFunc(handler.DashboardRevenue7d)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermDashboardRead)(http.HandlerFunc(handler.DashboardRevenue7d)),
 			),
 		)
 
@@ -248,8 +248,8 @@ func main() {
 
 	dashboardLowStock :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermDashboardRead)(
-				middleware.Tenant(http.HandlerFunc(handler.DashboardLowStock)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermDashboardRead)(http.HandlerFunc(handler.DashboardLowStock)),
 			),
 		)
 
@@ -257,8 +257,8 @@ func main() {
 
 	dashboardKPIs :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermDashboardRead)(
-				middleware.Tenant(http.HandlerFunc(handler.DashboardKPIs)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermDashboardRead)(http.HandlerFunc(handler.DashboardKPIs)),
 			),
 		)
 
@@ -270,8 +270,8 @@ func main() {
 
 	affiliateImport :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermInventoryCreate)(
-				middleware.Tenant(http.HandlerFunc(handler.AffiliateImport)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermInventoryCreate)(http.HandlerFunc(handler.AffiliateImport)),
 			),
 		)
 
@@ -283,8 +283,8 @@ func main() {
 
 	analyticsRecon :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermAnalyticsRead)(
-				middleware.Tenant(http.HandlerFunc(handler.AnalyticsReconciliation)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermAnalyticsRead)(http.HandlerFunc(handler.AnalyticsReconciliation)),
 			),
 		)
 
@@ -292,8 +292,8 @@ func main() {
 
 	analyticsDaily :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermAnalyticsRead)(
-				middleware.Tenant(http.HandlerFunc(handler.AnalyticsDailyMetrics)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermAnalyticsRead)(http.HandlerFunc(handler.AnalyticsDailyMetrics)),
 			),
 		)
 
@@ -301,8 +301,8 @@ func main() {
 
 	analyticsProducts :=
 		middleware.Auth(jwtCfg)(
-			middleware.RequirePermission(rbac.PermAnalyticsRead)(
-				middleware.Tenant(http.HandlerFunc(handler.AnalyticsProductMetrics)),
+			middleware.Tenant(
+				middleware.RequirePermission(rbac.PermAnalyticsRead)(http.HandlerFunc(handler.AnalyticsProductMetrics)),
 			),
 		)
 
