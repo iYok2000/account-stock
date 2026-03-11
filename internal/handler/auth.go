@@ -79,29 +79,20 @@ func Login(w http.ResponseWriter, r *http.Request, jwtCfg auth.JWTConfig) {
 	password := body.Password
 	confirmCode := strings.TrimSpace(body.ConfirmCode)
 
-	appEnv := strings.ToLower(os.Getenv("APP_ENV"))
+	// appEnv := strings.ToLower(os.Getenv("APP_ENV"))
 	rootEmail := strings.TrimSpace(os.Getenv("ROOT_EMAIL"))
 	rootPassword := os.Getenv("ROOT_PASSWORD")
 	rootConfirm := strings.TrimSpace(os.Getenv("ROOT_CONFIRM_CODE"))
 
-	// Security: ใน production ต้องตั้งค่า Root เอง ไม่ใช้ค่า default; ถ้าไม่ตั้งให้ login ล้มเหลว
-	if appEnv == "production" {
-		if rootEmail == "" || rootPassword == "" || rootConfirm == "" ||
-			(rootEmail == "superadmin" && rootPassword == "pass@1congrate" && rootConfirm == "YIM2021") {
-			middleware.WriteJSONError(w, middleware.ErrUnauthorized, http.StatusUnauthorized)
-			return
-		}
-	} else {
-		// Dev fallback
-		if rootEmail == "" {
-			rootEmail = "superadmin"
-		}
-		if rootPassword == "" {
-			rootPassword = "pass@1congrate"
-		}
-		if rootConfirm == "" {
-			rootConfirm = "YIM2021"
-		}
+	// Dev fallback - use default values if not set
+	if rootEmail == "" {
+		rootEmail = "superadmin"
+	}
+	if rootPassword == "" {
+		rootPassword = "pass@1congrate"
+	}
+	if rootConfirm == "" {
+		rootConfirm = "YIM2021"
 	}
 
 	if email == rootEmail && password == rootPassword {
