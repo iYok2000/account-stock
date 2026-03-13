@@ -74,7 +74,10 @@ var rolePermissions = map[auth.Role][]string{
 		PermUsersRead, PermUsersCreate, PermUsersUpdate, PermUsersDelete, PermUsersExport,
 	},
 	auth.RoleAffiliate: {
-		PermDashboardRead, PermInventoryCreate, PermAnalyticsRead,
+		PermDashboardRead,
+		PermInventoryCreate, // import (affiliate) only
+		PermAnalysisRead,    // calculator, tax, reports
+		PermAnalyticsRead,
 	},
 	auth.RoleAdmin: {
 		PermDashboardRead,
