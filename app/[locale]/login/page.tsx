@@ -6,6 +6,15 @@ import { useTranslations } from "next-intl";
 import { useAuth, type LoginResult } from "@/contexts/AuthContext";
 import { RequireGuest } from "@/components/auth/RequireGuest";
 import { FormModal } from "@/components/ui/Modal";
+import { env } from "@/lib/env";
+
+const devCreds = env().NEXT_PUBLIC_DEV_EMAIL
+  ? {
+      email: env().NEXT_PUBLIC_DEV_EMAIL,
+      password: env().NEXT_PUBLIC_DEV_PASSWORD,
+      confirmCode: env().NEXT_PUBLIC_DEV_CONFIRM_CODE,
+    }
+  : null;
 
 export default function LoginPage() {
   const t = useTranslations("auth");
@@ -18,6 +27,13 @@ export default function LoginPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const fillDevCreds = () => {
+    if (!devCreds) return;
+    setEmail(devCreds.email);
+    setPassword(devCreds.password);
+    setConfirmCode(devCreds.confirmCode);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +124,15 @@ export default function LoginPage() {
             >
               {loading ? t("loading") : t("login")}
             </button>
+            {devCreds && (
+              <button
+                type="button"
+                onClick={fillDevCreds}
+                className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                Dev: fill Root credentials
+              </button>
+            )}
           </form>
 
         </div>

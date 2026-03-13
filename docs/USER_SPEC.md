@@ -18,6 +18,10 @@
 |--------|-----------|--------|
 | **role** | บทบาทตาม RBAC (Root, SuperAdmin, Admin, Affiliate) | ใช้ตรวจสิทธิ์ resource:action ตาม [RBAC_SPEC.md](RBAC_SPEC.md) |
 | **tier** | ระดับบริการ (free / paid) | กำหนดขีดความสามารถของฟีเจอร์ (เช่น Import ฟรี vs paid) |
+| **tierStartedAt** | วันที่เริ่มต้น tier ปัจจุบัน (ISO 8601) | แสดงใน UI settings/profile (optional) |
+| **tierExpiresAt** | วันหมดอายุ tier (ISO 8601, null = unlimited) | แสดงใน UI settings/profile (optional) |
+| **inviteCodeUsed** | Invite code ที่ใช้ล่าสุด | สำหรับ audit/display (optional) |
+| **inviteSlots** | จำนวนเชิญที่เหลือ (default 0) | สำหรับ referral system (future) |
 | **shopId** | ร้านที่ user สังกัด (null เฉพาะ Root) | **แยกข้อมูลต่อร้าน** — ข้อมูลที่แยกตามร้านต้อง scope ตาม shop_id ของ user ที่ล็อกอิน |
 | **shopName** | ชื่อร้าน (optional จาก API) | แสดงใน UI |
 
@@ -46,10 +50,10 @@
 
 ### Implementation (store + HOC)
 
-- **Store:** User context เก็บใน `AuthContext` (session state) — ฟิลด์ใน session: `userId`, `roles`, `permissions`, `displayName`, `tier?`, `shopId?`, `shopName?`. API `/api/auth/me` คาด response มี `tier`, `shop_id`, `shop_name`; token เก็บใน api-client (setAuthToken) หลัง login.
-- **Types:** `UserSession`, `UserTier` ("free" | "paid") ใน `lib/rbac/types.ts`; `MeResponse` รองรับ `shop_id`, `shop_name`.
-- **Hook:** `useUserContext()` คืนค่า `{ userId, role, roles, tier, shopId, shopName, displayName, permissions }` จาก session — ใช้ในหน้าหรือที่อื่นที่ต้องแสดง/scope ตาม context.
-- **HOC:** หน้าที่ต้องเช็คสิทธิ์ใช้ `RequireAuth` (layout), `RequireGuest` (หน้า login), `RequirePermission(permission)` (เช่น หน้าสร้างร้านใช้ `shops:create`, หน้าสมาชิกร้านใช้ `users:read`). Redirect logic ใช้ hook ร่วม `useAuthRedirect(redirectTo)`.
+- **Store:** User context เก็บใน `AuthContext` (session state) — ฟิลด์ใน session: `userId`, `roles`, `permissions`, `displayName`, `tier`, `tierStartedAt`, `tierExpiresAt`, `inviteCodeUsed`, `inviteSlots`, `shopId`, `shopName`. API `/api/auth/me` คาด response มี `tier`, `tier_started_at`, `tier_expires_at`, `invite_code_used`, `invite_slots`, `shop_id`, `shop_name`; token เก็บใน api-client (setAuthToken) หลัง login.
+- **Types:** `UserSession`, `UserTier` ("free" | "paid") ใน `lib/rbac/types.ts`; `MeResponse` รองรับ `tier`, `tier_started_at`, `tier_expires_at`, `invite_code_used`, `invite_slots`, `shop_id`, `shop_name`.
+- **Hook:** `useUserContext()` คืนค่า `{ userId, role, roles, tier, tierStartedAt, tierExpiresAt, inviteCodeUsed, inviteSlots, shopId, shopName, displayName, permissions }` จาก session — ใช้ในหน้าหรือที่อื่นที่ต้องแสดง/scope ตาม context.
+- **HOC:** หน้าที่ต้องเช็คสิทธิ์ใช้ `RequireAuth` (layout), `RequireGuest` (หน้า login), `RequirePermission(permission)` (เช่น หน้าสร้างร้านใช้ `shops:create`, หน้าสมาชิกร้านใช้ `users:read`, หน้า Admin/Invites ใช้ `invites:read`, หน้า Affiliate ใช้ `dashboard:read`). Redirect logic ใช้ hook ร่วม `useAuthRedirect(redirectTo)`.
 - **หมายเหตุ:** การแสดง/ซ่อน UI ตาม role/shop เป็นเพียง UX — ความปลอดภัยต้อง enforce ที่ backend เท่านั้น.
 
 ---

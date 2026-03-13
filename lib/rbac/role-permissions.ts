@@ -11,8 +11,8 @@ const allResourceActions: PermissionString[] = RESOURCES.flatMap((r) =>
   ACTIONS.map((a) => toPermission(r, a))
 );
 
-// Root: full access to all resources/actions
-const rootPermissions: PermissionString[] = allResourceActions;
+// Root: platform admin — highest authority, has ALL permissions (SHOPS_AND_ROLES_SPEC §1, RBAC_BACKEND_SPEC §4)
+const rootPermissions: PermissionString[] = [...allResourceActions];
 
 // Affiliate: Dashboard + Import + analytics (phase 1)
 const affiliatePermissions: PermissionString[] = [
@@ -21,14 +21,19 @@ const affiliatePermissions: PermissionString[] = [
   "analytics:read",
 ];
 
-// Admin: all except shops:update and analytics:read (phase 1: analytics = Root + Affiliate only)
+// Admin: all shop features EXCEPT users:*, shops:update, analytics:read (SHOPS_AND_ROLES_SPEC §1, RBAC_BACKEND_SPEC §4)
 const adminPermissions: PermissionString[] = allResourceActions.filter(
-  (p) => p !== "shops:update" && p !== "analytics:read"
+  (p) =>
+    !p.startsWith("users:") &&
+    p !== "shops:update" &&
+    p !== "analytics:read" &&
+    !p.startsWith("invites:") &&
+    !p.startsWith("config:")
 );
 
-// SuperAdmin: all except analytics:read (phase 1: analytics = Root + Affiliate only)
+// SuperAdmin: all shop features + users:* + shops:update + invites (RBAC_BACKEND_SPEC §4)
 const superAdminPermissions: PermissionString[] = allResourceActions.filter(
-  (p) => p !== "analytics:read"
+  (p) => p !== "analytics:read" && !p.startsWith("config:")
 );
 
 export const ROLE_PERMISSIONS: Record<Role, PermissionString[]> = {

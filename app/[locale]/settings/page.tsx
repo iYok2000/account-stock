@@ -156,7 +156,7 @@ export default function SettingsPage() {
     try {
       await apiRequest("/api/users/me", {
         method: "PATCH",
-        body: JSON.stringify({ displayName: displayName.trim() }),
+        body: JSON.stringify({ display_name: displayName.trim() }),
       });
       await refetch();
       setProfileSaved(true);
@@ -185,9 +185,10 @@ export default function SettingsPage() {
     }
     setPwLoading(true);
     try {
-      await apiRequest("/api/auth/change-password", {
-        method: "POST",
-        body: JSON.stringify({ old_password: oldPw, new_password: newPw }),
+      // BE self.go: PATCH /api/users/me accepts { password } to change password
+      await apiRequest("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ password: newPw }),
       });
       showSuccess(t("passwordChanged"));
       setOldPw(""); setNewPw(""); setConfirmPw("");

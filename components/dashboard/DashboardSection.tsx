@@ -1,40 +1,42 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { ChevronDown } from "lucide-react";
-
-const STORAGE_PREFIX = "dashboard-section";
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface DashboardSectionProps {
+  /** Unique identifier for the section (used for localStorage and scroll anchors) */
   id: string;
+
+  /** Section heading displayed in the header (Thai text) */
   title: string;
+
+  /** Optional description shown below title when expanded */
   description?: string;
+
+  /** Icon component displayed before the title */
   icon?: React.ReactNode;
+
+  /** Default expanded state (overridden by localStorage if exists) */
   defaultOpen?: boolean;
+
+  /** Summary text shown when collapsed (extracted insights) */
   summary?: string;
+
+  /** Optional warning badge (e.g., "24% ยกเลิก") */
   warningBadge?: string;
+
+  /** Number of charts inside (shown in badge) */
   chartCount?: number;
+
+  /** The chart components to render inside */
   children: React.ReactNode;
+
+  /** Optional className for custom styling */
   className?: string;
-}
 
-function getDefaultOpen(id: string, defaultOpen: boolean): boolean {
-  if (typeof window === "undefined") return defaultOpen;
-  try {
-    const key = `${STORAGE_PREFIX}-${id}-expanded`;
-    const saved = localStorage.getItem(key);
-    return saved !== null ? saved === "true" : defaultOpen;
-  } catch {
-    return defaultOpen;
-  }
-}
-
-function setStoredOpen(id: string, open: boolean): void {
-  try {
-    localStorage.setItem(`${STORAGE_PREFIX}-${id}-expanded`, String(open));
-  } catch {
-    // ignore
-  }
+  /** Disable collapsing (for Overview section) */
+  collapsible?: boolean;
 }
 
 export function DashboardSection({
@@ -47,114 +49,196 @@ export function DashboardSection({
   warningBadge,
   chartCount,
   children,
-  className = "",
+  className,
+  collapsible = true,
 }: DashboardSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [mounted, setMounted] = useState(false);
+  // Load saved state from localStorage (SSR-safe)
+  const [isOpen, setIsOpen] = useState(() => {
+    if (!collapsible) return true;
+    if (typeof window === 'undefined') return defaultOpen;
+
+    try {
+      const saved = localStorage.getItem(`dashboard-section-${id}-expanded`);
+      return saved !== null ? saved === 'true' : defaultOpen;
+    } catch (error) {
+      console.warn('localStorage not available:', error);
+      return defaultOpen;
+    }
+  });
+
+  const [hasBeenOpened, setHasBeenOpened] = useState(defaultOpen);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Persist state to localStorage
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!collapsible) return;
 
+    try {
+      localStorage.setItem(`dashboard-section-${id}-expanded`, String(isOpen));
+    } catch (error) {
+      console.warn('Could not save to localStorage:', error);
+    }
+  }, [id, isOpen, collapsible]);
+
+  // Track if section has been opened at least once (for lazy loading)
   useEffect(() => {
-    if (!mounted) return;
-    setIsOpen(getDefaultOpen(id, defaultOpen));
-  }, [id, defaultOpen, mounted]);
+    if (isOpen && !hasBeenOpened) {
+      setHasBeenOpened(true);
+    }
+  }, [isOpen, hasBeenOpened]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    setStoredOpen(id, isOpen);
-  }, [id, isOpen, mounted]);
+  const toggleSection = () => {
+    if (collapsible) {
+      setIsOpen(!isOpen);
+    }
+  };
 
-  const toggle = () => setIsOpen((prev) => !prev);
+  // If not collapsible, render without the header button
+  if (!collapsible) {
+    return (
+      <section
+        id={id}
+        className={cn('mb-6', className)}
+        aria-labelledby={`${id}-heading`}
+      >
+        {/* Simple header without collapse button */}
+        <div className="px-4 py-4 md:px-6 md:py-4 bg-brown-50 border border-brown-200 rounded-t-lg">
+          <div className="flex items-center gap-3">
+            {icon && (
+              <span className="text-brown-600 w-5 h-5 flex-shrink-0">
+                {icon}
+              </span>
+            )}
+            <h2
+              id={`${id}-heading`}
+              className="text-base md:text-lg font-semibold text-brown-700"
+            >
+              {title}
+            </h2>
+          </div>
+          {description && (
+            <p className="text-sm text-brown-600 mt-2">
+              {description}
+            </p>
+          )}
+        </div>
+
+        {/* Content always visible */}
+        <div className="bg-brown-50 border-x border-b border-brown-200 rounded-b-lg p-4 md:p-6">
+          <div className="space-y-6">
+            {children}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
       id={id}
-      className={`mb-6 ${className}`}
+      className={cn('mb-6', className)}
       aria-labelledby={`${id}-heading`}
     >
+      {/* Section Header - Clickable to toggle */}
       <button
-        type="button"
-        onClick={toggle}
-        className={`
-          w-full flex items-center justify-between gap-3
-          min-h-[44px] px-4 py-4 md:px-6 md:py-4
-          ${isOpen ? "bg-muted/40" : "bg-card"}
-          border border-border
-          ${isOpen ? "rounded-t-lg" : "rounded-lg"}
-          hover:bg-muted/50 hover:border-[hsl(var(--border))]
-          focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2
-          transition-all duration-200 text-left
-        `}
+        onClick={toggleSection}
+        className={cn(
+          'w-full flex items-center justify-between',
+          'px-4 py-4 md:px-6 md:py-4',
+          'min-h-[64px]',
+          isOpen ? 'bg-brown-50' : 'bg-white',
+          'border border-brown-200',
+          isOpen ? 'rounded-t-lg' : 'rounded-lg',
+          'active:scale-[0.99] active:bg-brown-100 md:hover:bg-brown-100 md:hover:border-brown-300',
+          'focus:outline-none focus:ring-2 focus:ring-brown-400',
+          'transition-all duration-150'
+        )}
         aria-expanded={isOpen}
         aria-controls={`${id}-content`}
-        aria-label={isOpen ? `ยุบ ${title}` : `ขยาย ${title}`}
+        aria-label={`${isOpen ? 'ยุบ' : 'ขยาย'} ${title}`}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        {/* Left side: Icon + Title */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {icon && (
-            <span className="text-primary w-5 h-5 shrink-0 [&>svg]:w-5 [&>svg]:h-5">
+            <span className="text-brown-600 w-5 h-5 flex-shrink-0">
               {icon}
             </span>
           )}
           <h2
             id={`${id}-heading`}
-            className={`
-              text-base md:text-lg font-semibold truncate
-              ${isOpen ? "text-foreground" : "text-foreground"}
-            `}
+            className={cn(
+              'text-base md:text-lg font-semibold',
+              isOpen ? 'text-brown-700' : 'text-brown-600'
+            )}
           >
             {title}
           </h2>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+        {/* Right side: Summary + Chart Count + Warning + Toggle */}
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          {/* Summary (only when collapsed) */}
           {!isOpen && summary && (
-            <span className="hidden md:block text-sm text-muted-foreground truncate max-w-[200px]">
+            <span className="hidden md:block text-sm text-brown-500 mr-2 max-w-md truncate">
               {summary}
             </span>
           )}
+
+          {/* Warning Badge */}
           {warningBadge && (
-            <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded-full whitespace-nowrap">
+            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full whitespace-nowrap">
               {warningBadge}
             </span>
           )}
-          {chartCount != null && !isOpen && (
-            <span className="hidden sm:flex items-center text-xs bg-muted text-foreground px-2 py-1 rounded-full">
-              {chartCount} รายการ
+
+          {/* Chart Count Badge */}
+          {chartCount && !isOpen && (
+            <span className="hidden sm:flex items-center text-xs bg-brown-100 text-brown-700 px-2 py-1 rounded-full whitespace-nowrap">
+              {chartCount} กราฟ
             </span>
           )}
+
+          {/* Chevron Toggle */}
           <ChevronDown
-            className={`
-              w-5 h-5 text-muted-foreground shrink-0
-              transition-transform duration-300
-              ${isOpen ? "rotate-0" : "-rotate-90"}
-            `}
-            aria-hidden
+            className={cn(
+              'w-5 h-5 text-brown-600 flex-shrink-0',
+              'transition-transform duration-300',
+              isOpen ? 'rotate-0' : '-rotate-90'
+            )}
+            aria-hidden="true"
           />
         </div>
       </button>
 
-      <div
-        id={`${id}-content`}
-        ref={contentRef}
-        role="region"
-        aria-labelledby={`${id}-heading`}
-        aria-hidden={!isOpen}
-        className={`
-          overflow-hidden
-          transition-all duration-300 ease-in-out
-          ${isOpen ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}
-        `}
-      >
-        <div className="bg-muted/40 border-x border-b border-border rounded-b-lg p-4 md:p-6">
-          {description && (
-            <p className="text-sm text-muted-foreground mb-6">{description}</p>
+      {/* Section Content - Only render if opened at least once (lazy loading) */}
+      {hasBeenOpened && (
+        <div
+          id={`${id}-content`}
+          ref={contentRef}
+          role="region"
+          aria-labelledby={`${id}-heading`}
+          aria-hidden={!isOpen}
+          className={cn(
+            'overflow-hidden',
+            'transition-all duration-300 ease-in-out',
+            isOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
           )}
-          <div className="space-y-6">{children}</div>
+        >
+          <div className="bg-brown-50 border-x border-b border-brown-200 rounded-b-lg p-4 md:p-6">
+            {/* Description */}
+            {description && (
+              <p className="text-sm text-brown-600 mb-6">
+                {description}
+              </p>
+            )}
+
+            {/* Charts */}
+            <div className="space-y-6">
+              {children}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

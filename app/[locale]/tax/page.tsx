@@ -37,6 +37,7 @@ function TaxInput({
   presets?: { label: string; value: number }[];
   large?: boolean;
 }) {
+  const td = useTranslations("tax.deductions");
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,11 +70,11 @@ function TaxInput({
         {cap && !atCap && value > 0 && (
           <button type="button" onClick={() => onChange(cap)}
             className="text-xs text-primary hover:underline active:opacity-60 shrink-0">
-            เต็มวงเงิน
+            {td("fullAmount")}
           </button>
         )}
         {atCap && (
-          <span className="text-xs text-emerald-600 font-medium shrink-0">✓ เต็มวงเงิน</span>
+          <span className="text-xs text-emerald-600 font-medium shrink-0">{td("atCap")}</span>
         )}
       </div>
 
@@ -161,28 +162,28 @@ type IncomeType = "salary" | "freelance" | "business" | "affiliate";
 
 const INCOME_TYPES = [
   {
-    id: "salary"    as const, icon: Briefcase,   label: "เงินเดือน",
-    subtitle: "Sec. 40(1)", deductionRate: 0.50, deductionCap: 100_000,
-    withholdingRate: null, // employer withholds = full tax
-    hint: "หักค่าใช้จ่าย 50% สูงสุด ฿100,000 · ภาษีหัก ณ ที่จ่ายโดยนายจ้าง",
+    id: "salary"    as const, icon: Briefcase,   label: "salary",
+    subtitle: "salarySubtitle", deductionRate: 0.50, deductionCap: 100_000,
+    withholdingRate: null,
+    hint: "salaryHint",
   },
   {
-    id: "freelance" as const, icon: Laptop,      label: "รายได้อิสระ",
-    subtitle: "Sec. 40(5)", deductionRate: 0.60, deductionCap: null,
+    id: "freelance" as const, icon: Laptop,      label: "freelance",
+    subtitle: "freelanceSubtitle", deductionRate: 0.60, deductionCap: null,
     withholdingRate: 0.03,
-    hint: "หักค่าใช้จ่าย 60% (เหมา) หรือตามจริง · ภาษีหัก ณ ที่จ่าย 3%",
+    hint: "freelanceHint",
   },
   {
-    id: "business"  as const, icon: ShoppingBag, label: "ธุรกิจ / TikTok",
-    subtitle: "Sec. 40(8)", deductionRate: 0.60, deductionCap: null,
+    id: "business"  as const, icon: ShoppingBag, label: "business",
+    subtitle: "businessSubtitle", deductionRate: 0.60, deductionCap: null,
     withholdingRate: 0.00,
-    hint: "หักค่าใช้จ่าย 60% (เหมา) หรือตามจริง · ไม่มีภาษีหัก ณ ที่จ่าย",
+    hint: "businessHint",
   },
   {
-    id: "affiliate" as const, icon: TrendingUp,  label: "คอมมิชชั่น",
-    subtitle: "Sec. 40(1)", deductionRate: 0.30, deductionCap: null,
+    id: "affiliate" as const, icon: TrendingUp,  label: "affiliate",
+    subtitle: "affiliateSubtitle", deductionRate: 0.30, deductionCap: null,
     withholdingRate: 0.03,
-    hint: "หักค่าใช้จ่าย 30% (เหมา) หรือตามจริง · ภาษีหัก ณ ที่จ่าย 3%",
+    hint: "affiliateHint",
   },
 ] as const;
 
@@ -217,7 +218,7 @@ function getBracketLabel(taxableIncome: number): string {
     if (taxableIncome <= TAX_BRACKETS[i].upTo) {
       const b = TAX_BRACKETS[i];
       const prev = i === 0 ? 0 : TAX_BRACKETS[i - 1].upTo;
-      if (b.rate === 0) return `0% (ไม่เกิน ฿${(b.upTo / 1_000).toFixed(0)}K)`;
+      if (b.rate === 0) return `0% (≤ ฿${(b.upTo / 1_000).toFixed(0)}K)`;
       return `${b.rate}% (฿${(prev / 1_000).toFixed(0)}K – ฿${b.upTo === Infinity ? "∞" : (b.upTo / 1_000).toFixed(0) + "K"})`;
     }
   }
@@ -405,9 +406,9 @@ export default function TaxPage() {
       ssfRmfExceeded:  (ssfCapped + rmfCapped) > maxProvident && maxProvident > 0,
       donationExceeded: donations > maxDonations && maxDonations > 0,
       deductionFlatLabel:
-        incomeType === "salary"    ? "หักเหมา 50% (สูงสุด ฿100,000)"
-        : incomeType === "affiliate" ? "หักเหมา 30%"
-        : "หักเหมา 60%",
+        incomeType === "salary"    ? t("flatSalary")
+        : incomeType === "affiliate" ? t("flatAffiliate")
+        : t("flatBusiness"),
     };
   }, [
     incomeType, config, grossIncome, deductionMethod, itemizedExpenses,
@@ -418,21 +419,21 @@ export default function TaxPage() {
   // ─── CPA recommendations (TAX_SPEC §2.4) ────────────────────────────────────
   const cpaRecs = useMemo(() => {
     const recs: string[] = [];
-    if (grossIncome > 10_000_000) recs.push("รายได้สูงมาก แนะนำให้ผู้เชี่ยวชาญวางแผนภาษี");
-    if (result.showVatWarning)    recs.push("รายได้เกิน ฿1.8M — ต้องจดทะเบียน VAT (ดูลิงก์ด้านล่าง)");
+    if (grossIncome > 10_000_000) recs.push(t("cpa.highIncome"));
+    if (result.showVatWarning)    recs.push(t("cpa.vatRequired"));
     return recs;
-  }, [grossIncome, result.showVatWarning]);
+  }, [grossIncome, result.showVatWarning, t]);
 
   const handleCopySummary = useCallback(async () => {
     const lines = [
       t("title"),
-      `ประเภทรายได้: ${config.label}`,
-      `รายได้รวม: ${formatCurrency(result.grossIncome)}`,
-      `เงินได้สุทธิ: ${formatCurrency(result.taxableIncome)}`,
+      `${t("incomeTypes.title")}: ${t(`incomeTypes.${config.label}`)}`,
+      `${t("summaryGross")}: ${formatCurrency(result.grossIncome)}`,
+      `${t("summaryTaxable")}: ${formatCurrency(result.taxableIncome)}`,
       result.isRefund
-        ? `ได้คืน: ${formatCurrency(result.refundAmount)}`
-        : `ภาษีที่ต้องจ่าย: ${formatCurrency(result.netTaxDue)}`,
-      `อัตราภาษีจริง: ${result.effectiveRate.toFixed(2)}%`,
+        ? `${t("refundLabel")}: ${formatCurrency(result.refundAmount)}`
+        : `${t("summaryTaxDue")}: ${formatCurrency(result.netTaxDue)}`,
+      `${t("effectiveRate")}: ${result.effectiveRate.toFixed(2)}%`,
     ];
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
@@ -450,13 +451,12 @@ export default function TaxPage() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">คำเตือนทางกฎหมาย / PDPA</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("consent.title")}</h2>
                 <p className="text-sm text-muted-foreground">
-                  เครื่องคำนวณนี้เป็นการประมาณการเท่านั้น ไม่สามารถใช้แทนคำแนะนำจากผู้เชี่ยวชาญ
-                  กรมสรรพากรเป็นหน่วยงานเดียวที่มีอำนาจคำนวณภาษีอย่างเป็นทางการ
+                  {t("consent.description")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  กดยอมรับเพื่อยินยอมตามนโยบายคุกกี้/PDPA สำหรับการใช้เครื่องมือนี้ (บันทึกครั้งเดียวในคุกกี้เบราว์เซอร์).
+                  {t("consent.pdpa")}
                 </p>
                 {consentError && <p className="text-xs text-red-600">{consentError}</p>}
               </div>
@@ -468,7 +468,7 @@ export default function TaxPage() {
                 onClick={acceptConsent}
                 disabled={consentLoading}
               >
-                {consentLoading ? "กำลังบันทึก..." : "ยอมรับ"}
+                {consentLoading ? t("consent.saving") : t("consent.accept")}
               </button>
             </div>
           </div>
@@ -481,11 +481,9 @@ export default function TaxPage() {
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">⚠️ คำเตือนทางกฎหมาย</p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 leading-relaxed">
-                เครื่องคำนวณนี้เป็น<strong>การประมาณการ</strong>เท่านั้น ไม่สามารถใช้แทนคำแนะนำจากผู้เชี่ยวชาญ
-                กรมสรรพากรเป็นหน่วยงานเดียวที่มีอำนาจคำนวณภาษีอย่างเป็นทางการ
-              </p>
+              <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">{t("disclaimer.title")}</p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 leading-relaxed"
+                 dangerouslySetInnerHTML={{ __html: t("disclaimer.description") }} />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -494,13 +492,13 @@ export default function TaxPage() {
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 hover:underline"
             >
-              <ExternalLink className="h-3 w-3" /> เครื่องคำนวณอย่างเป็นทางการ
+              <ExternalLink className="h-3 w-3" /> {t("disclaimer.officialLink")}
             </a>
             <button
               onClick={dismissDisclaimer}
               className="ml-auto text-xs bg-amber-700 dark:bg-amber-600 text-white rounded-lg px-4 py-1.5 hover:bg-amber-800 active:scale-95 transition-all min-h-[36px]"
             >
-              รับทราบและดำเนินการต่อ
+              {t("disclaimer.acknowledge")}
             </button>
           </div>
         </div>
@@ -529,7 +527,7 @@ export default function TaxPage() {
 
       {/* ── Income type selector ─────────────────────────────────────────────── */}
       <div className="card space-y-3">
-        <p className="text-sm font-semibold text-foreground">ประเภทรายได้</p>
+        <p className="text-sm font-semibold text-foreground">{t("incomeTypes.title")}</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {INCOME_TYPES.map((type) => {
             const Icon = type.icon;
@@ -547,13 +545,13 @@ export default function TaxPage() {
                 )}
               >
                 <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium leading-tight">{type.label}</span>
-                <span className="text-[10px] opacity-60">{type.subtitle}</span>
+                <span className="text-xs font-medium leading-tight">{t(`incomeTypes.${type.label}`)}</span>
+                <span className="text-[10px] opacity-60">{t(`incomeTypes.${type.subtitle}`)}</span>
               </button>
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">{config.hint}</p>
+        <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">{t(`incomeTypes.${config.hint}`)}</p>
       </div>
 
       {/* ── VAT Warning (TAX_SPEC §2.1 business) ───────────────────────────── */}
@@ -561,14 +559,14 @@ export default function TaxPage() {
         <div className="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 px-4 py-3 flex items-start gap-2 text-sm">
           <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-red-800 dark:text-red-200">รายได้เกิน ฿1,800,000 — ต้องจดทะเบียน VAT</p>
-            <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">รายได้จากธุรกิจเกิน ฿1.8M/ปี ต้องยื่นจดทะเบียนภาษีมูลค่าเพิ่ม</p>
+            <p className="font-semibold text-red-800 dark:text-red-200">{t("vatWarning.title")}</p>
+            <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">{t("vatWarning.description")}</p>
             <a
               href="https://www.rd.go.th/7058.html"
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-red-700 dark:text-red-300 hover:underline mt-1"
             >
-              <ExternalLink className="h-3 w-3" /> ข้อมูล VAT กรมสรรพากร
+              <ExternalLink className="h-3 w-3" /> {t("vatWarning.link")}
             </a>
           </div>
         </div>
@@ -680,7 +678,7 @@ export default function TaxPage() {
               label={t("itemizedLabel")}
               value={itemizedExpenses}
               onChange={setItemizedExpenses}
-              hint="ค่าใช้จ่ายจริงที่มีหลักฐาน ไม่เกินรายได้รวม"
+              hint={t("deductions.itemizedHint")}
             />
           )}
 
@@ -693,7 +691,7 @@ export default function TaxPage() {
             >
               <span className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                ค่าลดหย่อนครอบครัว
+                {t("family.title")}
                 {(hasSpouse || numChildren > 0 || numParents > 0) && (
                   <span className="rounded-full bg-primary/10 text-primary text-xs px-2 py-0.5">
                     −{formatCurrency((hasSpouse ? 60_000 : 0) + numChildren * 30_000 + numParents * 30_000)}
@@ -713,15 +711,15 @@ export default function TaxPage() {
                     className="h-4 w-4 rounded accent-primary"
                   />
                   <span className="text-sm text-foreground">
-                    คู่สมรส
-                    <span className="text-muted-foreground text-xs ml-1.5">(−฿60,000)</span>
+                    {t("family.spouse")}
+                    <span className="text-muted-foreground text-xs ml-1.5">{t("family.spouseAmount")}</span>
                   </span>
                 </label>
 
                 {/* Children */}
                 <div className="flex items-center gap-3 min-h-[44px]">
                   <span className="text-sm text-foreground flex-1">
-                    บุตร <span className="text-muted-foreground text-xs">(−฿30,000/คน)</span>
+                    {t("family.children")} <span className="text-muted-foreground text-xs">{t("family.childrenPer")}</span>
                   </span>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => setNumChildren((c) => Math.max(0, c - 1))}
@@ -735,7 +733,7 @@ export default function TaxPage() {
                 {/* Parents */}
                 <div className="flex items-center gap-3 min-h-[44px]">
                   <span className="text-sm text-foreground flex-1">
-                    บิดา/มารดา (อายุ 60+) <span className="text-muted-foreground text-xs">(−฿30,000/คน)</span>
+                    {t("family.parents")} <span className="text-muted-foreground text-xs">{t("family.parentsPer")}</span>
                   </span>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => setNumParents((n) => Math.max(0, n - 1))}
@@ -762,8 +760,8 @@ export default function TaxPage() {
                 value={socialSecurity}
                 onChange={setSocialSecurity}
                 cap={9_000}
-                presets={[{ label: "฿9,000 (max/ปี)", value: 9_000 }]}
-                hint="ประกันสังคม สูงสุด ฿9,000/ปี — เฉพาะพนักงานประจำ"
+                presets={[{ label: "฿9,000 (max)", value: 9_000 }]}
+                hint={t("deductions.socialSecurityHint")}
               />
             )}
 
@@ -780,7 +778,7 @@ export default function TaxPage() {
             />
 
             <TaxInput
-              label="ประกันชีวิตแบบบำนาญ"
+              label={t("deductions.pensionInsurance")}
               value={pensionInsurance}
               onChange={setPensionInsurance}
               cap={200_000}
@@ -788,12 +786,12 @@ export default function TaxPage() {
                 { label: "฿100,000", value: 100_000 },
                 { label: "฿200,000 (max)", value: 200_000 },
               ]}
-              hint="ลดหย่อนเพิ่มเติม สูงสุด ฿200,000/ปี (แยกจากประกันชีวิตปกติ)"
+              hint={t("deductions.pensionHint")}
             />
 
             <div className="space-y-1">
               <TaxInput
-                label="กองทุน SSF"
+                label={t("deductions.ssfLabel")}
                 value={ssf}
                 onChange={setSsf}
                 cap={200_000}
@@ -801,16 +799,16 @@ export default function TaxPage() {
                   { label: "฿100,000", value: 100_000 },
                   { label: "฿200,000 (max)", value: 200_000 },
                 ]}
-                hint="Super Savings Fund — สูงสุด ฿200,000 และไม่เกิน 30% ของรายได้"
+                hint={t("deductions.ssfHint")}
               />
               {ssf > 0 && ssf > result.assessableIncome * 0.30 && result.assessableIncome > 0 && (
-                <p className="text-xs text-red-600 px-1">⚠️ SSF เกิน 30% ของรายได้ — สูงสุด {formatCurrency(result.assessableIncome * 0.30)}</p>
+                <p className="text-xs text-red-600 px-1">{t("deductions.ssfOver30", { amount: formatCurrency(result.assessableIncome * 0.30) })}</p>
               )}
             </div>
 
             <div className="space-y-1">
               <TaxInput
-                label="กองทุน RMF"
+                label={t("deductions.rmfLabel")}
                 value={rmf}
                 onChange={setRmf}
                 cap={500_000}
@@ -818,11 +816,11 @@ export default function TaxPage() {
                   { label: "฿100,000", value: 100_000 },
                   { label: "฿500,000 (max)", value: 500_000 },
                 ]}
-                hint="Retirement Mutual Fund — สูงสุด ฿500,000 และรวม SSF ไม่เกิน 30%"
+                hint={t("deductions.rmfHint")}
               />
               {result.ssfRmfExceeded && (
                 <p className="text-xs text-amber-600 px-1">
-                  ⚠️ SSF+RMF รวมกันเกิน 30% — ระบบปรับให้สูงสุด {formatCurrency(result.assessableIncome * 0.30)} อัตโนมัติ
+                  {t("deductions.ssfRmfOver30", { amount: formatCurrency(result.assessableIncome * 0.30) })}
                 </p>
               )}
             </div>
@@ -832,10 +830,10 @@ export default function TaxPage() {
                 label={t("donations")}
                 value={donations}
                 onChange={setDonations}
-                hint="บริจาค — จำกัด 10% ของรายได้ที่ประเมิน"
+                hint={t("deductions.donationHint")}
               />
               {result.donationExceeded && (
-                <p className="text-xs text-amber-600 px-1">⚠️ บริจาคเกิน 10% — ระบบปรับให้สูงสุด {formatCurrency(result.assessableIncome * 0.10)} อัตโนมัติ</p>
+                <p className="text-xs text-amber-600 px-1">{t("deductions.donationOver10", { amount: formatCurrency(result.assessableIncome * 0.10) })}</p>
               )}
             </div>
 
@@ -843,7 +841,7 @@ export default function TaxPage() {
               label={t("otherAllowances")}
               value={otherDeductions}
               onChange={setOtherDeductions}
-              hint="ค่าลดหย่อนอื่นๆ เช่น ช้อปดีมีคืน, บ้านหลังแรก ฯลฯ"
+              hint={t("deductions.otherHint")}
             />
           </div>
         </div>
@@ -860,13 +858,13 @@ export default function TaxPage() {
               { l: t("summaryGross"),          v: formatCurrency(result.grossIncome),      cls: "font-medium" },
               { l: result.usingFlat ? result.deductionFlatLabel : t("deductionItemized"), v: `−${formatCurrency(result.expenseDeduction)}`, cls: "text-muted-foreground" },
               { l: t("personalFixed"),          v: `−${formatCurrency(60_000)}`,            cls: "text-muted-foreground" },
-              result.spouseDeduction   > 0 ? { l: "คู่สมรส",                v: `−${formatCurrency(result.spouseDeduction)}`,   cls: "text-muted-foreground" } : null,
-              result.childrenDeduction > 0 ? { l: `บุตร (${numChildren} คน)`,v: `−${formatCurrency(result.childrenDeduction)}`, cls: "text-muted-foreground" } : null,
-              result.parentsDeduction  > 0 ? { l: `บิดา/มารดา (${numParents} คน)`,v: `−${formatCurrency(result.parentsDeduction)}`, cls: "text-muted-foreground" } : null,
+              result.spouseDeduction   > 0 ? { l: t("result.spouseLabel"),                v: `−${formatCurrency(result.spouseDeduction)}`,   cls: "text-muted-foreground" } : null,
+              result.childrenDeduction > 0 ? { l: t("result.childrenLabel", { count: numChildren }),v: `−${formatCurrency(result.childrenDeduction)}`, cls: "text-muted-foreground" } : null,
+              result.parentsDeduction  > 0 ? { l: t("result.parentsLabel", { count: numParents }),v: `−${formatCurrency(result.parentsDeduction)}`, cls: "text-muted-foreground" } : null,
               result.socialSecurityAmt > 0 ? { l: t("socialSecurity"),       v: `−${formatCurrency(result.socialSecurityAmt)}`, cls: "text-muted-foreground" } : null,
               result.lifeInsCapped     > 0 ? { l: t("lifeInsurance"),         v: `−${formatCurrency(result.lifeInsCapped)}`,    cls: "text-muted-foreground" } : null,
-              result.pensionInsCapped  > 0 ? { l: "ประกันบำนาญ",            v: `−${formatCurrency(result.pensionInsCapped)}`,  cls: "text-muted-foreground" } : null,
-              result.combinedProvident > 0 ? { l: "SSF + RMF",               v: `−${formatCurrency(result.combinedProvident)}`, cls: "text-muted-foreground" } : null,
+              result.pensionInsCapped  > 0 ? { l: t("result.pensionLabel"),            v: `−${formatCurrency(result.pensionInsCapped)}`,  cls: "text-muted-foreground" } : null,
+              result.combinedProvident > 0 ? { l: t("result.ssfRmfLabel"),               v: `−${formatCurrency(result.combinedProvident)}`, cls: "text-muted-foreground" } : null,
               result.donationsCapped   > 0 ? { l: t("donations"),             v: `−${formatCurrency(result.donationsCapped)}`,  cls: "text-muted-foreground" } : null,
               otherDeductions          > 0 ? { l: t("otherAllowances"),       v: `−${formatCurrency(otherDeductions)}`,          cls: "text-muted-foreground" } : null,
             ].filter(Boolean) as { l: string; v: string; cls: string }[])
@@ -886,9 +884,9 @@ export default function TaxPage() {
             </div>
             <div className="flex justify-between py-1 text-muted-foreground">
               <span>
-                {incomeType === "salary"   ? "ภาษีหัก ณ ที่จ่าย (นายจ้าง)"
-                : incomeType === "business" ? "ภาษีหัก ณ ที่จ่าย (0%)"
-                : "ภาษีหัก ณ ที่จ่าย (3%)"}
+                {incomeType === "salary"   ? t("result.withholdingEmployer")
+                : incomeType === "business" ? t("result.withholdingZero")
+                : t("result.withholding3pct")}
               </span>
               <span className="tabular-nums">−{formatCurrency(result.withholdingTax)}</span>
             </div>
@@ -916,13 +914,13 @@ export default function TaxPage() {
           {/* CPA recommendations */}
           {cpaRecs.length > 0 && (
             <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-blue-800 dark:text-blue-200">💡 คำแนะนำ</p>
+              <p className="text-xs font-semibold text-blue-800 dark:text-blue-200">{t("cpa.title")}</p>
               {cpaRecs.map((r, i) => (
                 <p key={i} className="text-xs text-blue-700 dark:text-blue-300">• {r}</p>
               ))}
               <a href="https://www.fap.or.th/" target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 hover:underline mt-1">
-                <ExternalLink className="h-3 w-3" /> หาผู้สอบบัญชีรับอนุญาต (FAP)
+                <ExternalLink className="h-3 w-3" /> {t("cpa.fapLink")}
               </a>
             </div>
           )}
@@ -943,7 +941,7 @@ export default function TaxPage() {
             )}
             {pensionInsurance < 200_000 && grossIncome > 500_000 && (
               <p className="text-xs text-muted-foreground">
-                ประกันบำนาญหักได้เพิ่มอีก <span className="font-medium text-foreground">{formatCurrency(200_000 - pensionInsurance)}</span> (สูงสุด ฿200,000)
+                {t("pensionTip", { amount: formatCurrency(200_000 - pensionInsurance) })}
               </p>
             )}
           </div>
@@ -962,9 +960,9 @@ export default function TaxPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-muted/50">
-                    <th className="text-left py-1.5 px-2 font-medium">เงินได้สุทธิ (฿)</th>
-                    <th className="text-center py-1.5 px-2 font-medium">%</th>
-                    <th className="text-right py-1.5 px-2 font-medium">ภาษี</th>
+                    <th className="text-left py-1.5 px-2 font-medium">{t("bracket.netIncome")}</th>
+                    <th className="text-center py-1.5 px-2 font-medium">{t("bracket.rate")}</th>
+                    <th className="text-right py-1.5 px-2 font-medium">{t("bracket.tax")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -976,14 +974,14 @@ export default function TaxPage() {
                     </tr>
                   ))}
                   <tr className="border-t border-border bg-muted/50 font-medium">
-                    <td className="py-1.5 px-2" colSpan={2}>รวมภาษี</td>
+                    <td className="py-1.5 px-2" colSpan={2}>{t("bracket.totalTax")}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatCurrency(result.estimatedTax)}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">กรอกรายได้เพื่อดูรายละเอียด</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("bracket.enterIncome")}</p>
           )}
         </div>
       </details>
@@ -1000,9 +998,9 @@ export default function TaxPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left py-2 px-3 font-medium">เงินได้สุทธิ (฿)</th>
-                  <th className="text-center py-2 px-3 font-medium">%</th>
-                  <th className="text-right py-2 px-3 font-medium">ภาษีสูงสุดในช่วงนี้</th>
+                  <th className="text-left py-2 px-3 font-medium">{t("bracket.netIncome")}</th>
+                  <th className="text-center py-2 px-3 font-medium">{t("bracket.rate")}</th>
+                  <th className="text-right py-2 px-3 font-medium">{t("bracket.maxTaxInBracket")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1032,13 +1030,13 @@ export default function TaxPage() {
 
       {/* ── External links + Legal footer (TAX_SPEC §2.4) ───────────────────── */}
       <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ลิงก์อ้างอิงทางการ</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("links.title")}</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { label: "เครื่องคำนวณ กรมสรรพากร", href: "https://www.rd.go.th/26237.html" },
-            { label: "ยื่นแบบภาษีออนไลน์ (e-Filing)", href: "https://efiling.rd.go.th/rd-cms/" },
-            { label: "ผู้สอบบัญชีรับอนุญาต FAP",  href: "https://www.fap.or.th/" },
-            { label: "จดทะเบียน VAT",              href: "https://www.rd.go.th/7058.html" },
+            { label: t("links.rdCalc"), href: "https://www.rd.go.th/26237.html" },
+            { label: t("links.eFiling"), href: "https://efiling.rd.go.th/rd-cms/" },
+            { label: t("links.fap"),  href: "https://www.fap.or.th/" },
+            { label: t("links.vatReg"),              href: "https://www.rd.go.th/7058.html" },
           ].map(({ label, href }) => (
             <a
               key={href} href={href} target="_blank" rel="noopener noreferrer"
@@ -1049,7 +1047,7 @@ export default function TaxPage() {
           ))}
         </div>
         <p className="text-[10px] text-muted-foreground/60 pt-1 border-t border-border/50">
-          อ้างอิง: ประมวลรัษฎากร พ.ศ. 2567–2568 · อัตราภาษีแบบอนุรักษ์นิยม (Conservative Rates) · อัปเดตล่าสุด: 2026-03-06
+          {t("links.footer")}
         </p>
       </div>
 

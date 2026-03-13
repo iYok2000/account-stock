@@ -56,7 +56,8 @@
 ## Route & Permission
 
 - **Route:** `/[locale]/tax`
-- **Permission:** (ตาม NAV_PERMISSIONS — ถ้ามี tax:read ใช้ตรงนั้น)
+- **Permission:** `analysis:read` — **Affiliate, Admin, SuperAdmin** เข้าถึงได้
+- **Note:** หน้านี้เป็นเครื่องมือคำนวณ (client-only) ไม่มี API endpoint ต่อ backend
 
 ---
 

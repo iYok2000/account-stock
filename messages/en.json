@@ -18,9 +18,14 @@
     "agents": "AI Assistant",
     "settings": "Settings",
     "users": "Users",
+    "admin": "Admin Hub",
     "lang": "Language",
     "role": "Role",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "groupShops": "Shops",
+    "groupPromo": "Promotions",
+    "groupAnalysis": "Analytics",
+    "groupTools": "Tools"
   },
   "settings": {
     "title": "Settings",
@@ -105,8 +110,15 @@
     "tableCompany": "Company"
   },
   "shopsCreate": {
-    "title": "Create shop",
+    "title": "Shop / Brand",
     "subtitle": "Create a new shop and add at least one SuperAdmin member (Root only).",
+    "subtitleHasShop": "Manage your shop name",
+    "subtitleNoShop": "Create a shop with members (at least 1 SuperAdmin)",
+    "shopNameLabel": "Shop / Brand name",
+    "saveName": "Save shop name",
+    "alreadyHasShop": "You already have a shop",
+    "goToMembers": "To add members, go to the \"Shop members\" menu",
+    "atLeastOneSuperAdmin": "At least 1 member must have SuperAdmin role",
     "shopName": "Shop name",
     "shopNamePlaceholder": "Enter shop name",
     "members": "Members",
@@ -119,7 +131,9 @@
     "creating": "Creating…",
     "removeMember": "Remove member",
     "success": "Shop created successfully.",
-    "successHint": "You can create another or go to the dashboard."
+    "successHint": "You can create another or go to the dashboard.",
+    "noPermission": "You do not have permission to access shop management",
+    "error": "An error occurred"
   },
   "shopsMe": {
     "title": "Shop members",
@@ -459,6 +473,9 @@
     "deductionMethod": "Expense deduction",
     "deductionFlat": "Flat rate",
     "deductionItemized": "Itemized (actual)",
+    "flatSalary": "Flat 50% (max ฿100,000)",
+    "flatAffiliate": "Flat 30%",
+    "flatBusiness": "Flat 60%",
     "itemizedLabel": "Actual expenses",
     "allowancesTitle": "Allowances",
     "personalFixed": "Personal (fixed)",
@@ -481,7 +498,100 @@
     "bracketTitle": "Tax brackets (reference)",
     "bracketSubtitle": "Progressive rates",
     "detailBreakdown": "Bracket breakdown",
-    "detailRates": "Full rate table"
+    "detailRates": "Full rate table",
+    "consent": {
+      "title": "Legal Disclaimer / PDPA",
+      "description": "This calculator provides estimates only and cannot replace professional advice. The Revenue Department is the sole authority for official tax calculations.",
+      "pdpa": "Accept to consent to the cookie/PDPA policy for this tool (saved once in browser cookies).",
+      "accept": "Accept",
+      "saving": "Saving..."
+    },
+    "disclaimer": {
+      "title": "⚠️ Legal Disclaimer",
+      "description": "This calculator provides <strong>estimates only</strong> and cannot replace professional advice. The Revenue Department is the sole authority for official tax calculations.",
+      "officialLink": "Official Calculator",
+      "acknowledge": "Acknowledge and continue"
+    },
+    "incomeTypes": {
+      "title": "Income type",
+      "salary": "Salary",
+      "salarySubtitle": "Sec. 40(1)",
+      "salaryHint": "50% expense deduction up to ฿100,000 · Employer-withheld",
+      "freelance": "Freelance",
+      "freelanceSubtitle": "Sec. 40(5)",
+      "freelanceHint": "60% expense deduction (flat) or actual · 3% withholding",
+      "business": "Business / TikTok",
+      "businessSubtitle": "Sec. 40(8)",
+      "businessHint": "60% expense deduction (flat) or actual · No withholding",
+      "affiliate": "Commission",
+      "affiliateSubtitle": "Sec. 40(1)",
+      "affiliateHint": "30% expense deduction (flat) or actual · 3% withholding"
+    },
+    "vatWarning": {
+      "title": "Income over ฿1,800,000 — VAT registration required",
+      "description": "Business income over ฿1.8M/year requires VAT registration",
+      "link": "VAT info from Revenue Department"
+    },
+    "family": {
+      "title": "Family allowances",
+      "spouse": "Spouse",
+      "spouseAmount": "(−฿60,000)",
+      "children": "Children",
+      "childrenPer": "(−฿30,000/person)",
+      "parents": "Parents (60+)",
+      "parentsPer": "(−฿30,000/person)"
+    },
+    "deductions": {
+      "itemizedHint": "Actual documented expenses (up to gross income)",
+      "socialSecurityHint": "Social security max ฿9,000/year — employees only",
+      "pensionInsurance": "Pension life insurance",
+      "pensionHint": "Additional deduction up to ฿200,000/year (separate from regular life insurance)",
+      "ssfLabel": "SSF Fund",
+      "ssfHint": "Super Savings Fund — max ฿200,000 and not more than 30% of income",
+      "ssfOver30": "⚠️ SSF exceeds 30% of income — max {amount}",
+      "rmfLabel": "RMF Fund",
+      "rmfHint": "Retirement Mutual Fund — max ฿500,000 and combined SSF not over 30%",
+      "ssfRmfOver30": "⚠️ SSF+RMF combined exceeds 30% — system caps at {amount}",
+      "donationHint": "Donations — limited to 10% of assessable income",
+      "donationOver10": "⚠️ Donations exceed 10% — system caps at {amount}",
+      "otherHint": "Other allowances e.g. Easy E-Receipt, First Home etc.",
+      "fullAmount": "Full amount",
+      "atCap": "✓ Full amount"
+    },
+    "result": {
+      "spouseLabel": "Spouse",
+      "childrenLabel": "Children ({count} persons)",
+      "parentsLabel": "Parents ({count} persons)",
+      "pensionLabel": "Pension insurance",
+      "ssfRmfLabel": "SSF + RMF",
+      "withholdingEmployer": "Withholding tax (employer)",
+      "withholdingZero": "Withholding tax (0%)",
+      "withholding3pct": "Withholding tax (3%)"
+    },
+    "cpa": {
+      "title": "💡 Recommendations",
+      "fapLink": "Find a CPA (FAP)",
+      "highIncome": "Very high income — recommended to consult a tax expert",
+      "vatRequired": "Income over ฿1.8M — VAT registration required (see link below)"
+    },
+    "pensionTip": "Pension insurance can deduct {amount} more (max ฿200,000)",
+    "bracket": {
+      "netIncome": "Net income (฿)",
+      "rate": "%",
+      "tax": "Tax",
+      "totalTax": "Total tax",
+      "maxTaxInBracket": "Max tax in bracket",
+      "enterIncome": "Enter income to see details"
+    },
+    "links": {
+      "title": "Official reference links",
+      "rdCalc": "Revenue Dept Calculator",
+      "eFiling": "e-Filing Online Tax",
+      "fap": "CPA Association (FAP)",
+      "vatReg": "VAT Registration",
+      "footer": "Reference: Thai Revenue Code 2024–2025 · Conservative Rates · Last updated: 2026-03-06"
+    },
+    "noPermission": "You do not have permission to access this page"
   },
   "analytics": {
     "title": "Analytics Hub",
@@ -628,8 +738,30 @@
       "marginGood": "Margin {pct}% — great!"
     }
   },
+  "admin": {
+    "title": "Administration",
+    "subtitle": "Manage invites, tiers, and platform settings",
+    "currentContext": "Current context",
+    "invites": {
+      "title": "Invite Codes",
+      "description": "Manage invite codes and tier grants"
+    },
+    "tiers": {
+      "title": "Tier Management",
+      "description": "View and manage user service tiers"
+    },
+    "platformOverview": {
+      "title": "Platform Overview",
+      "totalShops": "Total Shops",
+      "totalUsers": "Total Users",
+      "activeInvites": "Active Invites",
+      "proUsers": "Pro Users",
+      "awaitingApi": "Stats will be available after API integration"
+    }
+  },
   "import": {
-    "title": "Import Data"
+    "title": "Import Data",
+    "subtitle": "Upload files to import sales and order data"
   },
   "reports": {
     "title": "Reports",

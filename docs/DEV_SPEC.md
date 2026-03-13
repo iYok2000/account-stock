@@ -76,6 +76,9 @@ account-stock-fe/
 | — | Inventory import save | (POST) `/api/inventory/import` | upsert SKU/วัน จากผล process |
 | — | สร้างร้านค้า | `/shops/create` | สร้างร้าน + สมาชิก (Root only) |
 | — | สมาชิกร้าน | `/shops/me` | แก้ชื่อร้าน + จัดการสมาชิก (SuperAdmin) |
+| — | Users | `/users` | รายชื่อผู้ใช้ (SuperAdmin) |
+| เครื่องมือ | Admin Hub | `/admin` | Admin landing page (Root/SuperAdmin) — sections: Users, Shops, Invites, Settings, Platform Overview |
+| เครื่องมือ | Invite Codes | `/admin/invites` | จัดการ Invite Codes + Tier (Root/SuperAdmin) — CRUD + toggle require_invite_code |
 | โปรโมชั่น | Campaigns | `/campaigns` | หน้า placeholder |
 | โปรโมชั่น | Vouchers | `/vouchers` | หน้า placeholder |
 | โปรโมชั่น | Fees | `/fees` | หน้า placeholder |
@@ -91,10 +94,54 @@ account-stock-fe/
 
 - **Dashboard:** KPI cards (—), chart 7 วัน placeholder, สต็อกใกล้หมด "ไม่มีข้อมูล — รอต่อ API", quick actions ที่กรองตามสิทธิ์ของ role (เช่น Admin, SuperAdmin เห็น Inventory, Import, Calculator; Affiliate เห็นเฉพาะ Import Affiliate).
 - **Inventory:** Toolbar (Search), ตาราง empty state, แก้ไขเฉพาะชื่อ/SKU, qty แสดงอย่างเดียว.
+- **Admin Hub (`/admin`):** Landing page สำหรับ Root/SuperAdmin — sections: Users management, Shops, Invite Codes, Settings, Platform Overview (Root only). ใช้ `DashboardSection` component (collapsible, localStorage persistence).
+- **Invite Codes (`/admin/invites`):** CRUD interface สำหรับ invite codes — toggle global switch (`require_invite_code`), create form (auto-gen หรือ manual code), list view (code, tier, usage stats, actions: copy/toggle/deactivate). Empty state เมื่อไม่มี codes. ใช้ `useToast` (showSuccess/showError).
+- **Affiliate Dashboard (`/affiliate`):** **ยุบเข้ากับ `/` แล้ว** — `DashboardContent` ปรับ content ตาม `role === "Affiliate"` (ซ่อน AOV, แสดง top earning แทน low stock, กรอง quick actions)
 - **Shops / Campaigns / Vouchers / Fees / Reports / Agents:** หน้าโครงหรือ placeholder พร้อมต่อ API ทีหลัง.
 - **Import:** Wizard เลือกประเภท → อัปโหลด → mapping คอลัมน์ → result → บันทึกเข้า Inventory (SKU/วัน).
 - **Calculator:** โหมด Simple/Advanced, Sliders (Pricing, Costs, Marketing, Returns), KPIs, Breakeven, Scenarios, Sensitivity, Monte Carlo (collapsible).
 - **Tax:** ภาษีบุคคลธรรมดา — bracket, slider รายได้, ตัวเลขเสีย/ได้คืน, tips, export copy.
+
+---
+
+## Components และ Patterns ใหม่
+
+### DashboardSection (`components/dashboard/DashboardSection.tsx`)
+
+Collapsible section container ที่ใช้ localStorage persistence. Adapted จาก Congrats-seller.
+
+**Props:**
+- `id`: string (unique, สำหรับ localStorage key)
+- `title`: string
+- `icon`: ReactNode
+- `collapsible`: boolean (default: true)
+- `defaultOpen`: boolean (default: false)
+- `summary`: string (แสดงเมื่อ collapsed)
+- `warningBadge`: string (badge สีแดง, optional)
+- `chartCount`: number (badge count, optional)
+- `children`: ReactNode
+
+**ใช้ใน:**
+- Admin Hub sections (Users, Shops, Invites, Settings)
+- Affiliate Dashboard sections (Overview, Performance, Shops)
+
+### Design Tokens (`lib/design-tokens.ts`)
+
+Semantic color palette สำหรับความสม่ำเสมอใน UI. Copied จาก Congrats-seller.
+
+**Exports:**
+- `semanticColors`: object — revenue (emerald), commission, growth, warning (amber), danger (red), affiliate (purple), neutral (slate)
+- แต่ละ key มี: bg, border, text, icon, iconBg, gradient, ring, chart properties
+- `chartColors`: object — hex values สำหรับ Recharts (brandDark, revenue, profit, loss, fee, affiliate, etc.)
+
+**ใช้ใน:**
+- KPI cards (AffiliateKpiCard)
+- Charts (ถ้ามี)
+- Status badges
+
+### ~~AffiliateKpiCard~~ (removed)
+
+**ยุบเข้ากับ DashboardContent แล้ว** — Affiliate ใช้ main dashboard ที่ `/` ปรับ content ตาม role อัตโนมัติ
 
 ---
 

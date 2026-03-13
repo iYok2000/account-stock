@@ -18,6 +18,14 @@ export interface UserSession {
   displayName?: string;
   /** Service tier (USER_SPEC); used for feature caps, not RBAC. */
   tier?: UserTier;
+  /** When current tier started (ISO 8601) */
+  tierStartedAt?: string | null;
+  /** When current tier expires (ISO 8601; null = unlimited) */
+  tierExpiresAt?: string | null;
+  /** Last invite code used */
+  inviteCodeUsed?: string | null;
+  /** Remaining invite slots for referral */
+  inviteSlots?: number;
   /** Tenant/company scope (legacy); prefer shopId for new code. */
   companyId?: string;
   /** Shop scope (SHOPS_AND_ROLES_SPEC); null for Root only. */
@@ -32,6 +40,10 @@ export interface MeResponse {
   roles: Role[];
   permissions: PermissionString[];
   tier?: UserTier;
+  tier_started_at?: string | null;
+  tier_expires_at?: string | null;
+  invite_code_used?: string | null;
+  invite_slots?: number;
   company_id?: string;
   shop_id?: string | null;
   shop_name?: string;

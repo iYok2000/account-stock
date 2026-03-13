@@ -8,9 +8,14 @@ export default function ImportPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-        {t("title")}
-      </h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          {t("title")}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {t("subtitle")}
+        </p>
+      </div>
       <ImportWizard />
     </div>
   );

@@ -22,13 +22,14 @@ import {
   X,
   BarChart3,
   Settings,
+  Shield,
 } from "lucide-react";
 import { usePermissions } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
 
 const NAV_GROUPS = [
   {
-    label: null,
+    labelKey: null,
     items: [
       { href: "/", key: "dashboard", icon: LayoutDashboard },
       { href: "/inventory", key: "inventory", icon: Package },
@@ -36,14 +37,14 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "ร้านค้า",
+    labelKey: "groupShops",
     items: [
       { href: "/shops/create", key: "createShop", icon: Store },
       { href: "/shops/me", key: "shopMembers", icon: UserCog },
     ],
   },
   {
-    label: "โปรโมชั่น",
+    labelKey: "groupPromo",
     items: [
       { href: "/campaigns", key: "campaigns", icon: Megaphone },
       { href: "/vouchers", key: "vouchers", icon: Ticket },
@@ -51,7 +52,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "วิเคราะห์",
+    labelKey: "groupAnalysis",
     items: [
       { href: "/analytics", key: "analytics", icon: BarChart3 },
       { href: "/calculator", key: "calculator", icon: Calculator },
@@ -60,8 +61,9 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "เครื่องมือ",
+    labelKey: "groupTools",
     items: [
+      { href: "/admin", key: "admin", icon: Shield },
       { href: "/users", key: "users", icon: UserCog },
       { href: "/settings", key: "settings", icon: Settings },
     ],
@@ -147,10 +149,10 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           const visibleItems = group.items.filter((item) => canSee.has(item.href));
           if (visibleItems.length === 0) return null;
           return (
-            <div key={group.label ?? "__main"}>
-              {group.label && (
+            <div key={group.labelKey ?? "__main"}>
+              {group.labelKey && (
                 <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {group.label}
+                  {t(group.labelKey)}
                 </p>
               )}
               <ul role="list" className="flex flex-col gap-y-0.5">

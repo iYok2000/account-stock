@@ -112,6 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         permissions,
         displayName: data.user?.displayName,
         tier: (data.tier === "paid" ? "paid" : "free") as UserSession["tier"],
+        tierStartedAt: data.tier_started_at ?? null,
+        tierExpiresAt: data.tier_expires_at ?? null,
+        inviteCodeUsed: data.invite_code_used ?? null,
+        inviteSlots: data.invite_slots ?? 0,
         companyId: data.company_id ?? undefined,
         shopId: data.shop_id ?? undefined,
         shopName: data.shop_name,
@@ -184,15 +188,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let hasToken = false;
     if (typeof window !== "undefined") {
       const cachedToken = loadCachedToken();
-      if (cachedToken) setAuthToken(cachedToken);
+      if (cachedToken) {
+        setAuthToken(cachedToken);
+        hasToken = true;
+      }
       // Restore roleView ที่ Root เลือกไว้
       setRoleViewState(loadCachedRoleView());
     }
     const cached = loadCachedSession();
     if (cached) setSession(cached);
-    void fetchSession();
+    // Only fetch from backend if we have a token — avoids guaranteed 401 on fresh visit
+    if (hasToken) {
+      void fetchSession();
+    } else {
+      setIsLoading(false);
+    }
   }, [fetchSession]);
 
   const value = useMemo<AuthContextValue>(
@@ -251,6 +264,10 @@ export type UserContextValue = {
   role: Role;
   roles: Role[];
   tier: "free" | "paid";
+  tierStartedAt: string | null | undefined;
+  tierExpiresAt: string | null | undefined;
+  inviteCodeUsed: string | null | undefined;
+  inviteSlots: number;
   companyId: string | undefined;
   shopId: string | null | undefined;
   shopName: string | undefined;
@@ -287,6 +304,10 @@ export function useUserContext(): UserContextValue | null {
       role,
       roles: session.roles,
       tier: session.tier ?? "free",
+      tierStartedAt: session.tierStartedAt,
+      tierExpiresAt: session.tierExpiresAt,
+      inviteCodeUsed: session.inviteCodeUsed,
+      inviteSlots: session.inviteSlots ?? 0,
       companyId: session.companyId,
       shopId: session.shopId,
       shopName: session.shopName,

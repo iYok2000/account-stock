@@ -370,7 +370,8 @@ export function GlobalDateRangePicker({
           "absolute z-50 top-full left-0 mt-2",
           "bg-card border border-border rounded-2xl shadow-xl",
           "flex flex-col md:flex-row overflow-hidden",
-          "w-[calc(100vw-1.5rem)] max-w-[95vw] md:min-w-[720px] md:max-w-none",
+          "w-[calc(100vw-1.5rem)] max-w-[95vw]",
+          "md:w-[700px] md:max-w-[90vw]",
         )}>
           {/* Presets: horizontal scroll on mobile, sidebar on desktop */}
           <div className="md:w-36 md:shrink-0 md:border-r border-border p-3 flex flex-row md:flex-col gap-2 md:gap-0.5 bg-muted/30 overflow-x-auto md:overflow-visible md:flex-nowrap shrink-0 border-b md:border-b-0">

@@ -10,7 +10,10 @@ export const RESOURCES = [
   "analysis",   // calculator, tax, reports
   "analytics",  // analytics hub — Root + Affiliate only (phase 1)
   "agents",     // AI assistant / automation (ไม่มีเมนูใน v1)
-  "users",      // user management — Admin/SuperAdmin
+  "users",      // user management — SuperAdmin only
+  "settings",   // system settings
+  "invites",    // invite code management — Root/SuperAdmin
+  "config",     // global system config — Root only
 ] as const;
 
 export const ACTIONS = ["read", "create", "update", "delete", "export"] as const;
@@ -45,6 +48,8 @@ export const NAV_PERMISSIONS: Record<string, PermissionString> = {
   "/tax": "analysis:read",
   "/reports": "analysis:read",
   "/analytics": "analytics:read",
+  "/admin": "users:read", // Admin hub (SuperAdmin)
+  "/admin/invites": "invites:read", // Invite codes (Root/SuperAdmin)
   "/users": "users:read",
-  "/settings": "dashboard:read",
+  "/settings": "settings:read",
 } as const;
