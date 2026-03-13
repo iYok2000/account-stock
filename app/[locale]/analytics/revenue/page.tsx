@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { useAnalyticsReconciliation, useAnalyticsDailyMetrics } from "@/lib/hooks/use-api";
 import { getFeeLabel, FEE_COLORS as FEE_COLOR_MAP, sortFeeBreakdown } from "@/lib/analytics/fee-types";
 import { UrlDateRangePicker } from "@/components/shared/GlobalDateRangePicker";
+import { InsightFirstWrapper } from "@/components/shared/InsightFirstWrapper";
+import { AnalyticsLoadingSkeleton } from "@/components/shared/AnalyticsLoadingSkeleton";
 import { useSearchParams } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -74,11 +76,13 @@ function formatCurrency(v: number) {
 }
 
 // ─── Empty State ─────────────────────────────────────────────
-function EmptyChart({ height = "h-[220px]" }: { height?: string }) {
+function EmptyChart({ height = "h-[220px]", noDataLabel }: { height?: string; noDataLabel?: string }) {
+  const t = useTranslations("analytics");
+  const label = noDataLabel ?? t("revenue.noDataChart");
   return (
     <div className={cn("flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/30 border border-dashed border-border", height)}>
       <BarChart3 className="h-8 w-8 text-muted-foreground/40" />
-      <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -141,8 +145,8 @@ function EmptyState() {
         <BarChart3 className="h-10 w-10 text-muted-foreground/50" />
       </div>
       <div>
-        <p className="text-sm font-medium text-foreground">ยังไม่มีข้อมูล</p>
-        <p className="text-xs text-muted-foreground mt-1">นำเข้าข้อมูลจาก TikTok Shop เพื่อดูรายได้และค่าธรรมเนียม</p>
+        <p className="text-sm font-medium text-foreground">{t("revenue.emptyTitle")}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t("revenue.emptyDesc")}</p>
       </div>
       <Link
         href="/import"
@@ -198,9 +202,18 @@ function RevenueContent() {
       settlement: p.settlement,
     })) ?? [];
 
-  const hasData = !!reconQuery.data || !!dailyQuery.data?.hasData;
+  const reconHasMeaningfulData = recon != null && (recon.gmv > 0 || recon.settlement > 0 || recon.totalFees > 0);
+  const hasData = reconHasMeaningfulData || dailyQuery.data?.hasData === true;
+
+  const isError = reconQuery.isError || dailyQuery.isError;
+  const isLoading = reconQuery.isLoading || dailyQuery.isLoading;
 
   const feeBreakdownSorted = recon ? sortFeeBreakdown(recon.feeBreakdown) : [];
+
+  const refetchAll = () => {
+    reconQuery.refetch();
+    dailyQuery.refetch();
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -210,7 +223,7 @@ function RevenueContent() {
           href="/analytics"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> ศูนย์วิเคราะห์
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("hubBack")}
         </Link>
         <h2 className="text-xl font-bold text-foreground">{t("revenue.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("revenue.description")}</p>
@@ -219,12 +232,48 @@ function RevenueContent() {
       {/* Date range picker */}
       <UrlDateRangePicker />
 
-      {/* No data — full empty state */}
-      {!hasData && <EmptyState />}
+      {/* Error state: loadError + retry */}
+      {isError && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive flex flex-wrap items-center justify-between gap-2">
+          <span>{t("loadError")}</span>
+          <button
+            type="button"
+            onClick={refetchAll}
+            className="px-3 py-1.5 rounded-lg border border-destructive/50 bg-destructive/10 font-medium hover:bg-destructive/20 transition-colors"
+          >
+            {t("retry")}
+          </button>
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && !hasData && !isError && (
+        <AnalyticsLoadingSkeleton kpiCount={4} showChart />
+      )}
+
+      {/* No data — full empty state (only when not error and APIs returned no meaningful data) */}
+      {!isLoading && !isError && !hasData && <EmptyState />}
 
       {/* ─── Content (แสดงเมื่อ hasData = true) ─── */}
-      {hasData && recon && (
+      {!isError && hasData && recon && (
         <>
+          {/* Insight: settlement rate */}
+          {recon.settlementRate != null && (
+            <InsightFirstWrapper
+              severity={
+                recon.settlementRate >= 85 ? "success"
+                : recon.settlementRate >= 75 ? "info"
+                : "danger"
+              }
+              message={
+                recon.settlementRate >= 85
+                  ? `${t("revenue.settlement")} ${recon.settlementRate.toFixed(0)}% — ${t("revenue.insightGood")}`
+                  : recon.settlementRate >= 75
+                  ? t("revenue.insightNormal")
+                  : t("revenue.insightLow")
+              }
+            />
+          )}
           {/* KPI Cards */}
           <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
             <KpiCard icon={DollarSign} title={t("revenue.gmv")} value={formatCurrency(recon.gmv)} change={recon.gmvChange} />
@@ -248,7 +297,7 @@ function RevenueContent() {
                       <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={formatYAxis} width={48} />
                       <Tooltip
                         contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "0.5rem", fontSize: "0.8rem" }}
-                        formatter={(val, name) => [formatCurrency(Number(val ?? 0)), name === "revenue" ? "รายได้" : "กำไร"]}
+                        formatter={(val, name) => [formatCurrency(Number(val ?? 0)), name === "revenue" ? t("revenue.tooltipRevenue") : t("revenue.tooltipProfit")]}
                       />
                       <Area type="monotone" dataKey="revenue" name="revenue" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.08} strokeWidth={2} />
                       <Area type="monotone" dataKey="profit" name="profit" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} strokeDasharray="5 3" />
@@ -272,7 +321,7 @@ function RevenueContent() {
                 <div className="bg-card border border-border rounded-2xl p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-1">{t("revenue.feeDonut")}</h3>
                   <p className="text-xs text-muted-foreground mb-3">
-                    รวม {formatCurrency(feeBreakdownSorted.reduce((s, f) => s + f.value, 0))}
+                    {t("revenue.feeTotalPrefix")} {formatCurrency(feeBreakdownSorted.reduce((s, f) => s + f.value, 0))}
                   </p>
                   <div className="h-[240px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -338,7 +387,7 @@ function RevenueContent() {
                               style={{ width: `${pct}%`, backgroundColor: color }}
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground">{pct.toFixed(1)}% ของค่าธรรมเนียมรวม</p>
+                          <p className="text-xs text-muted-foreground">{t("revenue.feeOfTotal", { pct: pct.toFixed(1) })}</p>
                         </div>
                       );
                     })}
@@ -365,7 +414,7 @@ function RevenueContent() {
                         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={formatYAxis} width={48} />
                         <Tooltip
                           contentStyle={{ fontSize: "0.8rem", borderRadius: "0.5rem" }}
-                          formatter={(val, name) => [formatCurrency(Number(val ?? 0)), name === "revenue" ? "รายได้รวม" : "รับชำระจริง"]}
+                          formatter={(val, name) => [formatCurrency(Number(val ?? 0)), name === "revenue" ? t("revenue.chartLegendGmv") : t("revenue.chartLegendSettlement")]}
                         />
                         <Area type="monotone" dataKey="revenue" name="revenue" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.07} strokeWidth={2} />
                         <Area type="monotone" dataKey="settlement" name="settlement" stroke="#10b981" fill="#10b981" fillOpacity={0.12} strokeWidth={2} strokeDasharray="5 3" />
@@ -376,11 +425,11 @@ function RevenueContent() {
                 <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-4 h-0.5 rounded bg-blue-500" />
-                    รายได้รวม
+                    {t("revenue.chartLegendGmv")}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-4 h-0.5 rounded border-dashed border-b-2 border-emerald-500" />
-                    รับชำระจริง
+                    {t("revenue.chartLegendSettlement")}
                   </span>
                 </div>
               </>

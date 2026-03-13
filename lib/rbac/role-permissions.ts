@@ -21,13 +21,15 @@ const affiliatePermissions: PermissionString[] = [
   "analytics:read",
 ];
 
-// Admin: all except shops:update (analytics now allowed)
+// Admin: all except shops:update and analytics:read (phase 1: analytics = Root + Affiliate only)
 const adminPermissions: PermissionString[] = allResourceActions.filter(
-  (p) => p !== "shops:update"
+  (p) => p !== "shops:update" && p !== "analytics:read"
 );
 
-// SuperAdmin: all permissions
-const superAdminPermissions: PermissionString[] = allResourceActions;
+// SuperAdmin: all except analytics:read (phase 1: analytics = Root + Affiliate only)
+const superAdminPermissions: PermissionString[] = allResourceActions.filter(
+  (p) => p !== "analytics:read"
+);
 
 export const ROLE_PERMISSIONS: Record<Role, PermissionString[]> = {
   Root: rootPermissions,

@@ -41,3 +41,47 @@ export type AnalyticsProductMetricsApi = {
   from: string;
   to: string;
 };
+
+// ─── Trends ───────────────────────────────────────────────────
+export type TrendBucketApi = {
+  key: string;
+  label: string;
+  revenue: number;
+  orders: number;
+  profit: number;
+  discount: number;
+  days: number;
+};
+
+export type MomGrowthApi = {
+  label: string;
+  growth: number;
+};
+
+export type YoyItemApi = {
+  label: string;
+  currentYear: number;
+  previousYear: number;
+};
+
+export type AnalyticsTrendsApi = {
+  buckets: TrendBucketApi[];
+  monthlyBuckets: TrendBucketApi[];
+  momGrowth: MomGrowthApi[];
+  yoy: YoyItemApi[];
+  hasData: boolean;
+  from: string;
+  to: string;
+  period?: "weekly" | "monthly";
+};
+
+// ─── Profitability ────────────────────────────────────────────
+export type AnalyticsProfitabilityApi = {
+  avgMargin: number;
+  marginBuckets: { range: string; count: number }[];
+  byCategory: { category: string; profit: number; margin: number }[];
+  marginTrend: { label: string; margin: number }[];
+  hasData: boolean;
+  from: string;
+  to: string;
+};

@@ -9,8 +9,11 @@ import {
   ArrowRight,
   BarChart3,
   TrendingUp,
+  Activity,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDashboardKpis } from "@/lib/hooks/use-api";
 
 interface AnalyticsCard {
   titleKey: string;
@@ -18,6 +21,8 @@ interface AnalyticsCard {
   icon: React.ElementType;
   href: string;
   color: string;
+  /** Mini metrics 2 ตัว (label, value); ถ้าไม่ส่ง จะแสดง "—" */
+  miniMetrics?: [string, string][] | (() => [string, string][]);
 }
 
 const CARDS: AnalyticsCard[] = [
@@ -35,10 +40,48 @@ const CARDS: AnalyticsCard[] = [
     href: "/analytics/products",
     color: "bg-purple-50 text-purple-600",
   },
+  {
+    titleKey: "trends.title",
+    descKey: "trends.description",
+    icon: Activity,
+    href: "/analytics/trends",
+    color: "bg-emerald-50 text-emerald-600",
+  },
+  {
+    titleKey: "profitability.title",
+    descKey: "profitability.description",
+    icon: Wallet,
+    href: "/analytics/profitability",
+    color: "bg-amber-50 text-amber-600",
+  },
 ];
+
+function formatMetric(v: number) {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  return v.toLocaleString("th-TH", { maximumFractionDigits: 0 });
+}
 
 function AnalyticsHubContent() {
   const t = useTranslations("analytics");
+  const kpiQuery = useDashboardKpis();
+  const kpis = kpiQuery.data;
+
+  const getMiniMetrics = (card: AnalyticsCard): [string, string][] => {
+    if (card.href === "/analytics/revenue" && kpis != null) {
+      return [
+        [t("revenue.gmv"), formatMetric(kpis.totalRevenue)],
+        [t("revenue.netProfit"), formatMetric(kpis.netBase)],
+      ];
+    }
+    if (card.href === "/analytics/products" && kpis != null) {
+      return [
+        [t("products.colQty"), kpis.totalOrders != null ? String(kpis.totalOrders) : "—"],
+        [t("revenue.gmv"), formatMetric(kpis.totalRevenue)],
+      ];
+    }
+    return [["—", "—"], ["—", "—"]];
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -56,7 +99,7 @@ function AnalyticsHubContent() {
       </div>
 
       {/* Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {CARDS.map((card) => {
           const Icon = card.icon;
           return (
@@ -76,6 +119,15 @@ function AnalyticsHubContent() {
                 <p className="text-sm text-muted-foreground leading-relaxed grow">
                   {t(card.descKey as Parameters<typeof t>[0])}
                 </p>
+                {/* Mini metrics 2 ตัว */}
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 pt-2 border-t border-border/60">
+                  {getMiniMetrics(card).slice(0, 2).map(([label, value], i) => (
+                    <div key={i} className="flex flex-col">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</span>
+                      <span className="text-xs font-semibold text-foreground tabular-nums">{value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </Link>
           );
@@ -89,11 +141,10 @@ function AnalyticsHubContent() {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-blue-900 mb-1">
-            เริ่มต้นใช้งานวิเคราะห์เชิงลึก
+            {t("gettingStartedTitle")}
           </h3>
           <p className="text-sm text-blue-800 mb-3 leading-relaxed">
-            นำเข้าข้อมูลจาก TikTok Shop เพื่อดูข้อมูลวิเคราะห์ที่สมบูรณ์
-            ระบบจะสร้างกราฟเจาะลึกและตารางสรุปให้อัตโนมัติ
+            {t("gettingStartedDesc")}
           </p>
           <Link
             href="/import"

@@ -1,20 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { UserCog, Plus, Trash2 } from "lucide-react";
 import { RequirePermission } from "@/components/auth/RequirePermission";
 import { useUserContext } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
 import { apiRequest } from "@/lib/api-client";
+import { mapErrorMessage } from "@/lib/error-mapping";
+import { ConfirmModal } from "@/components/ui/Modal";
+import { Select } from "@/components/ui/Select";
 import type { Role } from "@/lib/rbac/types";
 
 type MemberRow = { id?: string; email: string; role: string };
 
 const ADD_ROLES: Role[] = ["Admin", "Affiliate"];
 
+type RoleChangeConfirm = {
+  memberId: string;
+  email: string;
+  newRole: Role;
+};
+
 function ShopMembersContent() {
   const t = useTranslations("shopsMe");
+  const locale = useLocale() as "en" | "th";
   const userContext = useUserContext();
+  const { showSuccess, showError } = useToast();
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,6 +36,7 @@ function ShopMembersContent() {
   const [adding, setAdding] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [roleChangeConfirm, setRoleChangeConfirm] = useState<RoleChangeConfirm | null>(null);
 
   useEffect(() => {
     if (!userContext) {
@@ -67,25 +80,38 @@ function ShopMembersContent() {
       setMembers((prev) => [...prev, { ...newMember, email: addEmail.trim(), role: addRole }]);
       setAddEmail("");
       setAddPassword("");
+      showSuccess(t("memberAddedSuccess"));
     } catch (e) {
-      setError(t("error"));
+      const errorMessage = mapErrorMessage(e, locale);
+      showError(errorMessage);
+      setError(errorMessage);
     } finally {
       setAdding(false);
     }
   };
 
-  const handleUpdateRole = async (id: string | undefined, role: Role) => {
-    if (!id) return;
-    setUpdating(id);
+  const handleRoleChangeRequest = (memberId: string | undefined, email: string, newRole: Role) => {
+    if (!memberId) return;
+    setRoleChangeConfirm({ memberId, email, newRole });
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!roleChangeConfirm) return;
+    const { memberId, newRole } = roleChangeConfirm;
+    setUpdating(memberId);
     setError("");
+    setRoleChangeConfirm(null);
     try {
       await apiRequest<MemberRow>("/api/shops/me/members", {
         method: "PATCH",
-        body: JSON.stringify({ id, role }),
+        body: JSON.stringify({ id: memberId, role: newRole }),
       });
-      setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role } : m)));
+      setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)));
+      showSuccess(t("roleChangeSuccess"));
     } catch (e) {
-      setError(t("error"));
+      const errorMessage = mapErrorMessage(e, locale);
+      showError(errorMessage);
+      setError(errorMessage);
     } finally {
       setUpdating(null);
     }
@@ -101,8 +127,11 @@ function ShopMembersContent() {
         body: JSON.stringify({ id }),
       });
       setMembers((prev) => prev.filter((m) => m.id !== id));
+      showSuccess(t("memberDeletedSuccess"));
     } catch (e) {
-      setError(t("error"));
+      const errorMessage = mapErrorMessage(e, locale);
+      showError(errorMessage);
+      setError(errorMessage);
     } finally {
       setDeleting(null);
     }
@@ -146,17 +175,17 @@ function ShopMembersContent() {
             className="input-base flex-1 min-w-[120px] h-9"
             required
           />
-          <select
+          <Select
             value={addRole}
             onChange={(e) => setAddRole(e.target.value as Role)}
-            className="input-base w-[120px] h-9"
+            className="w-[120px] h-9"
           >
             {ADD_ROLES.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
             ))}
-          </select>
+          </Select>
           <button type="submit" disabled={adding} className="btn-primary disabled:opacity-50">
             {adding ? t("adding") : t("addMember")}
           </button>
@@ -172,18 +201,18 @@ function ShopMembersContent() {
                   <p className="font-medium truncate">{m.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <select
+                  <Select
                     value={m.role}
-                    onChange={(e) => handleUpdateRole(m.id, e.target.value as Role)}
+                    onChange={(e) => handleRoleChangeRequest(m.id, m.email, e.target.value as Role)}
                     disabled={updating === m.id}
-                    className="input-base h-9"
+                    className="h-9 w-32"
                   >
                     {ADD_ROLES.map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <button
                     type="button"
                     onClick={() => handleDelete(m.id)}
@@ -205,6 +234,19 @@ function ShopMembersContent() {
           {error}
         </p>
       )}
+
+      <ConfirmModal
+        open={!!roleChangeConfirm}
+        title={t("confirmRoleChange")}
+        message={t("confirmRoleChangeMessage", {
+          email: roleChangeConfirm?.email ?? "",
+          role: roleChangeConfirm?.newRole ?? "",
+        })}
+        confirmLabel={t("changeRole")}
+        onConfirm={handleConfirmRoleChange}
+        onCancel={() => setRoleChangeConfirm(null)}
+        loading={!!updating}
+      />
     </div>
   );
 }

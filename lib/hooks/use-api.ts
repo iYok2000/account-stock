@@ -29,6 +29,8 @@ import type {
   AnalyticsReconciliationApi,
   AnalyticsDailyMetricsApi,
   AnalyticsProductMetricsApi,
+  AnalyticsTrendsApi,
+  AnalyticsProfitabilityApi,
 } from "@/types/api/analytics";
 import { apiRequest } from "@/lib/api-client";
 
@@ -161,6 +163,9 @@ export function useDashboardOverview() {
     queryKey: ["dashboard", "overview"],
     queryFn: () => apiRequest<DashboardOverviewApi>("/api/dashboard/overview"),
     retry: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 }
 
@@ -169,6 +174,9 @@ export function useDashboardRevenue7d() {
     queryKey: ["dashboard", "revenue-7d"],
     queryFn: () => apiRequest<DashboardRevenue7dApi>("/api/dashboard/revenue-7d"),
     retry: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 }
 
@@ -180,6 +188,9 @@ export function useDashboardLowStock(limit: number = 5) {
         `/api/dashboard/low-stock?limit=${limit}`
       ),
     retry: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 }
 
@@ -188,6 +199,9 @@ export function useDashboardKpis() {
     queryKey: ["dashboard", "kpis"],
     queryFn: () => apiRequest<DashboardKpisApi>("/api/dashboard/kpis"),
     retry: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 }
 
@@ -225,6 +239,31 @@ export function useAnalyticsProductMetrics(params?: { from?: string; to?: string
   return useQuery({
     queryKey: ["analytics", "product-metrics", params],
     queryFn: () => apiRequest<AnalyticsProductMetricsApi>(`/api/analytics/product-metrics${qs ? `?${qs}` : ""}`),
+    retry: false,
+  });
+}
+
+export function useAnalyticsTrends(params?: { from?: string; to?: string; period?: "weekly" | "monthly" }) {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  if (params?.period) search.set("period", params.period);
+  const qs = search.toString();
+  return useQuery({
+    queryKey: ["analytics", "trends", params],
+    queryFn: () => apiRequest<AnalyticsTrendsApi>(`/api/analytics/trends${qs ? `?${qs}` : ""}`),
+    retry: false,
+  });
+}
+
+export function useAnalyticsProfitability(params?: { from?: string; to?: string }) {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  const qs = search.toString();
+  return useQuery({
+    queryKey: ["analytics", "profitability", params],
+    queryFn: () => apiRequest<AnalyticsProfitabilityApi>(`/api/analytics/profitability${qs ? `?${qs}` : ""}`),
     retry: false,
   });
 }

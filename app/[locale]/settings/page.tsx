@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth, useUserContext } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/api-client";
+import { mapErrorMessage } from "@/lib/error-mapping";
 import { useToast } from "@/contexts/ToastContext";
 import { cn } from "@/lib/utils";
 
@@ -162,7 +163,8 @@ export default function SettingsPage() {
       showSuccess(t("profileSaved"));
       setTimeout(() => setProfileSaved(false), 2500);
     } catch (e) {
-      showError(e instanceof Error ? e.message : t("saveFailed"));
+      const errorMessage = mapErrorMessage(e, locale as "en" | "th");
+      showError(errorMessage);
     } finally {
       setProfileLoading(false);
     }
@@ -191,7 +193,8 @@ export default function SettingsPage() {
       setOldPw(""); setNewPw(""); setConfirmPw("");
       setPwOpen(false);
     } catch (e) {
-      showError(e instanceof Error ? e.message : t("saveFailed"));
+      const errorMessage = mapErrorMessage(e, locale as "en" | "th");
+      showError(errorMessage);
     } finally {
       setPwLoading(false);
     }

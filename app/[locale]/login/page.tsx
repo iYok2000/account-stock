@@ -104,7 +104,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full h-10 disabled:opacity-50"
+              className="btn-primary w-full h-10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t("loading") : t("login")}
             </button>

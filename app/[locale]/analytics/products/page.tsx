@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { useAnalyticsProductMetrics } from "@/lib/hooks/use-api";
 import { usePermissions } from "@/contexts/AuthContext";
 import { UrlDateRangePicker } from "@/components/shared/GlobalDateRangePicker";
+import { InsightFirstWrapper } from "@/components/shared/InsightFirstWrapper";
+import { AnalyticsLoadingSkeleton } from "@/components/shared/AnalyticsLoadingSkeleton";
 import { useSearchParams } from "next/navigation";
 import {
   ResponsiveContainer,
@@ -44,11 +46,13 @@ function truncateName(name: string, limit = 24) {
   return name.length > limit ? `${name.slice(0, limit)}…` : name;
 }
 
-function MarginBadge({ margin }: { margin: number | null }) {
+function MarginBadge({ margin, noCostLabel }: { margin: number | null; noCostLabel?: string }) {
+  const t = useTranslations("analytics.products");
+  const label = noCostLabel ?? t("noCost");
   if (margin === null)
     return (
       <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted whitespace-nowrap">
-        ไม่มีต้นทุน
+        {label}
       </span>
     );
   if (margin < 0)
@@ -227,8 +231,8 @@ function ProductsContent() {
     const hasCostData = products.some((p) => p.hasCost);
     // Stars: revenue >= median AND (no cost OR margin >= 15%)
     const stars = products.filter((p) => p.revenue >= medianRevenue && (p.margin === null || (p.margin ?? 0) >= 15));
-    // Watch: revenue >= median AND cost known AND margin 0–15%
-    const watch = hasCostData ? products.filter((p) => p.revenue >= medianRevenue && p.margin !== null && (p.margin ?? 0) > 0 && (p.margin ?? 0) < 15) : [];
+    // Watch: revenue >= median AND cost known AND margin 0–15% (รวม 0%)
+    const watch = hasCostData ? products.filter((p) => p.revenue >= medianRevenue && p.margin !== null && (p.margin ?? 0) >= 0 && (p.margin ?? 0) < 15) : [];
     // Losing: cost known AND margin < 0
     const losing = hasCostData ? products.filter((p) => p.hasCost && (p.margin ?? 0) < 0) : [];
     // Long tail: revenue < median (and not losing)
@@ -255,7 +259,7 @@ function ProductsContent() {
           href="/analytics"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> ศูนย์วิเคราะห์
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("hubBack")}
         </Link>
         <h2 className="text-xl font-bold text-foreground">{t("products.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("products.description")}</p>
@@ -267,7 +271,7 @@ function ProductsContent() {
       {/* Cost input */}
       <div className="bg-card border border-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-foreground whitespace-nowrap">ต้นทุน/ชิ้น (฿)</span>
+          <span className="font-medium text-foreground whitespace-nowrap">{t("products.costPerUnit")}</span>
           <input
             type="number"
             min={0}
@@ -279,25 +283,21 @@ function ProductsContent() {
           />
         </label>
         {defaultCost > 0 ? (
-          <span className="text-xs text-primary font-medium">ใช้คำนวณกำไรโดยประมาณ (ไม่บันทึก)</span>
+          <span className="text-xs text-primary font-medium">{t("products.costHintSet")}</span>
         ) : (
-          <span className="text-xs text-muted-foreground">ใส่เพื่อประมาณกำไรและ margin</span>
+          <span className="text-xs text-muted-foreground">{t("products.costHintPlaceholder")}</span>
         )}
       </div>
 
       {/* Empty / error / loading state */}
       {isLoading && (
-        <div className="bg-card border border-border rounded-xl p-6 space-y-3 animate-pulse">
-          <div className="h-4 w-40 bg-muted rounded" />
-          <div className="h-3 w-64 bg-muted rounded" />
-          <div className="h-48 bg-muted rounded" />
-        </div>
+        <AnalyticsLoadingSkeleton kpiCount={4} showChart />
       )}
       {isError && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive flex items-center justify-between">
-          <span>โหลดข้อมูลไม่สำเร็จ</span>
+          <span>{t("loadError")}</span>
           <button onClick={() => metricsQuery.refetch()} className="underline font-medium ml-3 hover:text-destructive/80">
-            ลองอีกครั้ง
+            {t("retry")}
           </button>
         </div>
       )}
@@ -305,7 +305,7 @@ function ProductsContent() {
         <div className="space-y-2">
           <EmptyState />
           <div className="text-center text-xs text-muted-foreground">
-            ไม่มีข้อมูลในช่วง {startDate} — {endDate} · ลองเปลี่ยนช่วงวันที่ด้านบน
+            {t("products.noDataInRange", { start: startDate, end: endDate })}
           </div>
         </div>
       )}
@@ -318,7 +318,7 @@ function ProductsContent() {
             {/* Revenue */}
             <div className="card p-4 space-y-1.5 border-l-[3px] border-l-blue-400">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground font-medium">รายได้รวม</p>
+                <p className="text-xs text-muted-foreground font-medium">{t("products.totalRevenue")}</p>
                 <div className="rounded-md bg-blue-50 p-1.5">
                   <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
                 </div>
@@ -329,7 +329,7 @@ function ProductsContent() {
             {/* Profit */}
             <div className={cn("card p-4 space-y-1.5 border-l-[3px]", defaultCost > 0 ? (totalProfit < 0 ? "border-l-red-400" : "border-l-emerald-400") : "border-l-muted-foreground/20")}>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground font-medium">กำไรรวม</p>
+                <p className="text-xs text-muted-foreground font-medium">{t("products.totalProfit")}</p>
                 <div className={cn("rounded-md p-1.5", defaultCost > 0 ? (totalProfit < 0 ? "bg-red-50" : "bg-emerald-50") : "bg-muted/60")}>
                   <TrendingUp className={cn("h-3.5 w-3.5", defaultCost > 0 ? (totalProfit < 0 ? "text-red-500" : "text-emerald-500") : "text-muted-foreground/40")} />
                 </div>
@@ -338,15 +338,15 @@ function ProductsContent() {
                 {defaultCost > 0 ? formatCurrency(totalProfit) : "—"}
               </p>
               {defaultCost > 0 ? (
-                <p className="text-[11px] text-muted-foreground">หักต้นทุน ฿{defaultCost}/ชิ้น</p>
+                <p className="text-[11px] text-muted-foreground">{t("products.deductCostPerUnit", { cost: defaultCost })}</p>
               ) : (
-                <p className="text-[11px] text-amber-600/80">ตั้งต้นทุนเพื่อดูกำไร</p>
+                <p className="text-[11px] text-amber-600/80">{t("products.setCostToSeeProfit")}</p>
               )}
             </div>
             {/* Quantity */}
             <div className="card p-4 space-y-1.5 border-l-[3px] border-l-violet-400">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground font-medium">จำนวนขาย</p>
+                <p className="text-xs text-muted-foreground font-medium">{t("products.quantitySold")}</p>
                 <div className="rounded-md bg-violet-50 p-1.5">
                   <Hash className="h-3.5 w-3.5 text-violet-500" />
                 </div>
@@ -373,7 +373,7 @@ function ProductsContent() {
             ) : (
               <div className="card p-4 space-y-1.5 border-l-[3px] border-l-amber-400">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground font-medium">สินค้าขายดีสุด</p>
+                  <p className="text-xs text-muted-foreground font-medium">{t("products.topProduct")}</p>
                   <div className="rounded-md bg-amber-50 p-1.5">
                     <Package className="h-3.5 w-3.5 text-amber-500" />
                   </div>
@@ -442,7 +442,7 @@ function ProductsContent() {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <Star className="h-4 w-4 text-amber-500" />
-                <h3 className="text-sm font-semibold text-foreground">จัดกลุ่มสินค้า</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("products.productGrouping")}</h3>
                 <span className="text-xs text-muted-foreground">จาก {products.length} SKU · median {formatCurrency(productTiers.medianRevenue)}</span>
               </div>
 
@@ -545,7 +545,7 @@ function ProductsContent() {
                         {/* Footer: overflow count + chevron */}
                         <div className="flex items-center justify-between pt-1 border-t border-current/10">
                           <span className={cn("text-[11px] font-medium", cm.sub)}>
-                            {items.length > 3 ? `+${items.length - 3} เพิ่มเติม` : `ทั้งหมด ${items.length} SKU`}
+                            {items.length > 3 ? t("products.moreSkus", { count: items.length - 3 }) : t("products.allSkus", { count: items.length })}
                           </span>
                           <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200 shrink-0", cm.chevron, isOpen && "rotate-180")} />
                         </div>
@@ -578,7 +578,7 @@ function ProductsContent() {
                   <div className="border-t border-border">
                     <div className={cn("flex items-center justify-between px-4 py-2 border-b text-xs font-medium", styles.header)}>
                       <span>{label} — {items.length} SKU · รวม {formatCurrency(tierRevenue)} · {tierQty.toLocaleString()} ชิ้น</span>
-                      <button onClick={() => setExpandedTier(null)} className="opacity-60 hover:opacity-100 transition-opacity text-xs underline underline-offset-2">ปิด</button>
+                      <button onClick={() => setExpandedTier(null)} className="opacity-60 hover:opacity-100 transition-opacity text-xs underline underline-offset-2">{t("products.close")}</button>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[460px] text-sm">
@@ -649,9 +649,9 @@ function ProductsContent() {
             {/* Pie chart — revenue share */}
             <div className="bg-card border border-border rounded-xl p-4">
               <div className="mb-3">
-                <h3 className="text-sm font-semibold text-foreground">สัดส่วนยอดขายต่อสินค้า</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("products.revenueShare")}</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  สัดส่วน revenue ของแต่ละ SKU จากยอดรวม {formatCurrency(totalRevenue)}
+                  {t("products.revenueShareSubtitle")} {formatCurrency(totalRevenue)}
                 </p>
               </div>
               <div className="h-[240px]">
@@ -698,9 +698,9 @@ function ProductsContent() {
             {/* Top products rank list */}
             <div className="bg-card border border-border rounded-xl p-4">
               <div className="mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Top สินค้าขายดี</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("products.topProductsTitle")}</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  เรียงตามยอดขาย · ทั้งหมด {products.length} SKU
+                  {t("products.topProductsSubtitle", { count: products.length })}
                 </p>
               </div>
               <ul className="space-y-2.5">
@@ -742,9 +742,9 @@ function ProductsContent() {
               </ul>
               {products.length > 8 && (
                 <p className="text-[11px] text-muted-foreground mt-2 flex items-center gap-1">
-                  <span>+{products.length - 8} SKU อื่น</span>
+                  <span>{t("products.otherSkus", { count: products.length - 8 })}</span>
                   <span className="opacity-40">·</span>
-                  <span>ดูทั้งหมดในตารางด้านล่าง</span>
+                  <span>{t("products.moreSkusBelow")}</span>
                 </p>
               )}
             </div>
@@ -754,10 +754,10 @@ function ProductsContent() {
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">ยอดขาย vs กำไร — ทุก SKU</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("products.barChartTitle")}</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  เรียงตามยอดขายสูงสุด · ทั้งหมด {barData.length} SKU
-                  {barData.length > 20 && " · เลื่อนซ้าย-ขวาเพื่อดูทั้งหมด"}
+                  {t("products.barChartSubtitle", { count: barData.length })}
+                  {barData.length > 20 && t("products.barChartScrollHint")}
                 </p>
               </div>
             </div>
@@ -827,12 +827,12 @@ function ProductsContent() {
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             {productTiers && (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 border-b border-border bg-muted/20 text-[11px] text-muted-foreground">
-                <span className="font-medium text-foreground">ตารางสินค้าทั้งหมด</span>
+                <span className="font-medium text-foreground">{t("products.tableAllProducts")}</span>
                 {[
-                  { color: "bg-emerald-400", label: "Stars" },
-                  { color: "bg-amber-400",   label: "ควรดูแล" },
-                  { color: "bg-red-400",     label: "ขาดทุน" },
-                  { color: "bg-slate-300",   label: "Long Tail" },
+                  { color: "bg-emerald-400", label: t("products.tierStars") },
+                  { color: "bg-amber-400",   label: t("products.tierWatch") },
+                  { color: "bg-red-400",     label: t("products.tierLosing") },
+                  { color: "bg-slate-300",   label: t("products.tierLongTail") },
                 ].map(({ color, label }) => (
                   <span key={label} className="flex items-center gap-1">
                     <span className={cn("w-2 h-2 rounded-full", color)} />
@@ -874,7 +874,7 @@ function ProductsContent() {
                   {sorted.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
-                        ยังไม่มีข้อมูลสินค้า
+                        {t("products.noDataTable")}
                       </td>
                     </tr>
                   ) : (
@@ -936,11 +936,9 @@ function ProductsContent() {
               </table>
             </div>
             <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{sorted.length} SKU</span>
+              <span>{t("products.skuCount", { count: sorted.length })}</span>
               {defaultCost === 0 && (
-                <span>
-                  ตั้งต้นทุน/ชิ้นด้านบนเพื่อดูกำไรและ margin
-                </span>
+                <span>{t("products.setCostHintFooter")}</span>
               )}
             </div>
           </div>
@@ -952,19 +950,16 @@ function ProductsContent() {
                 <TrendingUp className="h-4 w-4 text-amber-600" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-sm font-semibold text-amber-800">ปลดล็อกการวิเคราะห์กำไรและ Margin</p>
+                <p className="text-sm font-semibold text-amber-800">{t("products.unlockProfitTitle")}</p>
                 {canViewInventory ? (
                   <p className="text-xs text-amber-700">
-                    ตั้งต้นทุน/ชิ้นในช่องด้านบนเพื่อประมาณกำไร หรือ{" "}
+                    {t("products.unlockProfitWithCost")}{" "}
                     <Link href="/inventory" className="underline underline-offset-2 font-semibold hover:text-amber-900">
-                      จัดการ Inventory
-                    </Link>{" "}
-                    เพื่อตั้งต้นทุนแบบถาวรต่อ SKU — แล้วส่วน <strong>ควรดูแล / ขาดทุน</strong> จะคำนวณให้อัตโนมัติ
+                      {t("products.manageInventory")}
+                    </Link>
                   </p>
                 ) : (
-                  <p className="text-xs text-amber-700">
-                    ใส่ต้นทุน/ชิ้น (฿) ในช่องด้านบน — ระบบจะคำนวณกำไร margin และจัดกลุ่มสินค้า <strong>ควรดูแล / ขาดทุน</strong> ให้อัตโนมัติ
-                  </p>
+                  <p className="text-xs text-amber-700">{t("products.unlockProfitNoInventory")}</p>
                 )}
               </div>
             </div>

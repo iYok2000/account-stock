@@ -151,16 +151,16 @@ function CalendarMonth({
       </p>
 
       {/* Day-of-week header */}
-      <div className="grid grid-cols-7 mb-1">
+      <div className="grid grid-cols-7 mb-1 gap-px">
         {DAY_LABELS.map((d) => (
-          <div key={d} className="text-center text-[11px] font-semibold text-muted-foreground py-1">
+          <div key={d} className="text-center text-[10px] sm:text-[11px] font-semibold text-muted-foreground py-0.5 sm:py-1">
             {d}
           </div>
         ))}
       </div>
 
       {/* Day grid */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-px max-w-[16rem] sm:max-w-none mx-auto sm:mx-0">
         {cells.map((day, idx) => {
           if (!day) return <div key={`pad-${idx}`} />;
           const iso = ymdToISO(year, month, day);
@@ -172,7 +172,7 @@ function CalendarMonth({
             <div
               key={iso}
               className={cn(
-                "relative flex items-center justify-center h-9",
+                "relative flex items-center justify-center h-8 sm:h-9",
                 // range background strip (only inner days)
                 inRange && "bg-primary/10",
                 // half-strip on edges
@@ -188,7 +188,7 @@ function CalendarMonth({
                 onMouseEnter={() => !isDisabled && onDayHover(iso)}
                 onMouseLeave={() => onDayHover(null)}
                 className={cn(
-                  "w-9 h-9 rounded-full text-sm transition-all duration-100 font-medium z-10",
+                  "w-8 h-8 sm:w-9 sm:h-9 rounded-full text-xs sm:text-sm transition-all duration-100 font-medium z-10",
                   "flex items-center justify-center",
                   // default
                   !isEdge && !inRange && !isDisabled && "hover:bg-primary/15 hover:text-primary text-foreground",
@@ -332,32 +332,32 @@ export function GlobalDateRangePicker({
   const dispEnd = pendingEnd ?? (phase === "selecting-end" && hoverDate ? hoverDate : null);
 
   return (
-    <div ref={wrapperRef} className={cn("relative inline-block", className)}>
+    <div ref={wrapperRef} className={cn("relative inline-block w-full sm:w-auto", className)}>
       {/* ── Trigger button ─────────────────────────── */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5",
+          "flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2.5 sm:px-4",
           "text-sm font-medium text-foreground hover:border-primary/50 hover:bg-card",
-          "transition-all duration-150 shadow-sm min-w-[260px]",
+          "transition-all duration-150 shadow-sm w-full min-w-0 sm:min-w-[260px]",
           open && "border-primary ring-2 ring-primary/20"
         )}
       >
         <CalendarDays className="h-4 w-4 text-primary shrink-0" />
-        <span className="flex-1 text-left">
+        <span className="flex-1 text-left min-w-0 truncate">
           {hasValue ? (
-            <span>
-              <span className="text-foreground">{formatDisplay(value.startDate)}</span>
-              <span className="text-muted-foreground mx-1.5">→</span>
-              <span className="text-foreground">{formatDisplay(value.endDate)}</span>
+            <span className="truncate inline-flex items-center flex-wrap gap-x-1">
+              <span className="text-foreground truncate">{formatDisplay(value.startDate)}</span>
+              <span className="text-muted-foreground shrink-0">→</span>
+              <span className="text-foreground truncate">{formatDisplay(value.endDate)}</span>
             </span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
         </span>
         {days > 0 && (
-          <span className="text-[11px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full tabular-nums whitespace-nowrap">
+          <span className="text-[11px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full tabular-nums whitespace-nowrap shrink-0">
             {days} วัน
           </span>
         )}
@@ -369,43 +369,45 @@ export function GlobalDateRangePicker({
         <div className={cn(
           "absolute z-50 top-full left-0 mt-2",
           "bg-card border border-border rounded-2xl shadow-xl",
-          "flex overflow-hidden",
-          "min-w-[720px]",
+          "flex flex-col md:flex-row overflow-hidden",
+          "w-[calc(100vw-1.5rem)] max-w-[95vw] md:min-w-[720px] md:max-w-none",
         )}>
-          {/* Left: presets */}
-          <div className="w-36 shrink-0 border-r border-border p-3 flex flex-col gap-0.5 bg-muted/30">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-2">
+          {/* Presets: horizontal scroll on mobile, sidebar on desktop */}
+          <div className="md:w-36 md:shrink-0 md:border-r border-border p-3 flex flex-row md:flex-col gap-2 md:gap-0.5 bg-muted/30 overflow-x-auto md:overflow-visible md:flex-nowrap shrink-0 border-b md:border-b-0">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide md:px-2 mb-0 md:mb-2 shrink-0 md:shrink-none self-center md:self-auto md:w-full">
               ช่วงด่วน
             </p>
-            {PRESETS.map((preset) => {
-              const active = pendingStart && pendingEnd
-                ? (() => { const r = preset.fn(); return r.startDate === pendingStart && r.endDate === pendingEnd; })()
-                : isPresetActive(preset, value);
-              return (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => handlePreset(preset)}
-                  className={cn(
-                    "w-full text-left text-xs px-2.5 py-2 rounded-lg font-medium transition-colors",
-                    active
-                      ? "bg-primary text-white"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
+            <div className="flex md:flex-col gap-1.5 md:gap-0.5 flex-1 min-w-0">
+              {PRESETS.map((preset) => {
+                const active = pendingStart && pendingEnd
+                  ? (() => { const r = preset.fn(); return r.startDate === pendingStart && r.endDate === pendingEnd; })()
+                  : isPresetActive(preset, value);
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handlePreset(preset)}
+                    className={cn(
+                      "shrink-0 md:shrink-none text-xs px-2.5 py-2 rounded-lg font-medium transition-colors md:w-full md:text-left",
+                      active
+                        ? "bg-primary text-white"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Reset */}
             {!isDefault && (
               <>
-                <div className="my-2 border-t border-border" />
+                <div className="my-2 border-t border-border hidden md:block w-full" />
                 <button
                   type="button"
                   onClick={() => handlePreset({ label: "", fn: () => ({ startDate: daysAgoISO(29), endDate: today }) })}
-                  className="w-full text-left text-xs px-2.5 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 transition-colors"
+                  className="shrink-0 md:shrink-none w-full text-left text-xs px-2.5 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground flex items-center justify-center md:justify-start gap-1.5 transition-colors mt-2 md:mt-0"
                 >
                   <RotateCcw className="h-3 w-3" />
                   รีเซ็ต
@@ -415,19 +417,19 @@ export function GlobalDateRangePicker({
           </div>
 
           {/* Right: calendar + footer */}
-          <div className="flex flex-col p-4 flex-1">
+          <div className="flex flex-col p-3 sm:p-4 flex-1 min-w-0">
             {/* Status bar */}
-            <div className="flex items-center justify-between mb-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4 text-xs text-muted-foreground">
               {phase === "selecting-end" ? (
                 <span className="text-primary font-medium animate-pulse">
                   เลือกวันสิ้นสุด…
                 </span>
               ) : dispStart && dispEnd ? (
-                <span>
+                <span className="min-w-0 truncate">
                   <span className="font-semibold text-foreground">{formatDisplay(dispStart)}</span>
                   <span className="mx-1.5">→</span>
                   <span className="font-semibold text-foreground">{formatDisplay(dispEnd)}</span>
-                  <span className="ml-2 text-muted-foreground">
+                  <span className="ml-1 sm:ml-2 text-muted-foreground">
                     ({countDays(
                       dispStart < dispEnd ? dispStart : dispEnd,
                       dispStart < dispEnd ? dispEnd : dispStart
@@ -437,7 +439,7 @@ export function GlobalDateRangePicker({
               ) : (
                 <span>เลือกวันเริ่มต้น</span>
               )}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={prevMonth}
@@ -457,8 +459,8 @@ export function GlobalDateRangePicker({
               </div>
             </div>
 
-            {/* Two-month calendar grid */}
-            <div className="grid grid-cols-2 gap-6">
+            {/* Calendar: one month on mobile, two on desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <CalendarMonth
                 year={leftYear}
                 month={leftMonth}
@@ -469,20 +471,22 @@ export function GlobalDateRangePicker({
                 onDayHover={setHoverDate}
                 maxDate={max}
               />
-              <CalendarMonth
-                year={rightYear}
-                month={rightMonth}
-                selStart={pendingStart}
-                selEnd={pendingEnd}
-                hoverDate={hoverDate}
-                onDayClick={handleDayClick}
-                onDayHover={setHoverDate}
-                maxDate={max}
-              />
+              <div className="hidden md:block">
+                <CalendarMonth
+                  year={rightYear}
+                  month={rightMonth}
+                  selStart={pendingStart}
+                  selEnd={pendingEnd}
+                  hoverDate={hoverDate}
+                  onDayClick={handleDayClick}
+                  onDayHover={setHoverDate}
+                  maxDate={max}
+                />
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-border">
+            <div className="flex items-center justify-end gap-2 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border flex-wrap">
               <button
                 type="button"
                 onClick={handleCancel}
