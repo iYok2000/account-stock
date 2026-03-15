@@ -63,6 +63,33 @@
   --color-neutral-800: #27272a;
   --color-neutral-900: #18181b;
 
+  /* Brown Palette (Congrats-Seller style) */
+  --color-brown-50: #fdf8f6;
+  --color-brown-100: #f2e8e5;
+  --color-brown-200: #eaddd7;
+  --color-brown-300: #e0c8b2;
+  --color-brown-400: #d1a380;
+  --color-brown-500: #b37c57;
+  --color-brown-600: #9b6144;
+  --color-brown-700: #7c4e38;
+  --color-brown-800: #633f2d;
+  --color-brown-900: #523528;
+  --color-brown-950: #2b1c15;
+
+  /* Affiliate Palette (Congrats-Seller style) */
+  --color-affiliate-50: #f5eefa;
+  --color-affiliate-100: #ebd9f5;
+  --color-affiliate-200: #d4bae5;
+  --color-affiliate-400: #a67cc5;
+  --color-affiliate-600: #8856a8;
+  --color-affiliate-700: #6d4389;
+
+  /* Semantic Colors (Congrats-Seller style) */
+  --color-revenue: #059669;
+  --color-commission: #2563eb;
+  --color-growth: #0d9488;
+  --color-affiliate-color: #8856a8;
+
   /* Status Tags Extended Palette */
   --color-green-50: #f0fdf4;
   --color-green-100: #dcfce7;
@@ -431,5 +458,89 @@
     .table-header-cell {
       padding: 1.25rem 1rem;
     }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Mobile-First Utilities (Congrats-Seller style)
+  ───────────────────────────────────────────────────────────────────────── */
+
+  /* Touch target minimum (44px) */
+  .touch-target-min {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  /* Active scale for touch (替代 hover) */
+  .active-scale-95:active {
+    transform: scale(0.95);
+  }
+
+  /* Mobile-first padding: small on mobile, larger on desktop */
+  .p-mobile {
+    padding: 1rem;
+  }
+  @media (min-width: 768px) {
+    .p-mobile {
+      padding: 1.5rem;
+    }
+  }
+
+  /* Mobile-first gap */
+  .gap-mobile {
+    gap: 1rem;
+  }
+  @media (min-width: 768px) {
+    .gap-mobile {
+      gap: 1.5rem;
+    }
+  }
+
+  /* Sticky bottom bar for mobile */
+  .sticky-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    background: hsl(var(--card));
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  /* Mobile bottom sheet handle */
+  .bottom-sheet-handle {
+    width: 2.5rem;
+    height: 0.25rem;
+    background: hsl(var(--muted-foreground) / 0.4);
+    border-radius: 9999px;
+    margin: 0 auto 0.5rem;
+  }
+
+  /* Card semantic colors (Congrats-Seller style) */
+  .card-revenue {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+  }
+  .card-commission {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+  }
+  .card-warning {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+  }
+  .card-danger {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+  }
+  .card-affiliate {
+    background: #f5eefa;
+    border-color: #d4bae5;
+    color: #6d4389;
   }
 }
