@@ -78,17 +78,17 @@ export default function CalculatorPage() {
   const [showCostDetails, setShowCostDetails] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Slider state — default 0 so numbers show only after user input (no mock)
+  // Slider state — default values similar to Congrats-Seller
   const [priceMode, setPriceMode] = useState<"list" | "selling">("selling");
-  const [listPrice, setListPrice] = useState(0);
-  const [sellingPrice, setSellingPrice] = useState(0);
-  const [productCost, setProductCost] = useState(0);
-  const [shippingCost, setShippingCost] = useState(0);
-  const [affiliateRate, setAffiliateRate] = useState(0);
+  const [listPrice, setListPrice] = useState(599);
+  const [sellingPrice, setSellingPrice] = useState(499);
+  const [productCost, setProductCost] = useState(200);
+  const [shippingCost, setShippingCost] = useState(40);
+  const [affiliateRate, setAffiliateRate] = useState(5);
   const [adSpend, setAdSpend] = useState(0);
-  const [packagingCost, setPackagingCost] = useState(0);
-  const [quantity, setQuantity] = useState(1);
-  const [returnRate, setReturnRate] = useState(0);
+  const [packagingCost, setPackagingCost] = useState(5);
+  const [quantity, setQuantity] = useState(100);
+  const [returnRate, setReturnRate] = useState(5);
   const [lockedSliders, setLockedSliders] = useState<Set<SliderKey>>(new Set());
   const [goalInput, setGoalInput] = useState("");
   const [goalProfit, setGoalProfit] = useState<number | null>(null);
@@ -276,12 +276,32 @@ export default function CalculatorPage() {
               </p>
             </div>
           </div>
-          <ResultsPanel
-            result={result} activePrice={activePrice} listPrice={listPrice}
-            productCost={productCost} packagingCost={packagingCost} shippingCost={shippingCost}
-            affiliateRate={affiliateRate} adSpend={adSpend}
-            quantity={quantity} returnRate={returnRate} priceMode={priceMode} goalProfit={goalProfit}
-          />
+
+          {/* Fee Breakdown - Collapsible */}
+          <div className="border-t border-border/50 pt-4 mt-4">
+            <button
+              type="button"
+              onClick={() => setShowFeeDetails(!showFeeDetails)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <span className="text-sm font-medium text-foreground">{t("charts.feeDetails") || "รายละเอียดค่าธรรมเนียม"}</span>
+              {showFeeDetails ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+            {showFeeDetails && (
+              <div className="mt-4">
+                <ResultsPanel
+                  result={result} activePrice={activePrice} listPrice={listPrice}
+                  productCost={productCost} packagingCost={packagingCost} shippingCost={shippingCost}
+                  affiliateRate={affiliateRate} adSpend={adSpend}
+                  quantity={quantity} returnRate={returnRate} priceMode={priceMode} goalProfit={goalProfit}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -358,34 +378,50 @@ export default function CalculatorPage() {
         </p>
       </div>
 
-      {/* 4) Cost + Waterfall charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card">
-          <h3 className="font-semibold text-foreground mb-1">{t("charts.costTitle")}</h3>
-          <p className="text-sm text-muted-foreground mb-4">{t("charts.costSubtitle")}</p>
-          <CostBars data={[
-            { name: t("charts.productCost"), value: productCost, color: "#6B4226" },
-            { name: t("charts.packaging"),   value: packagingCost, color: "#8B6E4E" },
-            { name: t("charts.shippingFee"), value: shippingCost, color: "#A67C52" },
-            { name: t("charts.commissionVat"), value: result.commissionPerUnit + result.commissionVatPerUnit, color: "#C8975E" },
-            { name: t("charts.paymentFee"),  value: result.paymentFeePerUnit, color: "#D4A76A" },
-            { name: t("charts.affiliate"),   value: result.affiliateFeePerUnit, color: "#B85C38" },
-            { name: t("charts.adSpend"),     value: adSpend, color: "#9B3B1F" },
-          ]} />
-        </div>
-        <div className="card">
-          <h3 className="font-semibold text-foreground mb-1">{t("charts.waterfallTitle")}</h3>
-          <p className="text-sm text-muted-foreground mb-4">{t("charts.waterfallSubtitle")}</p>
-          <Waterfall data={[
-            { name: t("charts.revenue"),     value: result.revenueGross },
-            { name: t("charts.return"),      value: -(result.revenueGross - result.revenueNet) },
-            { name: t("charts.productCost"), value: -result.totalProductCost },
-            { name: t("charts.shippingFee"), value: -result.totalShipping },
-            { name: t("charts.platformFee"), value: -result.totalPlatformFees },
-            { name: t("charts.adSpend"),     value: -(adSpend * quantity) },
-            { name: t("charts.netProfit"),   value: result.monthlyProfit, isTotal: true },
-          ]} />
-        </div>
+      {/* 4) Cost + Waterfall charts - Collapsible */}
+      <div className="card">
+        <button
+          type="button"
+          onClick={() => setShowCostDetails(!showCostDetails)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <span className="text-sm font-medium text-foreground">{t("charts.costChartTitle") || "สรุปต้นทุนและกำไร"}</span>
+          {showCostDetails ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {showCostDetails && (
+          <div className="grid gap-6 lg:grid-cols-2 mt-4">
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">{t("charts.costTitle")}</h3>
+              <p className="text-sm text-muted-foreground mb-4">{t("charts.costSubtitle")}</p>
+              <CostBars data={[
+                { name: t("charts.productCost"), value: productCost, color: "#6B4226" },
+                { name: t("charts.packaging"),   value: packagingCost, color: "#8B6E4E" },
+                { name: t("charts.shippingFee"), value: shippingCost, color: "#A67C52" },
+                { name: t("charts.commissionVat"), value: result.commissionPerUnit + result.commissionVatPerUnit, color: "#C8975E" },
+                { name: t("charts.paymentFee"),  value: result.paymentFeePerUnit, color: "#D4A76A" },
+                { name: t("charts.affiliate"),   value: result.affiliateFeePerUnit, color: "#B85C38" },
+                { name: t("charts.adSpend"),     value: adSpend, color: "#9B3B1F" },
+              ]} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">{t("charts.waterfallTitle")}</h3>
+              <p className="text-sm text-muted-foreground mb-4">{t("charts.waterfallSubtitle")}</p>
+              <Waterfall data={[
+                { name: t("charts.revenue"),     value: result.revenueGross },
+                { name: t("charts.return"),      value: -(result.revenueGross - result.revenueNet) },
+                { name: t("charts.productCost"), value: -result.totalProductCost },
+                { name: t("charts.shippingFee"), value: -result.totalShipping },
+                { name: t("charts.platformFee"), value: -result.totalPlatformFees },
+                { name: t("charts.adSpend"),     value: -(adSpend * quantity) },
+                { name: t("charts.netProfit"),   value: result.monthlyProfit, isTotal: true },
+              ]} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 5) Breakeven + Scenarios + Sensitivity + Monte Carlo (AnalysisSection) — only in Advanced */}
