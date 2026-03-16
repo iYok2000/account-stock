@@ -1,0 +1,96 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-03-16T00:00:00Z",
+  "note": "SSOT documentation setup for account-stock frontend",
+  "project": {
+    "name": "account-stock",
+    "description": "Next.js 16 frontend for account-stock inventory/accounting system",
+    "tech_stack": "Next.js 16, TypeScript, Tailwind CSS 4, TanStack React Query, next-intl"
+  },
+  "documentation": {
+    "README.md": "Quick start",
+    "CLAUDE.md": "AI Agent System Prompt (START HERE)",
+    "docs/MANIFEST.json": "This file - documentation index",
+    "docs/DEV_SPEC.md": "Tech stack, โครงสร้าง, routes, RBAC, i18n",
+    "docs/DESIGN_UX_UI.md": "Design guidelines และ UI patterns",
+    "docs/RBAC_SPEC.md": "RBAC specifications",
+    "docs/RBAC_BACKEND_SPEC.md": "Backend RBAC specifications",
+    "docs/BRANDING.md": "Branding guidelines",
+    "docs/TODO_ARCHITECTURE_AND_OBSERVABILITY.md": "Architecture notes"
+  },
+  "features": {
+    "dashboard": {
+      "code": "app/[locale]/page.tsx",
+      "description": "KPI summary, charts placeholder"
+    },
+    "inventory": {
+      "code": "app/[locale]/inventory/page.tsx",
+      "description": "Product CRUD"
+    },
+    "orders": {
+      "code": "app/[locale]/orders/page.tsx",
+      "description": "Order management"
+    },
+    "suppliers": {
+      "code": "app/[locale]/suppliers/page.tsx",
+      "description": "Supplier management"
+    },
+    "import": {
+      "code": "app/[locale]/import/page.tsx",
+      "description": "Import wizard (type → upload → mapping → result)"
+    },
+    "shops": {
+      "code": "app/[locale]/shops/page.tsx",
+      "description": "Shop management"
+    },
+    "campaigns": {
+      "code": "app/[locale]/campaigns/page.tsx",
+      "description": "Campaign management"
+    },
+    "vouchers": {
+      "code": "app/[locale]/vouchers/page.tsx",
+      "description": "Voucher management"
+    },
+    "fees": {
+      "code": "app/[locale]/fees/page.tsx",
+      "description": "Fee configuration"
+    },
+    "calculator": {
+      "code": "app/[locale]/calculator/page.tsx",
+      "description": "Profit calculator with sliders"
+    },
+    "tax": {
+      "code": "app/[locale]/tax/page.tsx",
+      "description": "Personal tax calculator"
+    },
+    "funnels": {
+      "code": "app/[locale]/funnels/page.tsx",
+      "description": "Sales funnels"
+    },
+    "reports": {
+      "code": "app/[locale]/reports/page.tsx",
+      "description": "Reports dashboard"
+    },
+    "agents": {
+      "code": "app/[locale]/agents/page.tsx",
+      "description": "Agent tools"
+    },
+    "settings": {
+      "code": "app/[locale]/settings/page.tsx",
+      "description": "User settings"
+    }
+  },
+  "architecture": {
+    "frontend": "docs/DEV_SPEC.md",
+    "design": "docs/DESIGN_UX_UI.md",
+    "rbac": "docs/RBAC_SPEC.md",
+    "branding": "docs/BRANDING.md"
+  },
+  "quickReference": {
+    "dev": "npm run dev",
+    "build": "npm run build",
+    "lint": "npm run lint",
+    "typecheck": "npx tsc --noEmit",
+    "gitStatus": "git status && git log --oneline -5"
+  }
+}
