@@ -3,8 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type LoginResult } from "@/contexts/AuthContext";
 import { RequireGuest } from "@/components/auth/RequireGuest";
+import { FormModal } from "@/components/ui/Modal";
+import { env } from "@/lib/env";
+
+const devCreds = env().NEXT_PUBLIC_DEV_EMAIL
+  ? {
+      email: env().NEXT_PUBLIC_DEV_EMAIL,
+      password: env().NEXT_PUBLIC_DEV_PASSWORD,
+      confirmCode: env().NEXT_PUBLIC_DEV_CONFIRM_CODE,
+    }
+  : null;
 
 export default function LoginPage() {
   const t = useTranslations("auth");
@@ -12,19 +22,46 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
+  const [pendingRoot, setPendingRoot] = useState<{ email: string; password: string } | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const fillDevCreds = () => {
+    if (!devCreds) return;
+    setEmail(devCreds.email);
+    setPassword(devCreds.password);
+    setConfirmCode(devCreds.confirmCode);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // ถ้าเป็น Root (superadmin) แต่ยังไม่ได้กรอกรหัสยืนยัน ให้เปิด modal ขอรหัสก่อน
+    if (trimmedEmail === "superadmin" && !confirmCode) {
+      setPendingRoot({ email: trimmedEmail, password });
+      setShowConfirmModal(true);
+      return;
+    }
+
     setLoading(true);
     try {
-      const ok = await login(email.trim(), password);
-      if (ok) {
+      const result: LoginResult = await login(
+        trimmedEmail,
+        password,
+        confirmCode ? confirmCode.trim() : undefined
+      );
+      if (result === true) {
         router.replace("/");
-      } else {
-        setError(t("loginFailed"));
+        return;
+      }
+      setError(result === "need_confirm" ? t("confirmRequired") : t("loginFailed"));
+      if (result === "need_confirm" && trimmedEmail === "superadmin") {
+        setPendingRoot({ email: trimmedEmail, password });
+        setShowConfirmModal(true);
       }
     } finally {
       setLoading(false);
@@ -83,17 +120,83 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full h-10 disabled:opacity-50"
+              className="btn-primary w-full h-10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t("loading") : t("login")}
             </button>
+            {devCreds && (
+              <button
+                type="button"
+                onClick={fillDevCreds}
+                className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                Dev: fill Root credentials
+              </button>
+            )}
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
-            {t("devOnlyHint")}
-          </p>
         </div>
       </div>
+
+      <FormModal
+        open={showConfirmModal}
+        title={t("confirmCodeTitle")}
+        onClose={() => { setShowConfirmModal(false); setConfirmCode(""); setPendingRoot(null); }}
+      >
+        <p className="text-sm text-muted-foreground mb-3">{t("confirmCodeHint")}</p>
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-foreground">
+            {t("confirmCode")}
+            <input
+              type="text"
+              autoComplete="one-time-code"
+              value={confirmCode}
+              onChange={(e) => setConfirmCode(e.target.value)}
+              placeholder={t("placeholderConfirmCode")}
+              className="input-base w-full mt-1"
+            />
+          </label>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => { setShowConfirmModal(false); setConfirmCode(""); setPendingRoot(null); }}
+              className="btn-secondary"
+            >
+              {t("backToLogin")}
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={loading || !confirmCode.trim()}
+              onClick={async () => {
+                if (!pendingRoot) {
+                  setShowConfirmModal(false);
+                  return;
+                }
+                setLoading(true);
+                setError("");
+                try {
+                  const result = await login(
+                    pendingRoot.email,
+                    pendingRoot.password,
+                    confirmCode.trim()
+                  );
+                  if (result === true) {
+                    setShowConfirmModal(false);
+                    router.replace("/");
+                    return;
+                  }
+                  setError(t("loginFailed"));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              {loading ? t("loading") : t("submitConfirmCode")}
+            </button>
+          </div>
+        </div>
+      </FormModal>
     </RequireGuest>
   );
 }

@@ -1,58 +1,34 @@
-# Feature Spec — Import (นำเข้าข้อมูล)
+# Import (สรุปย่อ)
 
-สรุปฟีเจอร์จากโค้ด
+ใช้เป็น context prompt สั้น ไม่เปลือง token
 
----
+## เส้นทาง
+- หน้า FE: `/[locale]/import` (perm `inventory:create`)
+- API Order Txn: `POST /api/inventory/import`
+- API Affiliate: `POST /api/affiliate/import`
 
-## Route & Permission
+## ไฟล์ / การประมวลผล
+- รองรับ CSV/XLSX, ขนาด ≤3.5MB, ≤50k rows
+- parse/validate/mapping ใน browser เท่านั้น (ไม่อัปโหลดไฟล์)
 
-- **Route:** `/[locale]/import`
-- **Permission:** (ตาม NAV_PERMISSIONS ในโปรเจกต์ — เช่น import:create หรือเทียบเท่า)
+## Order Transaction
+- Payload FE → BE: `{ tier, items[] }`
+- Backend upsert `import_sku_row` (key: shop_id + date + sku_id)
+- tier free/paid ต่างกันเฉพาะการสรุปใน UI (ทั้งคู่ส่ง items)
 
----
+## Affiliate Orders (UI โฟลว์)
+- **จับคู่คอลัมน์:** ระบบจับคู่จาก header ในไฟล์อัตโนมัติ (ไม่ให้ user แก้ mapping เอง) — ใช้ขั้นนี้เพื่อดูตัวอย่างข้อมูลเท่านั้น
+- **ฟิลด์ที่ต้อง map ได้ครบ:** Order ID, Product name, Shop name, Total final earned amount (ยอดสุทธิรายได้), Order settlement status
+- **Process:** กด "Process" เพื่อประมวลผลฝั่ง client → แสดงผลสรุป (ยังไม่ยิง API)
+- **บันทึก:** หลัง Process เสร็จ user กด "บันทึก" เอง เพื่อยิง API (POST /api/affiliate/import หรือตามที่ backend กำหนด)
+- Payload FE → BE: `{ items: AffiliateImportItem[] }`
+- Backend upsert `affiliate_sku_row` (key: company_id + user_id + order_id + sku_id)
 
-## ฟีเจอร์หลัก (จากโค้ด)
+## Dashboard แยกตามบทบาท
+- Affiliate: overview/revenue7d/KPI ดึง `affiliate_sku_row`; low-stock ว่าง
+- Owner/SuperAdmin/Admin/Root: ดึง `import_sku_row`
 
-### 1. Page Header
-- หัวข้อ: title (i18n: `import.title`)
-
-### 2. Import Wizard (ImportWizard)
-- **ขั้นตอน (steps):** select-type → upload → mapping → result
-
-#### Step 1 — เลือกประเภทข้อมูล (select-type)
-- ตัวเลือก: **สินค้าคงคลัง** (inventory), **คำสั่งซื้อ** (orders)
-- แต่ละตัว: label, icon, description
-- เลือกแล้วไป step upload
-
-#### Step 2 — อัปโหลดไฟล์ (upload)
-- ใช้ FileDropzone — รับไฟล์ (CSV/Excel ตามที่ parser รองรับ)
-- อัปโหลดแล้ว parse (parseFile), auto-detect mappings (autoDetectMappings), ไป step mapping
-- แสดง error / parseWarnings
-
-#### Step 3 — Mapping (mapping)
-- ใช้ ColumnMapper — map คอลัมน์จากไฟล์ → ฟิลด์ของ data type (inventory/orders)
-- DataPreview — แสดงตัวอย่างข้อมูลที่ map แล้ว
-- ปุ่มนำเข้า → เรียก validateRows, ส่ง API (หรือ mock) → ไป step result
-
-#### Step 4 — Result (result)
-- แสดง ImportResult: imported, skipped, duplicates, errors[]
-- ปุ่มปิด / นำเข้าต่อ (onClose, onImportComplete)
-
-### 3. Data Type & Parser
-- **Data types:** inventory, orders
-- **Parser:** parseFile, autoDetectMappings, validateRows (จาก file-parser)
-- รองรับ headers, rows, warnings
-
-### 4. Props (Optional)
-- onClose, onImportComplete(result), defaultDataType — สำหรับใช้ใน modal หรือหน้าเต็ม
-
----
-
-## ไฟล์ที่เกี่ยวข้อง
-
-- `app/[locale]/import/page.tsx` — หน้า (client, render ImportWizard)
-- `components/upload/ImportWizard.tsx` — วิซาร์ดหลายขั้น
-- `components/upload/FileDropzone.tsx` — ลาก/เลือกไฟล์
-- `components/upload/ColumnMapper.tsx` — map คอลัมน์
-- `components/upload/DataPreview.tsx` — แสดงตัวอย่าง
-- `components/upload/file-parser.ts` (หรือ path ที่ใช้) — parse, autoDetect, validate
+## ตารางที่ใช้
+- `import_sku_row` : ข้อมูลขาย/สต็อกตามร้าน (seller roles)
+- `affiliate_sku_row`: คอมมิชชัน affiliate (company_id+user_id scope)
+- `import_results`: ลบแล้ว (ไม่ใช้)

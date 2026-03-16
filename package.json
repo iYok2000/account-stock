@@ -19,7 +19,11 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-dropzone": "^15.0.0",
+<<<<<<< HEAD
     "recharts": "^3.8.0",
+=======
+    "recharts": "^3.7.0",
+>>>>>>> feature/myfeature
     "tailwind-merge": "^3.4.1",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"

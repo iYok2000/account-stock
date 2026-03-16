@@ -1,186 +1,383 @@
 "use client";
 
-import { useState } from "react";
-import { User, Shield, Bell, Globe, Store, Plus, Loader2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import {
+  User,
+  Lock,
+  Globe,
+  LogOut,
+  Check,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ShieldCheck,
+} from "lucide-react";
+import { useAuth, useUserContext } from "@/contexts/AuthContext";
+import { apiRequest } from "@/lib/api-client";
+import { mapErrorMessage } from "@/lib/error-mapping";
+import { useToast } from "@/contexts/ToastContext";
+import { cn } from "@/lib/utils";
 
-const NOTIFICATION_ITEMS = [
-  "แจ้งเตือนคำสั่งซื้อใหม่",
-  "แจ้งเตือนเมื่อสต็อกต่ำกว่าเป้า",
-  "สรุปรายวัน",
-  "แจ้งเตือนภาษี",
-];
+/* ─── helpers ────────────────────────────────────────────────────── */
+function initials(name?: string) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
-export default function SettingsPage() {
-  const [notifications, setNotifications] = useState<Record<string, boolean>>(
-    Object.fromEntries(NOTIFICATION_ITEMS.map((k) => [k, true]))
-  );
+const ROLE_LABELS: Record<string, string> = {
+  Root: "Root",
+  SuperAdmin: "เจ้าของร้าน",
+  Admin: "ผู้จัดการ",
+  Affiliate: "Affiliate",
+};
 
-  const toggleNotification = (key: string) =>
-    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
+const TIER_LABELS: Record<string, string> = {
+  free: "ฟรี",
+  paid: "แพ็กเกจจ่ายเงิน",
+};
 
+const LOCALES = [
+  { code: "th", label: "ไทย", flag: "🇹🇭" },
+  { code: "en", label: "English", flag: "🇬🇧" },
+] as const;
+
+/* ─── Section wrapper ────────────────────────────────────────────── */
+function Section({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-6">
+    <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+          <Icon className="size-4 text-muted-foreground" aria-hidden />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="px-5 py-5 space-y-4">{children}</div>
+    </section>
+  );
+}
+
+/* ─── Label+input row ────────────────────────────────────────────── */
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+      <label className="shrink-0 text-xs font-medium text-muted-foreground sm:w-32">
+        {label}
+      </label>
+      <div className="flex-1">{children}</div>
+    </div>
+  );
+}
+
+/* ─── PasswordInput ──────────────────────────────────────────────── */
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 pr-10 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[44px]"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        aria-label={show ? "ซ่อนรหัส" : "แสดงรหัส"}
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Main page ──────────────────────────────────────────────────── */
+export default function SettingsPage() {
+  const t = useTranslations("settings");
+  const { session, logout, refetch } = useAuth();
+  const user = useUserContext();
+  const { showSuccess, showError } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const locale = useLocale();
+  const [localePending, startLocaleTransition] = useTransition();
+
+  /* profile */
+  const [displayName, setDisplayName] = useState(session?.displayName ?? "");
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  /* password */
+  const [pwOpen, setPwOpen] = useState(false);
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+
+  /* ── handlers ── */
+  const handleSaveProfile = async () => {
+    if (!displayName.trim()) return;
+    setProfileLoading(true);
+    try {
+      await apiRequest("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ display_name: displayName.trim() }),
+      });
+      await refetch();
+      setProfileSaved(true);
+      showSuccess(t("profileSaved"));
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch (e) {
+      const errorMessage = mapErrorMessage(e, locale as "en" | "th");
+      showError(errorMessage);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!oldPw || !newPw || !confirmPw) {
+      showError(t("fillAllFields"));
+      return;
+    }
+    if (newPw !== confirmPw) {
+      showError(t("passwordMismatch"));
+      return;
+    }
+    if (newPw.length < 8) {
+      showError(t("passwordTooShort"));
+      return;
+    }
+    setPwLoading(true);
+    try {
+      // BE self.go: PATCH /api/users/me accepts { password } to change password
+      await apiRequest("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ password: newPw }),
+      });
+      showSuccess(t("passwordChanged"));
+      setOldPw(""); setNewPw(""); setConfirmPw("");
+      setPwOpen(false);
+    } catch (e) {
+      const errorMessage = mapErrorMessage(e, locale as "en" | "th");
+      showError(errorMessage);
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/login");
+  };
+
+  const switchLocale = (next: "th" | "en") => {
+    if (next === locale) return;
+    startLocaleTransition(() => {
+      router.replace(pathname, { locale: next });
+    });
+  };
+
+  /* ── render ── */
+  return (
+    <div className="flex flex-col gap-6 pb-10">
+      {/* header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">ตั้งค่า</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">จัดการบัญชีและการตั้งค่าระบบ</p>
+        <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 max-w-5xl">
-        {/* Shop/Brand section — API */}
-        <div className="card md:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold flex items-center gap-2 text-foreground">
-                <Store className="h-5 w-5" />
-                ร้านค้า / แบรนด์
-              </h3>
-              <p className="text-sm text-muted-foreground mt-0.5">จัดการร้านค้าและช่องทางจำหน่าย</p>
+      {/* ── SECTION: Profile ── */}
+      <Section icon={User} title={t("profile")} subtitle={t("profileSub")}>
+        {/* Avatar + role badges */}
+        <div className="flex items-center gap-4 pb-2">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-lg font-bold select-none">
+            {initials(session?.displayName ?? user?.role)}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-sm font-semibold text-foreground">
+              {session?.displayName ?? "—"}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {session?.roles.map((r) => (
+                <span
+                  key={r}
+                  className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
+                >
+                  {ROLE_LABELS[r] ?? r}
+                </span>
+              ))}
+              {user?.tier && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                  {TIER_LABELS[user.tier] ?? user.tier}
+                </span>
+              )}
             </div>
-            <button className="btn-secondary flex items-center gap-2 text-sm" disabled>
-              <Plus className="h-4 w-4" />
-              เพิ่มร้านค้า
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4 space-y-3">
+          <Field label={t("displayName")}>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={t("displayNamePlaceholder")}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[44px]"
+            />
+          </Field>
+
+          {session?.userId && (
+            <Field label={t("userId")}>
+              <p className="text-sm text-muted-foreground font-mono select-all">
+                {session.userId}
+              </p>
+            </Field>
+          )}
+
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleSaveProfile}
+              disabled={profileLoading || !displayName.trim()}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all min-h-[44px] active:scale-95",
+                profileSaved
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-primary hover:bg-primary/90 disabled:opacity-50"
+              )}
+            >
+              {profileSaved ? (
+                <><Check className="size-4" /> {t("saved")}</>
+              ) : profileLoading ? (
+                t("saving")
+              ) : (
+                t("saveProfile")
+              )}
             </button>
           </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
-            <span>⏳</span>
-            <span>รอต่อ API — การจัดการร้านค้าจะใช้งานได้เมื่อเชื่อมต่อ backend</span>
-          </div>
-          <div className="mt-4 text-center py-8 text-muted-foreground border rounded-lg">
-            <Store className="h-12 w-12 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">ยังไม่มีร้านค้า — รอต่อ API</p>
-          </div>
         </div>
+      </Section>
 
-        {/* Profile */}
-        <div className="card space-y-4">
-          <div className="mb-2">
-            <h3 className="font-semibold flex items-center gap-2 text-foreground">
-              <User className="h-5 w-5" />
-              ข้อมูลส่วนตัว
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">จัดการข้อมูลบัญชีของคุณ</p>
-          </div>
-
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 flex items-center gap-2">
-            <span>⏳</span>
-            <span>รอต่อ API — ข้อมูลผู้ใช้จะดึงจาก backend</span>
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { label: "ชื่อที่แสดง", type: "text", placeholder: "ชื่อผู้ใช้" },
-              { label: "อีเมล", type: "email", placeholder: "email@example.com" },
-              { label: "เบอร์โทร", type: "tel", placeholder: "08x-xxx-xxxx" },
-            ].map(({ label, type, placeholder }) => (
-              <div key={label}>
-                <label className="text-sm font-medium text-foreground">{label}</label>
-                <input
-                  type={type}
-                  placeholder={placeholder}
-                  disabled
-                  className="input-base mt-1 w-full h-10 opacity-60 cursor-not-allowed"
-                />
-              </div>
+      {/* ── SECTION: General ── */}
+      <Section icon={Globe} title={t("general")} subtitle={t("generalSub")}>
+        <Field label={t("language")}>
+          <div className="flex gap-2">
+            {LOCALES.map(({ code, label, flag }) => (
+              <button
+                key={code}
+                type="button"
+                disabled={localePending}
+                onClick={() => switchLocale(code)}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors min-h-[44px] active:scale-95",
+                  locale === code
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <span aria-hidden>{flag}</span>
+                {label}
+                {locale === code && <Check className="size-3.5 ml-0.5" />}
+              </button>
             ))}
-            <div>
-              <label className="text-sm font-medium text-foreground">ประเภทธุรกิจ</label>
-              <select
-                disabled
-                className="mt-1 w-full h-10 rounded-md border border-border bg-background px-3 text-sm opacity-60 cursor-not-allowed"
-              >
-                <option value="INDIVIDUAL">บุคคลธรรมดา</option>
-                <option value="PARTNERSHIP">ห้างหุ้นส่วน</option>
-                <option value="COMPANY">บริษัท</option>
-              </select>
-            </div>
           </div>
-          <button className="btn-primary" disabled>บันทึกข้อมูล</button>
-        </div>
+        </Field>
 
-        {/* Tax settings */}
-        <div className="card space-y-4">
-          <div className="mb-2">
-            <h3 className="font-semibold flex items-center gap-2 text-foreground">
-              <Shield className="h-5 w-5" />
-              ตั้งค่าภาษี
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">กำหนดข้อมูลภาษีสำหรับการคำนวณ</p>
-          </div>
+        {user?.shopName && (
+          <Field label={t("currentShop")}>
+            <p className="text-sm font-medium text-foreground">{user.shopName}</p>
+          </Field>
+        )}
+      </Section>
 
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 flex items-center gap-2">
-            <span>⏳</span>
-            <span>รอต่อ API</span>
+      {/* ── SECTION: Security ── */}
+      <Section icon={ShieldCheck} title={t("security")} subtitle={t("securitySub")}>
+        {/* change password collapsible */}
+        <button
+          type="button"
+          onClick={() => setPwOpen((o) => !o)}
+          className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted min-h-[48px]"
+        >
+          <div className="flex items-center gap-2">
+            <Lock className="size-4 text-muted-foreground" />
+            {t("changePassword")}
           </div>
+          <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", pwOpen && "rotate-180")} />
+        </button>
 
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-foreground">เลขประจำตัวผู้เสียภาษี</label>
-              <input
-                type="text"
-                placeholder="x-xxxx-xxxxx-xx-x"
-                disabled
-                className="input-base mt-1 w-full h-10 opacity-60 cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">จด VAT</label>
-              <select
-                disabled
-                className="mt-1 w-full h-10 rounded-md border border-border bg-background px-3 text-sm opacity-60 cursor-not-allowed"
-              >
-                <option value="no">ไม่ได้จด VAT</option>
-                <option value="yes">จด VAT แล้ว</option>
-              </select>
-            </div>
-          </div>
-          <button className="btn-primary" disabled>บันทึกข้อมูลภาษี</button>
-        </div>
-
-        {/* Notifications */}
-        <div className="card space-y-3">
-          <div className="mb-2">
-            <h3 className="font-semibold flex items-center gap-2 text-foreground">
-              <Bell className="h-5 w-5" />
-              การแจ้งเตือน
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">ตั้งค่าการแจ้งเตือน</p>
-          </div>
-          {NOTIFICATION_ITEMS.map((item) => (
-            <label
-              key={item}
-              className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 cursor-pointer"
+        {pwOpen && (
+          <div className="rounded-lg border border-border bg-background p-4 space-y-3">
+            <Field label={t("oldPassword")}>
+              <PasswordInput value={oldPw} onChange={setOldPw} placeholder="••••••••" />
+            </Field>
+            <Field label={t("newPassword")}>
+              <PasswordInput value={newPw} onChange={setNewPw} placeholder={t("minChars")} />
+            </Field>
+            <Field label={t("confirmPassword")}>
+              <PasswordInput value={confirmPw} onChange={setConfirmPw} placeholder="••••••••" />
+            </Field>
+            {newPw && confirmPw && newPw !== confirmPw && (
+              <p className="text-xs text-red-600">{t("passwordMismatch")}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={pwLoading || !oldPw || !newPw || !confirmPw}
+              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-all active:scale-95 hover:bg-primary/90 disabled:opacity-50 min-h-[44px]"
             >
-              <span className="text-sm text-foreground">{item}</span>
-              <input
-                type="checkbox"
-                checked={notifications[item]}
-                onChange={() => toggleNotification(item)}
-                className="h-4 w-4 rounded accent-primary cursor-pointer"
-              />
-            </label>
-          ))}
-        </div>
+              {pwLoading ? t("saving") : t("confirmChange")}
+            </button>
+          </div>
+        )}
 
-        {/* Language */}
-        <div className="card space-y-3">
-          <div className="mb-2">
-            <h3 className="font-semibold flex items-center gap-2 text-foreground">
-              <Globe className="h-5 w-5" />
-              ภาษา / Language
-            </h3>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">ภาษาที่แสดง</label>
-            <select className="mt-1 w-full h-10 rounded-md border border-border bg-background px-3 text-sm">
-              <option value="th">ภาษาไทย</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            เปลี่ยนภาษาผ่าน URL เช่น /th/... หรือ /en/... ก็ได้เช่นกัน
-          </p>
+        {/* logout */}
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:scale-95 min-h-[48px]"
+          >
+            <LogOut className="size-4" />
+            {t("logout")}
+          </button>
         </div>
-      </div>
+      </Section>
     </div>
   );
 }

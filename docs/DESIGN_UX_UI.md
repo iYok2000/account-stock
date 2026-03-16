@@ -10,7 +10,7 @@
 | หัวข้อ | ค่า |
 |--------|-----|
 | งานแรก | เมนู + หน้า UI ทั้งชุด (ยังไม่มี API) |
-| API | ยังไม่ต่อ — ไม่ใช้ mock data (แสดง empty state) |
+| API | ยังไม่ต่อ — ไม่ใช้ mock data (แสดง empty state); ค่า token สีอ้างอิง BRANDING.md และ `app/globals.css` |
 | อุปกรณ์ | รองรับ desktop / tablet / mobile (responsive) |
 | Offline | ไม่ใช้ |
 | Role | Role-based — รายละเอียดทีหลัง |
@@ -23,7 +23,7 @@
 ## หลักการ UX/UI (ให้ AI และ designer ปฏิบัติตาม)
 
 - **เมนูชัด** — ด้านบนหรือด้านข้าง แยก Inventory / Orders / Suppliers / Reports
-- **Dashboard สรุป** — ตัวเลขสำคัญ (stock levels, pending orders) ดูได้ในหน้าเดียว
+- **Dashboard สรุป** — ตัวเลขสำคัญ (stock levels) ดูได้ในหน้าเดียว
 - **ค้นหา + filter** — ช่วยหา item หรือ order ได้เร็ว
 - **ฟอร์ม + validation แบบ real-time** — แก้ก่อน submit
 - **สถานะด้วยสี** — เขียว = In Stock, แดง/เหลือง = Low Stock, เทา = Out of Stock
@@ -46,7 +46,7 @@
 ### Sidebar
 - **Desktop:** เปิดอยู่ default ความกว้างประมาณ 280px, ติดบน viewport (ไม่เว้นระยะจาก header). ปิดได้ด้วยปุ่มลูกศรซ้ายใน sidebar; เปิดกลับด้วย Hamburger ใน header (แสดงเมื่อ sidebar ปิดเท่านั้น).
 - **Mobile:** ปิด default. เปิดเป็น overlay ทับ content พร้อม backdrop มืด; ปิดได้ด้วยปุ่ม X ใน sidebar หรือคลิก backdrop.
-- **รายการเมนู (กลุ่ม):** (1) Dashboard, Inventory, Orders, Suppliers, Import, Shops (2) โปรโมชั่น: Campaigns, Vouchers, Fees (3) วิเคราะห์: Calculator, Tax, Funnels, Reports (4) เครื่องมือ: Agents, Settings. แต่ละรายการมี icon + label; แสดงตามสิทธิ์ (RBAC). ด้านล่าง sidebar มีตัวเลือกภาษาและ Role (placeholder).
+- **รายการเมนู (กลุ่ม):** (1) Dashboard, Inventory, Orders, Suppliers, Import, Shops (2) โปรโมชั่น: Campaigns, Vouchers, Fees (3) วิเคราะห์: Calculator, Tax, Reports (4) เครื่องมือ: Agents, Settings. แต่ละรายการมี icon + label; แสดงตามสิทธิ์ (RBAC). ด้านล่าง sidebar มีตัวเลือกภาษาและ Role (placeholder).
 - **รายการที่ active:** พื้นหลังสี primary, ตัวอักษรสีขาว, ตัวหนา, มี shadow เบา; เวลา hover เลื่อนไปทางขวาเล็กน้อย.
 
 ### ความหมายแต่ละหน้า
@@ -59,7 +59,7 @@
 - **Campaigns / Vouchers / Fees** — โปรโมชั่น (placeholder)
 - **Calculator** — เครื่องคำนวณกำไร (Sliders, Breakeven, Scenarios, Sensitivity, Monte Carlo)
 - **Tax** — ภาษีบุคคลธรรมดา (bracket, ตัวเลขเสีย/ได้คืน)
-- **Funnels / Reports** — วิเคราะห์ (placeholder)
+- **Reports** — วิเคราะห์ (placeholder)
 - **Agents / Settings** — เครื่องมือ (placeholder)
 
 ---
@@ -85,7 +85,7 @@
 - **สถานะ:** Pending, Confirmed, Shipped, Delivered (สีต่างกัน).
 - **Confirmation** ก่อน submit order ใหญ่.
 
-### 4. Suppliers / Shops / Campaigns / Vouchers / Fees / Funnels / Reports / Agents / Settings
+### 4. Suppliers / Shops / Campaigns / Vouchers / Fees / Reports / Agents / Settings
 - หน้าพร้อมโครงหรือ placeholder (หัวข้อ + ข้อความ). เมนูและ layout พร้อมสำหรับต่อ API ทีหลัง.
 
 ### 5. Import
@@ -101,13 +101,14 @@
 
 ## องค์ประกอบ UI ที่ใช้ร่วมกัน (แนวทางสำหรับ designer / AI)
 
-- **Layout:** Sidebar navigation (ย่อ/ขยายได้, ความกว้างประมาณ 280px) + พื้นที่ content. Header ติดบน; sidebar ติดบนเหมือนกัน (ไม่เว้นระยะจาก header). พื้นที่ content มีพื้นหลังอ่อน (neutral) เพื่อแยกจาก sidebar สีขาว.
-- **Main content:** มีระยะห่างจาก header ลงมาสม่ำเสมอ (mobile เล็กกว่า desktop เล็กน้อย). ใช้ระยะเดียวกันทุกหน้า.
-- **Dashboard Cards:** Icon สีต่างกันตามประเภท, ตัวเลขใหญ่ชัด, Hover: ยกขึ้น + shadow + border สี primary.
-- **Buttons:** Primary สำหรับ CTA (สีน้ำเงิน), Secondary สำหรับ action รอง, Danger สำหรับลบ. Hover: สีเข้มขึ้น; กด: scale เล็กน้อย (รู้สึกกดได้).
-- **Forms:** Focus ชัด (border สี primary + shadow เบา). Error แสดงใต้ฟิลด์แบบ real-time.
-- **Tables/Lists:** Header มีพื้นหลังไล่โทนอ่อน; แถว hover มีพื้นหลังและ border เบา; มี checkbox สำหรับ bulk; เส้นคั่นแถวเป็นสี neutral อ่อน.
-- **Modals:** ยืนยันการลบ / ยืนยัน submit. Overlay มืดพอให้โฟกัสที่ modal.
+- **โทนทางการ (Jira/Microsoft-style):** สีน้ำเงินเป็น primary; พื้นหลังโทนเทาเย็น (ไม่ warm); มุมโค้ง 6px (ปุ่ม/input) และ 8px (การ์ด) เพื่อความเป็นทางการ; รายการเมนู active ใช้เส้นซ้ายน้ำเงิน + พื้นหลังฟ้าอ่อน แทนการทาทั้งบล็อก.
+- **Layout:** Sidebar navigation (ความกว้าง 280px) + พื้นที่ content. Header และ sidebar พื้นขาว/เทาอ่อน; พื้นที่ content มีพื้นหลัง muted อ่อน เพื่อแยกจาก sidebar.
+- **Main content:** มีระยะห่างจาก header ลงมาสม่ำเสมอ. ใช้ระยะเดียวกันทุกหน้า.
+- **Dashboard Cards:** Icon สีต่างกันตามประเภท, ตัวเลขใหญ่ชัด, Hover: ยกขึ้นเล็กน้อย + shadow เบา (ไม่เด่นเกินไป).
+- **Buttons:** Primary = น้ำเงิน (CTA), Secondary = ขอบเทา/พื้นขาว, Danger = แดง. Radius 6px. Hover: สีเข้มขึ้น; กด: scale เล็กน้อย.
+- **Forms:** Focus ชัด (border น้ำเงิน + ring เบา). Error แสดงใต้ฟิลด์แบบ real-time.
+- **Tables/Lists:** Header พื้นหลัง neutral-50; แถว hover พื้นหลังอ่อน; เส้นคั่นแถวสี neutral อ่อน.
+- **Modals:** Overlay มืดพอให้โฟกัสที่ modal.
 - **Toasts/Feedback:** success / error หลัง action (มุมล่างขวา). Loading แสดงตอน submit หรือโหลดรายการ.
 
 ---
@@ -132,7 +133,7 @@
 
 ## หลายภาษา (i18n)
 
-- เก็บ key ตามหน้า/ส่วน (เช่น inventory.title, orders.placeOrder).
+- เก็บ key ตามหน้า/ส่วน (เช่น inventory.title, import.title).
 - เมนู Lang สลับภาษาได้ทุกหน้า.
 - วางโครงให้เพิ่มภาษาที่ 2, 3 ได้โดยไม่กระทบ layout.
 
@@ -153,10 +154,10 @@
 | รายการ | สถานะ |
 |--------|--------|
 | Sidebar ความกว้าง ~280px | ✅ `w-[280px]` |
-| รายการ active: พื้นหลัง primary + ตัวอักษรสีขาว + shadow | ✅ `bg-primary text-primary-foreground shadow-md`; hover เลื่อนขวา |
+| รายการ active: เส้นซ้ายน้ำเงิน + พื้นฟ้าอ่อน (Jira-style) | ✅ `border-l-[3px] border-primary bg-primary/10`; icon สี primary |
 | Dashboard cards: Hover ยกขึ้น + shadow + border primary | ✅ `.card-hover:hover` ใช้ `border-primary`, `translateY(-2px)` |
 | ระยะระหว่างส่วน (gap) | ✅ Dashboard `space-y-8`, grid `gap-8`; Inventory/Orders `gap-10` (~40px filter → ตาราง) |
-| สีและ token ไปทางเดียวกัน | ✅ primary-hover/primary-light โทน warm; input focus ring `hsl(var(--primary)/0.2)` |
+| สีและ token ไปทางเดียวกัน | ✅ primary น้ำเงิน; primary-hover/primary-light โทนน้ำเงิน; พื้นหลังโทนเทาเย็น (220 14% 97%) |
 | Dashboard: stagger + จุดเด่น layout | ✅ KPI cards มี `dashboard-kpi-card` แบบ stagger; การ์ดแรก `lg:col-span-2` |
 | ลด purple เป็นจุดเด่น | ✅ pendingOrders ใช้ blue; Quick action คำนวณกำไรใช้ primary/10 |
 | พื้นหลัง content แยกจาก sidebar | ✅ main มี `bg-muted/20` |
@@ -167,11 +168,12 @@
 
 ## แนวทางเพิ่ม (จากสกิล frontend-design)
 
-- **Typography:** ใช้ Sarabun รองรับไทย — ถ้าต้องการ “display” สำหรับหัวข้อใหญ่ อาจเพิ่ม font คู่
-- **Color:** Primary โทน warm (น้ำตาล/ส้ม); hover/focus ใช้โทนเดียวกัน (ไม่ใช้ #1d4ed8 แยก)
-- **Motion:** stagger ตอนโหลดการ์ด; hover มี scale/shadow ชัด
-- **Spatial:** เลือก 1–2 หน้าให้มีจุดเด่น (การ์ดใหญ่หรือ offset) เพื่อไม่ให้ดู template
-- **Background:** sidebar/content แยกชั้นด้วยพื้นต่างโทน (content มี tint เบา)
+- **Typography:** ใช้ font รองรับไทย; หัวข้อใช้ font-weight 600–700 เพื่อเน้นคำ
+- **Color:** Primary โทนน้ำเงิน (217 91% 40%) — ค่าจริงใน `app/globals.css` และ BRANDING.md; พื้นหลังโทนเทาเย็น (220 14%); การ์ดพื้นขาว
+- **Radius:** 6px ปุ่ม/input, 8px การ์ด — เป็นทางการ ไม่โค้งมาก
+- **Motion:** stagger ตอนโหลดการ์ด; hover ยกขึ้นเล็กน้อย + shadow เบา
+- **Spatial:** sidebar แยกจาก content ด้วยพื้นต่างโทน (content มี bg-muted/20)
+- **Nav active:** เส้นซ้ายน้ำเงิน 3px + พื้น primary/10 (ไม่ทาทั้งบล็อกสีเต็ม) — experience คล้าย Jira/Microsoft
 
 ---
 

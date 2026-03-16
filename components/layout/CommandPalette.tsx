@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Search, LayoutDashboard, Package, ShoppingCart, Upload,
   Users, Store, Megaphone, Ticket, BadgePercent, Calculator,
-  Receipt, GitBranch, FileText, Bot, Settings, UserCog,
+  Receipt, FileText, UserCog,
 } from "lucide-react";
 import { usePermissions } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
@@ -16,19 +16,15 @@ import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
 const NAV_ITEMS = [
   { group: "หลัก", href: "/", key: "dashboard", icon: LayoutDashboard },
   { group: "หลัก", href: "/inventory", key: "inventory", icon: Package },
-  { group: "หลัก", href: "/orders", key: "orders", icon: ShoppingCart },
-  { group: "หลัก", href: "/suppliers", key: "suppliers", icon: Users },
   { group: "หลัก", href: "/import", key: "import", icon: Upload },
-  { group: "หลัก", href: "/shops", key: "shops", icon: Store },
+  { group: "ร้านค้า", href: "/shops/create", key: "createShop", icon: Store },
+  { group: "ร้านค้า", href: "/shops/me", key: "shopMembers", icon: UserCog },
   { group: "โปรโมชั่น", href: "/campaigns", key: "campaigns", icon: Megaphone },
   { group: "โปรโมชั่น", href: "/vouchers", key: "vouchers", icon: Ticket },
   { group: "โปรโมชั่น", href: "/fees", key: "fees", icon: BadgePercent },
   { group: "วิเคราะห์", href: "/calculator", key: "calculator", icon: Calculator },
   { group: "วิเคราะห์", href: "/tax", key: "tax", icon: Receipt },
-  { group: "วิเคราะห์", href: "/funnels", key: "funnels", icon: GitBranch },
   { group: "วิเคราะห์", href: "/reports", key: "reports", icon: FileText },
-  { group: "เครื่องมือ", href: "/agents", key: "agents", icon: Bot },
-  { group: "เครื่องมือ", href: "/settings", key: "settings", icon: Settings },
   { group: "เครื่องมือ", href: "/users", key: "users", icon: UserCog },
 ] as const;
 

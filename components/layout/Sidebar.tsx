@@ -17,29 +17,34 @@ import {
   Ticket,
   BadgePercent,
   Receipt,
-  GitBranch,
   Bot,
-  Settings,
   UserCog,
   X,
+  BarChart3,
+  Settings,
+  Shield,
 } from "lucide-react";
 import { usePermissions } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
 
 const NAV_GROUPS = [
   {
-    label: null,
+    labelKey: null,
     items: [
       { href: "/", key: "dashboard", icon: LayoutDashboard },
       { href: "/inventory", key: "inventory", icon: Package },
-      { href: "/orders", key: "orders", icon: ShoppingCart },
-      { href: "/suppliers", key: "suppliers", icon: Users },
       { href: "/import", key: "import", icon: Upload },
-      { href: "/shops", key: "shops", icon: Store },
     ],
   },
   {
-    label: "โปรโมชั่น",
+    labelKey: "groupShops",
+    items: [
+      { href: "/shops/create", key: "createShop", icon: Store },
+      { href: "/shops/me", key: "shopMembers", icon: UserCog },
+    ],
+  },
+  {
+    labelKey: "groupPromo",
     items: [
       { href: "/campaigns", key: "campaigns", icon: Megaphone },
       { href: "/vouchers", key: "vouchers", icon: Ticket },
@@ -47,20 +52,20 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "วิเคราะห์",
+    labelKey: "groupAnalysis",
     items: [
+      { href: "/analytics", key: "analytics", icon: BarChart3 },
       { href: "/calculator", key: "calculator", icon: Calculator },
       { href: "/tax", key: "tax", icon: Receipt },
-      { href: "/funnels", key: "funnels", icon: GitBranch },
       { href: "/reports", key: "reports", icon: FileText },
     ],
   },
   {
-    label: "เครื่องมือ",
+    labelKey: "groupTools",
     items: [
-      { href: "/agents", key: "agents", icon: Bot },
-      { href: "/settings", key: "settings", icon: Settings },
+      { href: "/admin", key: "admin", icon: Shield },
       { href: "/users", key: "users", icon: UserCog },
+      { href: "/settings", key: "settings", icon: Settings },
     ],
   },
 ] as const;
@@ -103,17 +108,17 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           href={item.href}
           onClick={() => setMobileOpen(false)}
           className={cn(
-            "group flex min-h-10 items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+            "group flex min-h-10 items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 border-l-[3px] border-transparent",
             isActive
-              ? "bg-primary text-primary-foreground shadow-md hover:shadow-lg"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground hover:translate-x-0.5"
+              ? "border-primary bg-primary/10 text-foreground font-semibold hover:bg-primary/15"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
         >
           <item.icon
             className={cn(
               "h-5 w-5 shrink-0",
               isActive
-                ? "text-primary-foreground"
+                ? "text-primary"
                 : "text-muted-foreground group-hover:text-foreground"
             )}
           />
@@ -124,10 +129,10 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   };
 
   const navContent = (
-    <div className="flex grow flex-col overflow-y-auto border-r border-border bg-card pb-4">
+      <div className="flex grow flex-col overflow-y-auto border-r border-border bg-card pb-4">
       {/* Logo row — same height as header (h-16) */}
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-6">
-        <Package className="h-8 w-8 shrink-0 text-primary" />
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-6">
+        <Package className="h-8 w-8 shrink-0 text-primary" aria-hidden />
         <div className="min-w-0">
           <h1 className="text-base font-bold leading-tight text-foreground">
             {t("brand")}
@@ -144,10 +149,10 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           const visibleItems = group.items.filter((item) => canSee.has(item.href));
           if (visibleItems.length === 0) return null;
           return (
-            <div key={group.label ?? "__main"}>
-              {group.label && (
+            <div key={group.labelKey ?? "__main"}>
+              {group.labelKey && (
                 <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {group.label}
+                  {t(group.labelKey)}
                 </p>
               )}
               <ul role="list" className="flex flex-col gap-y-0.5">

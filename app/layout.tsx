@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sarabun } from "next/font/google";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 
 const sarabun = Sarabun({
@@ -14,13 +15,14 @@ export const metadata: Metadata = {
   description: "Inventory and order management",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
-    <html lang="th" suppressHydrationWarning className={sarabun.variable}>
+    <html lang={locale} suppressHydrationWarning className={sarabun.variable}>
       <body className={sarabun.className}>{children}</body>
     </html>
   );

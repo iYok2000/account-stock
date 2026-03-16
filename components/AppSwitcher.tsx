@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ExternalLink, Grid3X3, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const APPS: App[] = [
 const CURRENT_APP_ID = "account-stock-fe";
 
 export default function AppSwitcher() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const currentApp = APPS.find((app) => app.id === CURRENT_APP_ID);
   const otherApps = APPS.filter((app) => app.id !== CURRENT_APP_ID);
@@ -35,7 +37,7 @@ export default function AppSwitcher() {
     if (url.startsWith("http")) {
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      window.location.href = url;
+      router.push(url);
     }
     setIsOpen(false);
   };

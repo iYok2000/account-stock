@@ -10,8 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { formatCurrency, cn } from "@/lib/utils";
 import {
   calculateLocal, getHappiness, calcBreakEven, calcSensitivity, calcScenarios, calcMonteCarlo,
+  FEE,
   type SliderKey,
 } from "@/lib/calculator/engine";
+import { InventoryPicker } from "@/components/calculator/InventoryPicker";
 
 // ─── Happiness face config (de‑emphasized block) ─────────────────────────────
 const FACES = [
@@ -198,6 +200,16 @@ export default function CalculatorPage() {
         <span>⏳</span><span>{t("apiNote")}</span>
       </div>
 
+      {/* Pull from Inventory */}
+      <InventoryPicker
+        priceMode={priceMode}
+        currentProductCost={productCost}
+        setListPrice={setListPrice}
+        setSellingPrice={setSellingPrice}
+        setQuantity={setQuantity}
+        setProductCost={setProductCost}
+      />
+
       {/* Simple / Advanced mode */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-foreground">{t("modeHint")}</span>
@@ -263,10 +275,20 @@ export default function CalculatorPage() {
                 {formatCurrency(result.profitPerUnit)}
               </p>
             </div>
+<<<<<<< HEAD
             <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Margin</p>
               <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.profitMargin >= 30 ? "text-brown-600" : result.profitMargin >= 15 ? "text-brown-500" : "text-red-600")}>
                 {result.profitMargin.toFixed(1)}%
+=======
+            <div className="card text-center py-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Gross / Net</p>
+              <p className={cn("text-lg font-bold tabular-nums mt-1", result.grossMargin >= 50 ? "text-green-600" : result.grossMargin >= 30 ? "text-amber-600" : "text-red-600")}>
+                {result.grossMargin.toFixed(0)}%
+              </p>
+              <p className={cn("text-xs tabular-nums", result.profitMargin >= 30 ? "text-green-600" : result.profitMargin >= 15 ? "text-amber-600" : "text-red-600")}>
+                → {result.profitMargin.toFixed(0)}%
+>>>>>>> feature/myfeature
               </p>
             </div>
             <div className="card text-center py-4 sm:py-3">
@@ -276,6 +298,7 @@ export default function CalculatorPage() {
               </p>
             </div>
           </div>
+<<<<<<< HEAD
 
           {/* Fee Breakdown - Collapsible */}
           <div className="border-t border-border/50 pt-4 mt-4">
@@ -302,6 +325,39 @@ export default function CalculatorPage() {
               </div>
             )}
           </div>
+=======
+          {/* Settlement gap & ROAS strip */}
+          {(result.settlementGapPct > 0 || result.roas > 0) && (
+            <div className="flex gap-2 flex-wrap">
+              <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs flex flex-col">
+                <span className="text-muted-foreground">{t("results.settlementGapLabel")}</span>
+                <span className={cn("font-semibold tabular-nums", result.settlementGapPct > 20 ? "text-red-600" : "text-foreground")}>
+                  {result.settlementGapPct.toFixed(1)}%
+                </span>
+              </div>
+              {result.roas > 0 && (
+                <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs flex flex-col">
+                  <span className="text-muted-foreground">{t("results.roasLabel")}</span>
+                  <span className={cn("font-semibold tabular-nums", result.roas >= 3 ? "text-green-600" : result.roas >= 1 ? "text-amber-600" : "text-red-600")}>
+                    {result.roas.toFixed(2)}x
+                  </span>
+                </div>
+              )}
+              {result.cac > 0 && (
+                <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs flex flex-col">
+                  <span className="text-muted-foreground">{t("results.cacLabel")}</span>
+                  <span className="font-semibold tabular-nums">{formatCurrency(result.cac)}</span>
+                </div>
+              )}
+            </div>
+          )}
+          <ResultsPanel
+            result={result} activePrice={activePrice} listPrice={listPrice}
+            productCost={productCost} packagingCost={packagingCost} shippingCost={shippingCost}
+            affiliateRate={affiliateRate} adSpend={adSpend}
+            quantity={quantity} returnRate={returnRate} priceMode={priceMode} goalProfit={goalProfit}
+          />
+>>>>>>> feature/myfeature
         </div>
       </div>
 
@@ -378,6 +434,7 @@ export default function CalculatorPage() {
         </p>
       </div>
 
+<<<<<<< HEAD
       {/* 4) Cost + Waterfall charts - Collapsible */}
       <div className="card">
         <button
@@ -422,6 +479,38 @@ export default function CalculatorPage() {
             </div>
           </div>
         )}
+=======
+      {/* 4) Cost + Waterfall charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="card">
+          <h3 className="font-semibold text-foreground mb-1">{t("charts.costTitle")}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{t("charts.costSubtitle")}</p>
+          <CostBars data={[
+            { name: t("charts.productCost"),   value: productCost,                                            color: "#6B4226" },
+            { name: t("charts.packaging"),     value: packagingCost,                                          color: "#8B6E4E" },
+            { name: t("charts.shippingFee"),   value: shippingCost,                                           color: "#A67C52" },
+            { name: t("charts.commissionVat"), value: result.commissionPerUnit + result.commissionVatPerUnit,  color: "#C8975E" },
+            { name: t("charts.commerceGrowth"),value: result.commerceGrowthPerUnit,                           color: "#D4601A" },
+            { name: t("charts.infrastructure"),value: result.infrastructurePerUnit,                           color: "#E8882A" },
+            { name: t("charts.paymentFee"),    value: result.paymentFeePerUnit,                               color: "#D4A76A" },
+            { name: t("charts.affiliate"),     value: result.affiliateFeePerUnit,                             color: "#B85C38" },
+            { name: t("charts.adSpend"),       value: adSpend,                                                color: "#9B3B1F" },
+          ]} />
+        </div>
+        <div className="card">
+          <h3 className="font-semibold text-foreground mb-1">{t("charts.waterfallTitle")}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{t("charts.waterfallSubtitle")}</p>
+          <Waterfall data={[
+            { name: t("charts.revenue"),     value: result.revenueGross },
+            { name: t("charts.return"),      value: -(result.revenueGross - result.revenueNet) },
+            { name: t("charts.productCost"), value: -result.totalProductCost },
+            { name: t("charts.shippingFee"), value: -result.totalShipping },
+            { name: t("charts.platformFee"), value: -result.totalPlatformFees },
+            { name: t("charts.adSpend"),     value: -(adSpend * quantity) },
+            { name: t("charts.netProfit"),   value: result.monthlyProfit, isTotal: true },
+          ]} />
+        </div>
+>>>>>>> feature/myfeature
       </div>
 
       {/* 5) Breakeven + Scenarios + Sensitivity + Monte Carlo (AnalysisSection) — only in Advanced */}

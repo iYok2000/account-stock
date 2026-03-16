@@ -16,9 +16,9 @@
 | `@/lib/<feature>/*` | เฉพาะ feature นั้น (เช่น calculator → `@/lib/calculator/engine`) |
 | relative ภายใน feature เดียวกัน | `./FileDropzone`, `./file-parser` ฯลฯ |
 
-**ห้าม** จากภายใน `components/inventory`, `components/orders`, `components/calculator`, `components/upload`:
+**ห้าม** จากภายใน `components/inventory`, `components/calculator`, `components/upload`:
 
-- ห้าม import จาก feature อื่น (`@/components/inventory`, `@/components/orders`, …)
+- ห้าม import จาก feature อื่น (`@/components/inventory`, …)
 - ห้าม import จาก `@/components/layout`, `@/components/providers`, `@/components/AppSwitcher` (ให้เฉพาะ app/layout ใช้)
 
 บังคับใช้ผ่าน ESLint `no-restricted-imports` ใน `eslint.config.mjs`.
@@ -27,7 +27,7 @@
 
 ## โครงสร้าง feature
 
-- Feature ละโฟลเดอร์: `components/inventory`, `components/orders`, `components/calculator`, `components/upload`
+- Feature ละโฟลเดอร์: `components/inventory`, `components/calculator`, `components/upload`
 - Route ต่อหน้า: `app/[locale]/<feature>/page.tsx`
 - Logic แยกใน lib: เช่น `lib/calculator/engine.ts` — ไม่พึ่ง feature อื่น
 

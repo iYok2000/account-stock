@@ -1,5 +1,6 @@
 {
   "version": "1.0.0",
+<<<<<<< HEAD
   "updated": "2026-03-16T00:00:00Z",
   "note": "SSOT documentation setup for account-stock frontend",
   "project": {
@@ -91,6 +92,71 @@
     "build": "npm run build",
     "lint": "npm run lint",
     "typecheck": "npx tsc --noEmit",
+=======
+  "updated": "2026-03-14T00:00:00Z",
+  "note": "SSOT documentation setup",
+  "project": {
+    "name": "account-stock",
+    "description": "Go API backend for account-stock",
+    "tech_stack": "Go 1.22+, GORM, PostgreSQL, JWT, RBAC"
+  },
+  "documentation": {
+    "README.md": "Quick start & endpoints",
+    "docs/MANIFEST.json": "This file - documentation index",
+    "docs/DB_SPEC.md": "Database schema & GORM models",
+    "docs/ENTITY_SPEC.md": "Entity definitions & multi-tenant",
+    "docs/SECURITY.md": "Security guidelines (OWASP)",
+    "docs/SUPABASE.md": "Supabase connection guide",
+    "docs/DEPLOY.md": "Deployment guide (Fly.io)",
+    "docs/PRODUCTION_READINESS.md": "Production checklist"
+  },
+  "features": {
+    "authentication": {
+      "spec": "docs/feature/01-auth.md",
+      "code": "internal/auth/"
+    },
+    "users": {
+      "spec": "docs/feature/02-users.md",
+      "code": "internal/handler/users.go"
+    },
+    "shops": {
+      "spec": "docs/feature/04-shops.md",
+      "code": "internal/handler/shops.go"
+    },
+    "import": {
+      "spec": "docs/feature/03-import.md",
+      "code": "internal/handler/import.go"
+    },
+    "dashboard": {
+      "code": "internal/handler/dashboard.go"
+    },
+    "inventory": {
+      "code": "internal/handler/inventory.go"
+    },
+    "affiliate": {
+      "code": "internal/handler/affiliate.go"
+    },
+    "analytics": {
+      "code": "internal/handler/analytics.go"
+    }
+  },
+  "architecture": {
+    "database": "docs/DB_SPEC.md",
+    "entities": "docs/ENTITY_SPEC.md",
+    "security": "docs/SECURITY.md",
+    "supabase": "docs/SUPABASE.md",
+    "rbac": "internal/rbac/rbac.go"
+  },
+  "operations": {
+    "deployment": "docs/DEPLOY.md",
+    "production_checklist": "docs/PRODUCTION_READINESS.md"
+  },
+  "quickReference": {
+    "runServer": "go run ./cmd/server",
+    "runMigration": "go run ./cmd/migrate",
+    "build": "go build -o server ./cmd/server",
+    "test": "go test ./...",
+>>>>>>> feature/myfeature
     "gitStatus": "git status && git log --oneline -5"
   }
 }

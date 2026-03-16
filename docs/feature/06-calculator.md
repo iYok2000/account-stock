@@ -2,6 +2,9 @@
 
 สรุปฟีเจอร์จากโค้ด
 
+**Last Updated:** 2026-03-10
+**Status:** Implemented (client-side engine v2)
+
 ---
 
 ## Research & UX Analysis (จาก GPT Research MCP)
@@ -93,10 +96,12 @@
 
 ### 3. Results Panel (ResultsPanel)
 - สรุปต้นทุนและกำไรต่อชิ้น
-- ต้นทุนแยก (ต้นทุนสินค้า, แพ็ค, จัดส่ง, ค่าชำระเงิน, โฆษณา ฯลฯ)
-- กำไรต่อชิ้น, เป้าหมาย (goal), margin
+- ต้นทุนแยก: สินค้า, แพ็ค, จัดส่ง (net), Commission+VAT, **Commerce Growth**, **Infrastructure**, Transaction Fee, Affiliate, Voucher, โฆษณา
+- กำไรต่อชิ้น, เป้าหมาย (goal)
+- **Gross Margin** (ก่อนค่าธรรมเนียม Platform) + **Net Margin** (หลังค่าธรรมเนียมทั้งหมด) — แยกแสดง 2 ค่า
+- KPI strip: **Settlement Gap %**, **ROAS** (ถ้ามีโฆษณา), **CAC**
 - การประมาณการรายได้ (ต่อเดือน/ปี)
-- Cost chart (สัดส่วนต้นทุน), Waterfall chart (profit waterfall)
+- Cost chart (สัดส่วนต้นทุน รวม Commerce Growth + Infrastructure), Waterfall chart
 
 ### 4. Analysis Section (AnalysisSection)
 - **Breakeven:** ราคาต่ำสุด, ต้นทุนสูงสุด, return สูงสุดที่ทนได้
@@ -108,9 +113,50 @@
 - Happiness scores (seller, platform, shipping, customer) + หน้า emoji
 - ตั้งเป้ากำไรต่อชิ้น (goal) — ปุ่ม "คำนวณย้อนกลับ" ปรับค่าจาก locked/unlocked sliders
 
-### 6. Data & Engine
-- คำนวณฝั่ง client (lib/calculator/engine.ts): calculateLocal, getHappiness, calcBreakEven, calcSensitivity, calcScenarios, calcMonteCarlo
-- Fee default จาก constant (COMMISSION, VAT, PAYMENT) — หมายเหตุรอ API สำหรับดึงค่าจริง
+### 6. Data & Engine (v2 — อัพเดท 2026-03-10)
+
+**Fee Constants (`FEE`):**
+
+| Constant         | ค่า (default) | รายละเอียด                                 |
+|------------------|---------------|--------------------------------------------|
+| `COMMISSION`     | 4.0%          | ค่าคอมมิชชัน (category-specific)           |
+| `COMMERCE_GROWTH`| 4.0%          | Commerce Growth Fee (CGF): 2–6.5% ตามหมวด |
+| `INFRASTRUCTURE` | 0.44%         | Infrastructure Fee (คงที่)                 |
+| `PAYMENT`        | 2.84%         | Transaction Fee (แก้จาก 2.0% → ค่าจริง)   |
+| `VAT`            | 7.0%          | VAT คิดบน Commission เท่านั้น             |
+
+**Category Presets (`CATEGORY_RATES`):**
+
+| หมวด          | Commission | Commerce Growth | Total Platform* |
+|---------------|-----------|-----------------|-----------------|
+| `beauty`      | 6.4%      | 6.5%            | ~16%            |
+| `fashion`     | 5.0%      | 5.0%            | ~13.3%          |
+| `electronics` | 3.0%      | 3.0%            | ~9.7%           |
+| `food`        | 2.0%      | 2.0%            | ~7.3%           |
+| `general`     | 4.0%      | 4.0%            | ~11.3%          |
+
+*รวม Infrastructure (0.44%) + Transaction (2.84%) + VAT on Commission
+
+**CalcParams inputs ใหม่ (optional):**
+- `commerceGrowthRate` — override Commerce Growth rate
+- `infrastructureRate` — override Infrastructure rate
+- `voucherSellerCost` — ส่วนที่ผู้ขายออกเองต่อออเดอร์ (฿)
+- `platformShippingDiscount` — ค่าส่งที่ TikTok ออกให้ต่อออเดอร์ (฿)
+
+**CalcResult outputs ใหม่:**
+- `commerceGrowthPerUnit` / `infrastructurePerUnit` / `voucherCostPerUnit` — fees per unit
+- `grossMargin` / `grossProfit` — Gross Margin ก่อนค่าธรรมเนียม Platform
+- `settlementGapPct` — (fees + shipping) / revenue แสดงว่า TikTok ดึงไปเท่าไหร่
+- `roas` — revenue / adSpend (0 ถ้าไม่มีโฆษณา)
+- `cac` — adSpend per effective unit
+
+**Functions:** calculateLocal, getHappiness, calcBreakEven, calcSensitivity, calcScenarios, calcMonteCarlo
+
+**หมายเหตุ:** รอ API สำหรับดึงค่าธรรมเนียมจริงจาก DB ตาม category และ seller tier
+
+### 7. Integration (ใหม่)
+- หน้า Calculator สามารถ **ดึงข้อมูลจาก Inventory** ได้แล้ว: เลือก SKU จาก backend inventory (หรือผลนำเข้าล่าสุดเมื่อ backend เชื่อมต่อ) เพื่อเติมราคา/จำนวนอัตโนมัติ
+- ผู้ใช้กรอกต้นทุนต่อชิ้นเอง ระบบจะจำไว้ต่อ SKU ในเครื่อง (localStorage) เพื่อใช้ซ้ำ
 
 ---
 

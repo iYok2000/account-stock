@@ -10,167 +10,210 @@ import {
 } from "react";
 import type { UserSession, Role } from "@/lib/rbac/types";
 import type { PermissionString } from "@/lib/rbac/constants";
-import { getPermissionsForRoles } from "@/lib/rbac/role-permissions";
+import { ROLE_PERMISSIONS, getPermissionsForRoles } from "@/lib/rbac/role-permissions";
+import { apiRequest, setAuthToken, setOnUnauthorized } from "@/lib/api-client";
+import type { MeResponseApi } from "@/types/api/auth";
+
+/** "need_confirm" = credentials match Root; show confirm code field and call login again with code. */
+export type LoginResult = boolean | "need_confirm";
+
+/**
+ * roleView — เฉพาะ Root เท่านั้นที่ใช้
+ * "root"      = มุมมองปกติ (full Root permissions)
+ * "owner"     = มุมมอง SuperAdmin (เจ้าของร้าน)
+ * "affiliate" = มุมมอง Affiliate (แอฟฟิลิเอต)
+ */
+export type RoleView = "root" | "owner" | "affiliate";
+
+const ROLE_VIEW_LABELS: Record<RoleView, string> = {
+  root: "Root",
+  owner: "เจ้าของร้าน",
+  affiliate: "Affiliate",
+};
+export { ROLE_VIEW_LABELS };
 
 type AuthContextValue = {
   session: UserSession | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Dev/test: login with env credentials → SuperAdmin. Frontend-only; do not use in production. */
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string, confirmCode?: string) => Promise<LoginResult>;
   logout: () => void;
+  /** สลับบทบาทที่ Root ใช้มอง UI — ไม่กระทบ session จริง */
+  roleView: RoleView;
+  setRoleView: (view: RoleView) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const MOCK_ROLE_KEY = "rbac_mock_role";
 const SESSION_CACHE_KEY = "rbac_session";
 const AUTH_LOGGED_OUT_KEY = "auth_logged_out";
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min; refetch after
-
-const ALL_ROLES: Role[] = ["SuperAdmin", "Admin", "Manager", "Staff", "Viewer"];
-
-function getMockRole(): Role {
-  if (typeof window === "undefined") return "Staff";
-  const stored = sessionStorage.getItem(MOCK_ROLE_KEY);
-  if (stored && ALL_ROLES.includes(stored as Role)) return stored as Role;
-  return (process.env.NEXT_PUBLIC_MOCK_ROLE as Role) || "Staff";
-}
+const AUTH_TOKEN_KEY = "auth_token";
+const ROLE_VIEW_KEY = "root_role_view";
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function loadCachedSession(): UserSession | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
     if (!raw) return null;
-    const { session, ts } = JSON.parse(raw) as {
-      session: UserSession;
-      ts: number;
-    };
+    const { session, ts } = JSON.parse(raw) as { session: UserSession; ts: number };
     if (Date.now() - ts > CACHE_TTL_MS) return null;
     return session;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+function loadCachedToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return sessionStorage.getItem(AUTH_TOKEN_KEY); }
+  catch { return null; }
+}
+
+function loadCachedRoleView(): RoleView {
+  if (typeof window === "undefined") return "root";
+  try {
+    const saved = sessionStorage.getItem(ROLE_VIEW_KEY);
+    if (saved === "affiliate" || saved === "owner") return saved;
+  } catch { /* ignore */ }
+  return "root";
 }
 
 function saveCachedSession(session: UserSession) {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(
-      SESSION_CACHE_KEY,
-      JSON.stringify({ session, ts: Date.now() })
-    );
-  } catch {
-    // ignore
-  }
+    sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ session, ts: Date.now() }));
+  } catch { /* ignore */ }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleView, setRoleViewState] = useState<RoleView>("root");
+
+  const setRoleView = useCallback((view: RoleView) => {
+    setRoleViewState(view);
+    if (typeof window !== "undefined") {
+      if (view === "root") sessionStorage.removeItem(ROLE_VIEW_KEY);
+      else sessionStorage.setItem(ROLE_VIEW_KEY, view);
+    }
+  }, []);
 
   const fetchSession = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Prefer backend; fallback to mock (security: backend must enforce all checks)
-      const res = await fetch("/api/auth/me", {
-        credentials: "include",
-        headers: { Accept: "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const session: UserSession = {
-          userId: data.user?.id ?? "unknown",
-          roles: data.roles ?? [],
-          permissions: data.permissions ?? [],
-          displayName: data.user?.displayName,
-        };
-        setSession(session);
-        saveCachedSession(session);
-        return;
-      }
-      // No backend or 401: use mock for dev unless user explicitly logged out
-      if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
-        setSession(null);
-      } else {
-        const roles: Role[] = [getMockRole()];
-        const permissions = getPermissionsForRoles(roles);
-        const mock: UserSession = {
-          userId: "mock",
-          roles,
-          permissions,
-          displayName: `Mock ${roles[0]}`,
-        };
-        setSession(mock);
-      }
+      const data = await apiRequest<MeResponseApi>("/api/auth/me", { authEndpoint: true });
+      const roles = (data.roles ?? []) as Role[];
+      const permissions = (data.permissions ?? []) as PermissionString[];
+      const newSession: UserSession = {
+        userId: data.user?.id ?? "unknown",
+        roles,
+        permissions,
+        displayName: data.user?.displayName,
+        tier: (data.tier === "paid" ? "paid" : "free") as UserSession["tier"],
+        tierStartedAt: data.tier_started_at ?? null,
+        tierExpiresAt: data.tier_expires_at ?? null,
+        inviteCodeUsed: data.invite_code_used ?? null,
+        inviteSlots: data.invite_slots ?? 0,
+        companyId: data.company_id ?? undefined,
+        shopId: data.shop_id ?? undefined,
+        shopName: data.shop_name,
+      };
+      setSession(newSession);
+      saveCachedSession(newSession);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Auth failed";
-      setError(msg);
-      if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_LOGGED_OUT_KEY)) {
+      const msg = (e instanceof Error ? e.message : "Auth failed").toLowerCase();
+      setError(e instanceof Error ? e.message : "Auth failed");
+      const isAuthError = msg.includes("unauthorized") || msg.includes("forbidden");
+      if (isAuthError) {
         setSession(null);
-      } else {
-        const roles: Role[] = [getMockRole()];
-        setSession({
-          userId: "mock",
-          roles,
-          permissions: getPermissionsForRoles(roles),
-        });
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(AUTH_LOGGED_OUT_KEY, "1");
+          sessionStorage.removeItem(SESSION_CACHE_KEY);
+        }
       }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
-    const envUser = process.env.NEXT_PUBLIC_TEST_USER ?? "useradmin1234";
-    const envPass = process.env.NEXT_PUBLIC_TEST_PASS ?? "pass@1";
-    const input = emailOrUsername.trim();
-    if (input !== envUser || password !== envPass) return false;
-    if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
-    const roles: Role[] = ["SuperAdmin"];
-    const permissions = getPermissionsForRoles(roles);
-    const newSession: UserSession = {
-      userId: "test",
-      roles,
-      permissions,
-      displayName: "SuperAdmin",
-    };
-    setSession(newSession);
-    saveCachedSession(newSession);
-    return true;
-  }, []);
+  const login = useCallback(
+    async (emailOrUsername: string, password: string, confirmCode?: string): Promise<LoginResult> => {
+      const payload: Record<string, string> = { email: emailOrUsername.trim(), password };
+      if (confirmCode) payload.confirm_code = confirmCode.trim();
+      try {
+        const { token } = await apiRequest<{ token: string }>("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify(payload),
+          authEndpoint: true,
+        });
+        setAuthToken(token);
+        if (typeof window !== "undefined") sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+        await fetchSession();
+        if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_LOGGED_OUT_KEY);
+        return true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message.toLowerCase() : "";
+        if (!confirmCode && msg.includes("confirm")) return "need_confirm";
+        return false;
+      }
+    },
+    [fetchSession]
+  );
 
   const logout = useCallback(() => {
+    setAuthToken(null);
     setSession(null);
     setError(null);
+    setRoleViewState("root");
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(SESSION_CACHE_KEY);
-      sessionStorage.removeItem(MOCK_ROLE_KEY);
+      sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      sessionStorage.removeItem(ROLE_VIEW_KEY);
       sessionStorage.setItem(AUTH_LOGGED_OUT_KEY, "1");
     }
   }, []);
 
   useEffect(() => {
-    const cached = loadCachedSession();
-    if (cached) {
-      setSession(cached);
-      setIsLoading(false);
-      return;
+    setOnUnauthorized(() => {
+      setSession(null);
+      setAuthToken(null);
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(SESSION_CACHE_KEY);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    });
+    return () => setOnUnauthorized(null);
+  }, []);
+
+  useEffect(() => {
+    let hasToken = false;
+    if (typeof window !== "undefined") {
+      const cachedToken = loadCachedToken();
+      if (cachedToken) {
+        setAuthToken(cachedToken);
+        hasToken = true;
+      }
+      // Restore roleView ที่ Root เลือกไว้
+      setRoleViewState(loadCachedRoleView());
     }
-    void fetchSession();
+    const cached = loadCachedSession();
+    if (cached) setSession(cached);
+    // Only fetch from backend if we have a token — avoids guaranteed 401 on fresh visit
+    if (hasToken) {
+      void fetchSession();
+    } else {
+      setIsLoading(false);
+    }
   }, [fetchSession]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, isLoading, error, refetch: fetchSession, login, logout }),
-    [session, isLoading, error, fetchSession, login, logout]
+    () => ({ session, isLoading, error, refetch: fetchSession, login, logout, roleView, setRoleView }),
+    [session, isLoading, error, fetchSession, login, logout, roleView, setRoleView]
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -179,33 +222,98 @@ export function useAuth() {
   return ctx;
 }
 
-/** Memoized permission checks (O(1)); use for UI only — backend must enforce. */
+/** Memoized permission checks (O(1)) — สำหรับ Root จะ override ตาม roleView */
 export function usePermissions() {
-  const { session } = useAuth();
+  const { session, roleView } = useAuth();
+  const isRoot = session?.roles.includes("Root") ?? false;
+
+  const effectivePermissions = useMemo<PermissionString[]>(() => {
+    if (!session) return [];
+    if (!isRoot || roleView === "root") return session.permissions;
+    if (roleView === "affiliate") return ROLE_PERMISSIONS["Affiliate"];
+    return ROLE_PERMISSIONS["SuperAdmin"]; // owner
+  }, [session, isRoot, roleView]);
+
   const permSet = useMemo(
-    () => new Set<PermissionString>(session?.permissions ?? []),
-    [session?.permissions]
+    () => new Set<PermissionString>(effectivePermissions),
+    [effectivePermissions]
   );
 
   const can = useCallback(
     (permission: PermissionString) => permSet.has(permission),
     [permSet]
   );
-
   const canAny = useCallback(
-    (permissions: PermissionString[]) =>
-      permissions.some((p) => permSet.has(p)),
+    (permissions: PermissionString[]) => permissions.some((p) => permSet.has(p)),
     [permSet]
   );
-
   const canAll = useCallback(
-    (permissions: PermissionString[]) =>
-      permissions.every((p) => permSet.has(p)),
+    (permissions: PermissionString[]) => permissions.every((p) => permSet.has(p)),
     [permSet]
   );
 
   return useMemo(
-    () => ({ can, canAny, canAll, permissions: session?.permissions ?? [] }),
-    [can, canAny, canAll, session?.permissions]
+    () => ({ can, canAny, canAll, permissions: effectivePermissions }),
+    [can, canAny, canAll, effectivePermissions]
   );
+}
+
+/** User context — สำหรับ Root จะ override role/permissions ตาม roleView */
+export type UserContextValue = {
+  userId: string;
+  role: Role;
+  roles: Role[];
+  tier: "free" | "paid";
+  tierStartedAt: string | null | undefined;
+  tierExpiresAt: string | null | undefined;
+  inviteCodeUsed: string | null | undefined;
+  inviteSlots: number;
+  companyId: string | undefined;
+  shopId: string | null | undefined;
+  shopName: string | undefined;
+  displayName: string | undefined;
+  permissions: PermissionString[];
+  /** true = Root กำลังดูในมุมมอง role อื่น */
+  isViewingAs: boolean;
+};
+
+export function useUserContext(): UserContextValue | null {
+  const { session, roleView } = useAuth();
+  const isRoot = session?.roles.includes("Root") ?? false;
+
+  return useMemo(() => {
+    if (!session) return null;
+    const isViewingAs = isRoot && roleView !== "root";
+
+    let role: Role;
+    let permissions: PermissionString[];
+
+    if (!isRoot || roleView === "root") {
+      role = session.roles[0] ?? "Affiliate";
+      permissions = session.permissions;
+    } else if (roleView === "affiliate") {
+      role = "Affiliate";
+      permissions = getPermissionsForRoles(["Affiliate"]);
+    } else {
+      role = "SuperAdmin";
+      permissions = getPermissionsForRoles(["SuperAdmin"]);
+    }
+
+    return {
+      userId: session.userId,
+      role,
+      roles: session.roles,
+      tier: session.tier ?? "free",
+      tierStartedAt: session.tierStartedAt,
+      tierExpiresAt: session.tierExpiresAt,
+      inviteCodeUsed: session.inviteCodeUsed,
+      inviteSlots: session.inviteSlots ?? 0,
+      companyId: session.companyId,
+      shopId: session.shopId,
+      shopName: session.shopName,
+      displayName: session.displayName,
+      permissions,
+      isViewingAs,
+    };
+  }, [session, isRoot, roleView]);
 }
