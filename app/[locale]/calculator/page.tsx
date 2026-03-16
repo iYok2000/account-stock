@@ -16,9 +16,9 @@ import {
 // ─── Happiness face config (de‑emphasized block) ─────────────────────────────
 const FACES = [
   { emoji: "😢", bg: "bg-red-100 dark:bg-red-950/40",    text: "text-red-600 dark:text-red-400"   },
-  { emoji: "😐", bg: "bg-amber-100 dark:bg-amber-950/40",  text: "text-amber-600 dark:text-amber-400" },
-  { emoji: "😊", bg: "bg-green-100 dark:bg-green-950/40",  text: "text-green-600 dark:text-green-400" },
-  { emoji: "🤩", bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-600 dark:text-emerald-400" },
+  { emoji: "😐", bg: "bg-brown-100 dark:bg-brown-950/40",  text: "text-brown-600 dark:text-brown-400" },
+  { emoji: "😊", bg: "bg-brown-200 dark:bg-brown-900/40",  text: "text-brown-700 dark:text-brown-300" },
+  { emoji: "🤩", bg: "bg-brown-300 dark:bg-brown-800/40", text: "text-brown-800 dark:text-brown-200" },
 ];
 
 // ─── CSS bar charts (no library) ─────────────────────────────────────────────
@@ -52,14 +52,14 @@ function Waterfall({ data }: { data: { name: string; value: number; isTotal?: bo
       {data.map((d, i) => {
         const neg = d.value < 0;
         const pct = (Math.abs(d.value) / maxAbs) * 100;
-        const bar = d.isTotal ? "bg-primary" : neg ? "bg-red-400" : "bg-green-500";
+        const bar = d.isTotal ? "bg-primary" : neg ? "bg-red-400" : "bg-brown-500";
         return (
           <div key={i} className="flex items-center gap-2">
             <span className="w-24 text-xs text-muted-foreground text-right truncate shrink-0">{d.name}</span>
             <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
               <div className={cn("h-5 rounded transition-all duration-300", bar)} style={{ width: `${Math.max(pct, 1)}%` }} />
             </div>
-            <span className={cn("w-24 text-xs text-right tabular-nums shrink-0", neg ? "text-red-600" : "text-green-600")}>
+            <span className={cn("w-24 text-xs text-right tabular-nums shrink-0", neg ? "text-red-600" : "text-brown-600")}>
               {neg ? "-" : "+"}{formatCurrency(Math.abs(d.value))}
             </span>
           </div>
@@ -113,12 +113,12 @@ export default function CalculatorPage() {
   const scenarios  = useMemo(() => calcScenarios(baseParams), [baseParams]);
   const monte      = useMemo(() => calcMonteCarlo(baseParams), [baseParams]);
 
-  // Sticky bar accent color based on profit
+  // Sticky bar accent color based on profit - brown palette
   const stickyAccent = result.profitMargin >= 15
-    ? { border: "border-green-500", gradient: "#10b981", dot: "bg-green-500", text: "text-green-600" }
+    ? { border: "border-brown-500", gradient: "#b37c57", dot: "bg-brown-500", text: "text-brown-600", bg: "bg-brown-500/10" }
     : result.profitMargin >= 0
-      ? { border: "border-amber-500", gradient: "#f59e0b", dot: "bg-amber-500", text: "text-amber-600" }
-      : { border: "border-red-500", gradient: "#ef4444", dot: "bg-red-500", text: "text-red-600" };
+      ? { border: "border-brown-400", gradient: "#d1a380", dot: "bg-brown-400", text: "text-brown-500", bg: "bg-brown-400/10" }
+      : { border: "border-red-500", gradient: "#ef4444", dot: "bg-red-500", text: "text-red-600", bg: "bg-red-500/10" };
 
   const handleGoalSet = useCallback(() => {
     const target = parseFloat(goalInput);
@@ -188,7 +188,7 @@ export default function CalculatorPage() {
             onClick={handleCopySummary}
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
-            {copySuccess ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+            {copySuccess ? <Check className="h-3.5 w-3.5 text-brown-600" /> : <Copy className="h-3.5 w-3.5" />}
             {copySuccess ? t("exportCopied") : t("exportCopy")}
           </button>
         </div>
@@ -259,19 +259,19 @@ export default function CalculatorPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("results.profitPerUnit")}</p>
-              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1 transition-colors", result.profitPerUnit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1 transition-colors", result.profitPerUnit >= 0 ? "text-brown-600 dark:text-brown-400" : "text-red-600 dark:text-red-400")}>
                 {formatCurrency(result.profitPerUnit)}
               </p>
             </div>
             <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Margin</p>
-              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.profitMargin >= 30 ? "text-green-600" : result.profitMargin >= 15 ? "text-amber-600" : "text-red-600")}>
+              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.profitMargin >= 30 ? "text-brown-600" : result.profitMargin >= 15 ? "text-brown-500" : "text-red-600")}>
                 {result.profitMargin.toFixed(1)}%
               </p>
             </div>
             <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("results.perMonth")}</p>
-              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.monthlyProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.monthlyProfit >= 0 ? "text-brown-600 dark:text-brown-400" : "text-red-600 dark:text-red-400")}>
                 {formatCurrency(result.monthlyProfit)}
               </p>
             </div>
@@ -304,7 +304,7 @@ export default function CalculatorPage() {
             <div className="text-sm text-muted-foreground">
               {t("goalTarget")}: <span className="font-medium text-primary">{formatCurrency(goalProfit)}/ชิ้น</span>
               {" · "}{t("goalCurrent")}:{" "}
-              <span className={cn("font-medium", result.profitPerUnit >= goalProfit ? "text-green-600" : "text-red-600")}>
+              <span className={cn("font-medium", result.profitPerUnit >= goalProfit ? "text-brown-600" : "text-red-600")}>
                 {formatCurrency(result.profitPerUnit)}/ชิ้น
               </span>
             </div>
