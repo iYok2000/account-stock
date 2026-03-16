@@ -1,35 +1,38 @@
-# Binaries
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# dependencies
+node_modules
+.pnp
+.pnp.js
 
-# Test binary
-*.test
+# Next.js
+.next/
+out/
 
-# Output
-/bin/
-/dist/
+# production
+build
+dist
 
-# Go workspace
-go.work
-
-# Env (do not commit secrets)
+# env — do not commit secrets (.env.example is committed as template)
 .env
 .env.local
-.env.*.local
-.env.production
-.env.staging
 .env.development
+.env.development.local
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+.env*.local
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # IDE
-.idea/
-.vscode/
+.idea
+.vscode
 *.swp
 *.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db

@@ -1,47 +1,46 @@
-# Agent prompt — account-stock-be
+---
+description: 
+alwaysApply: true
+---
 
-You are working on **account-stock-be** — the backend for **account-stock-fe** (Next.js frontend). Follow these instructions.
+# Agent prompt — account-stock-fe
+
+You are working on **account-stock-fe** (Next.js, i18n, Tailwind). Follow these instructions.
 
 ## Spec-first
 
-- **Start from spec.** Before implementing, read the relevant spec: `account-stock-fe/docs/USER_SPEC.md`, `account-stock-fe/docs/RBAC_SPEC.md`, this repo’s `project-specific_context.md`, and when touching **user/tenant or DB entities**: this repo’s **`docs/ENTITY_SPEC.md`** (User, Company, tenant injection, ER). Design and API must follow the spec.
+- **Start from spec.** Before implementing, read the relevant spec: `docs/DEV_SPEC.md`, `docs/USER_SPEC.md`, `docs/RBAC_SPEC.md`, and the feature spec in `docs/feature/*.md` when it exists. UI, routes, and permissions must follow the spec.
 - **Gaps:** If the spec is missing or unclear, clarify or document (e.g. in a doc or ticket) before coding. Do not assume behaviour that contradicts the spec.
 
 ## Before any task
 
-1. **Read project context:** `project-specific_context.md` — API contract, auth, RBAC, multi-tenant, and structure are mandatory.
-2. **Read relevant spec:** USER_SPEC, RBAC_SPEC (frontend repo); **ENTITY_SPEC** (this repo) for user/company entity and tenant injection; **`docs/feature/*.md`** for the API/feature you are changing (auth, users, …); DB_SPEC for migrations.
+1. **Read project rules:** `project-specific_context.md` — import rules and feature structure are mandatory.
+2. **Read relevant spec:** DEV_SPEC, USER_SPEC, RBAC_SPEC, and the feature spec for the area you are changing.
 3. **Check skills:** If the task matches a skill in `.cursor/skills/`, read that skill’s `SKILL.md` and follow it.
 
 ## Acceptance criteria
 
 - **Define or reuse.** For each task, identify acceptance criteria (from spec, ticket, or product requirement). If none exist, state them before implementation.
-- **Verify before done.** Before considering the task complete, confirm that the implementation meets the acceptance criteria (e.g. endpoints, status codes, permission checks, tenant scope).
-- **New behaviour:** When adding features, document acceptance criteria (in spec or PR/ticket) so they can be checked and reviewed.
+- **Verify before done.** Before considering the task complete, confirm that the implementation meets the acceptance criteria (e.g. behaviour, permissions, empty states, i18n).
+- **New behaviour:** When adding features, document acceptance criteria (in `docs/feature/*.md` or PR/ticket) so they can be checked and reviewed.
 
 ## Security review
 
-- **Part of the workflow.** For every change that touches auth, input, or output: consider security (OWASP Top 10, injection, access control).
-- **Backend checklist:** Use this repo’s `docs/SECURITY.md`: error responses (fixed messages, JSON-encoded), JWT claims (allowlist, length limits), RBAC enforcement, no user input in error bodies, parameterized queries when using DB.
-- **Do not** rely on frontend for enforcement; backend must validate and enforce permissions and tenant scope.
+- **Part of the workflow.** For every change that touches auth, permissions, or sensitive data: consider security. UI hiding (e.g. by role) is for UX only — **backend is the authority**; do not trust frontend checks for security.
+- **Frontend checklist:** Use RBAC/NAV_PERMISSIONS and RequirePermission for routes; do not send secrets or sensitive tokens in URLs or client storage beyond what the spec allows; do not echo unsanitized user input into DOM or error messages.
+- **Sensitive data:** Do not log or display tokens, passwords, or PII in a way that could leak (e.g. in error messages or client-side state that gets logged).
 
 ## Rules
 
-- **Align with frontend.** API shape, auth (user context: `user_id`, `role`, `tier`, `company_id`), RBAC (resource:action), and multi-tenant (`company_id` scope) must match `account-stock-fe` and the specs in the frontend repo (`docs/USER_SPEC.md`, `docs/RBAC_SPEC.md`).
-- **No cross-domain violations.** Handlers and domain logic must not bypass middleware (auth, permission, tenant scope). Shared code lives in middleware/lib; domain-specific in respective packages.
-- **Enforce at backend.** Permission checks and `company_id` scoping are mandatory for every relevant request. Do not rely on frontend for security.
+- **No cross-feature imports.** Only use `@/components/ui`, `@/lib/utils`, `@/contexts`, and `@/lib/<feature>`. Enforced via ESLint.
+- **No mock data.** Lists and numeric values must show empty state or 0 until the app is connected to an API.
 - Before starting: search memory for relevant conventions, patterns, and decisions.
 - After significant decisions: store memory (title, content, tags, scope).
 
 ## References (read when relevant)
 
-- **User & multi-tenant (ความหมาย context):** Frontend `docs/USER_SPEC.md` — user context fields, tier, company_id, backend responsibilities.
-- **User & Tenant (entity + inject):** This repo **`docs/ENTITY_SPEC.md`** — User/Company entity, ER, กฎ tenant injection (company_id จาก auth context เท่านั้น; ห้ามใช้จาก client เป็น scope).
-- **RBAC:** Frontend `docs/RBAC_SPEC.md` — roles, resources, actions, permission matrix, backend enforcement, audit log, testing.
-- **Backend context:** This repo `project-specific_context.md` — structure, middleware, API contract, auth flow.
-- **Security:** This repo `docs/SECURITY.md` — OWASP Top 10, injection prevention, error handling.
-- **Database:** This repo `docs/DB_SPEC.md` — GORM, Postgres/Supabase, migration, multi-tenant scope.
-- **Feature API:** This repo `docs/feature/README.md` + `docs/feature/*.md` — route, permission, request/response, tenant scope, acceptance criteria ต่อฟีเจอร์ (auth, users, …).
-- **Production readiness:** This repo `docs/PRODUCTION_READINESS.md` — checklist ก่อนขึ้น prod (env, auth, permission, tenant, security). ดู `docs/DEPLOY.md` สำหรับ deploy steps.
-- **Pitfalls (tenant):** This repo **`docs/ENTITY_SPEC.md`** §7 — ข้อควรระวัง multi-tenant และกรณีที่อนาคตอาจกระทบ (endpoint, ตาราง, background job, cache). อ่านเมื่อ implement/review ฟีเจอร์ที่เกี่ยวกับ tenant.
-- **Pitfalls (auth/JWT):** This repo **`docs/SECURITY.md`** § Pitfalls — ข้อควรระวัง JWT และ endpoint ใหม่. อ่านเมื่อ implement/review auth.
+- **Spec, structure, modularity:** `docs/DEV_SPEC.md` — tech stack, folder layout, routes, RBAC, i18n, feature extraction.
+- **User & RBAC:** `docs/USER_SPEC.md`, `docs/RBAC_SPEC.md` — user context, roles, permissions, nav.
+- **UX/UI:** `docs/DESIGN_UX_UI.md`
+- **Per-feature specs:** `docs/feature/*.md`
+- **Architecture / observability (TODO):** `docs/TODO_ARCHITECTURE_AND_OBSERVABILITY.md`

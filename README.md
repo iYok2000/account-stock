@@ -1,70 +1,29 @@
-# account-stock-be
+# Inventory & Ordering Control — Frontend
 
-Backend for **account-stock-fe** (Next.js). Go (Golang) API with auth, RBAC, and multi-tenant (company_id) per `project-specific_context.md` and frontend specs.
+เมนู + หน้า UI ก่อน (ไม่ใช้ mock — empty state, ไม่ต่อ API) · **Next.js** ตัวล่าสุด · i18n · Responsive · Role เตรียมไว้ทีหลัง
 
-## Requirements
+---
 
-- Go 1.22+
+## เอกสาร
 
-## Run
+| ไฟล์ | เนื้อหา |
+|------|--------|
+| [docs/DESIGN_UX_UI.md](docs/DESIGN_UX_UI.md) | พฤติกรรม UX/UI, เมนู, หน้า, responsive, i18n |
+| [docs/DEV_SPEC.md](docs/DEV_SPEC.md) | โครงโปรเจกต์, tech stack, โฟลเดอร์, components, ลำดับทำ |
 
-```bash
-go mod tidy   # if needed
-go run ./cmd/server
-```
+---
 
-Server listens on `PORT` (default `8080`). For production build: `go build -o server ./cmd/server` then `./server`. See **`docs/DEPLOY.md`** for deploy checklist.
+## เตรียม Dev ต่อ
 
-**CORS (เรียกจาก frontend):** ตั้ง `CORS_ORIGIN` ให้ตรงกับ URL ที่เปิดหน้าบ้าน (เช่น `http://localhost:3000,http://127.0.0.1:3000`). ว่าง = อนุญาต localhost/127.0.0.1 ทุกพอร์ต. Go ไม่โหลด `.env` อัตโนมัติ — copy `.env.example` เป็น `.env` แล้วรัน: `set -a && source .env && set +a && go run ./cmd/server` (หรือ export ใน shell).
+1. สร้างโปรเจกต์ **Next.js** (ตัวล่าสุด):  
+   `npx create-next-app@latest .`
+2. ติดตั้ง: i18n (next-intl หรือ next-i18next), UI library (MUI หรือ Ant Design)
+3. ทำตามลำดับใน [docs/DEV_SPEC.md](docs/DEV_SPEC.md) — **ไม่ใช้ mock data** (empty state เท่านั้น)
 
-## Database (PostgreSQL or Supabase)
+---
 
-- **Same driver:** GORM + `gorm.io/driver/postgres` — works for both self-hosted Postgres and Supabase (managed Postgres).
-- **Config:** Set `DATABASE_URL` or `SUPABASE_DB_URL`. When set, server connects at startup; when unset, server runs without DB. See `.env.example`.
-- **ต่อ Supabase:** ขั้นตอนครบใน **`docs/SUPABASE.md`** (สร้างโปรเจกต์, เอา connection string, รัน migrate, รัน server).
-- **Schema migration:** From repo root: `go run ./cmd/migrate`. Uses `migrations/*.up.sql`; reads `DATABASE_URL` or `SUPABASE_DB_URL`. See **`docs/DB_SPEC.md`**.
+## โครงเมนู
 
-## Endpoints
-
-| Method | Path | Auth | Permission | Description |
-|--------|------|------|------------|-------------|
-| GET | `/health` | no | — | Health check |
-| GET | `/api/auth/me` | JWT Bearer | — | Current user context (user, roles, permissions, tier, company_id) |
-| GET | `/api/users` | JWT Bearer | `users:read` | List users (SuperAdmin only) |
-| POST | `/api/import/order-transaction` | JWT Bearer | `orders:create` | Import order-transaction payload (stub; 200 + `{"ok":true}`). CORS enabled. |
-
-## Auth (JWT)
-
-- **Authorization:** `Bearer <JWT>`. JWT must contain: `sub` (user id), `role`, `tier`, `company_id`, optional `display_name`.
-- **Config (env):** `JWT_SECRET` (required in prod), optional `JWT_ISSUER`, `JWT_AUDIENCE`. Default secret is **dev-only** — do not use in production.
-- **Permissions:** Derived from `role` on backend (RBAC_SPEC); no need to send permissions in token.
-
-## Security (OWASP Top 10 & injection)
-
-- **Error responses:** Fixed messages only; JSON via `encoding/json` (no injection from user input).
-- **JWT claims:** Role/tier allowlist; claim length limits; token length limit (8KB).
-- **Access control:** RBAC per route; unknown role → 401.
-- Full checklist: **`docs/SECURITY.md`**.
-
-## Structure
-
-- `cmd/server` — main entry, routes, middleware chain (Auth → RequirePermission where needed)
-- `internal/auth` — Context, Role, Tier, JWT claims and ValidateToken
-- `internal/rbac` — role→permissions map, HasPermission (RBAC_SPEC §5)
-- `internal/middleware` — CORS (env CORS_ORIGIN), Auth(JWT), RequirePermission, RequireAuthContext, Tenant, secure error responses
-- `internal/handler` — Me (/api/auth/me), UsersList (/api/users), ImportOrderTransaction (POST /api/import/order-transaction)
-- `internal/database` — GORM connection (Postgres/Supabase), config from env
-- `internal/model` — GORM models (Company, User with company_id)
-- `migrations/` — Versioned SQL (000001_init.up/down.sql); run via `go run ./cmd/migrate`
-- `cmd/migrate` — Runs migrations (DATABASE_URL or SUPABASE_DB_URL)
-
-## Align with frontend
-
-- API contract and user context: see `project-specific_context.md`
-- Specs: `account-stock-fe/docs/USER_SPEC.md`, `account-stock-fe/docs/RBAC_SPEC.md`
-
-## TODO
-
-- Wire DB into handlers (users list from DB with TenantScope); see `internal/database/scope.go`
-- Audit log (userId, resource, action, result, timestamp)
-- Login endpoint that issues JWT (frontend currently uses dev login; backend can issue token after credential check)
+- **Dashboard** (`/`) — สรุปตัวเลข
+- **Inventory** (`/inventory`) — รายการสินค้า, Add/Edit/Delete
+- **Reports** (`/reports`) — placeholder

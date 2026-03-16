@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "TestSprite": {
+      "command": "npx @testsprite/testsprite-mcp@latest",
+      "env": {
+        "API_KEY": "sk-user-8cAMI4GWOFuCGwc0I-bFKT6uVlsrrjOJF9zHyCrXu35DefSnOdXlqrCwJKCtFiI27tMKE6BLF-9htyVHr0enlLjwRT2zwPK-uXOvgZqfP6RR1QbAc42Yzu-uhsVVE7GQ0gQ"
+      },
+      "args": []
+    },
+    "mcp": {
+      "command": "/opt/homebrew/bin/uv",
+      "args": [
+        "run",
+        "--project",
+        "/Users/yokky/Documents/mcp-server/mcp-server/control",
+        "python",
+        "/Users/yokky/Documents/mcp-server/mcp-server/control/server.py"
+      ],
+      "cwd": "/Users/yokky/Documents/mcp-server/mcp-server/control"
+    }
+  }
+}
