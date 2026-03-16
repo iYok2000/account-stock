@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Target, DollarSign, Tag, Lock, Copy, Check } from "lucide-react";
+import { Target, DollarSign, Tag, Lock, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { SlidersPanel } from "@/components/calculator/SlidersPanel";
 import { ResultsPanel } from "@/components/calculator/ResultsPanel";
 import { AnalysisSection } from "@/components/calculator/AnalysisSection";
+import { Switch } from "@/components/ui/switch";
 import { formatCurrency, cn } from "@/lib/utils";
 import {
   calculateLocal, getHappiness, calcBreakEven, calcSensitivity, calcScenarios, calcMonteCarlo,
@@ -73,6 +74,8 @@ export default function CalculatorPage() {
   const t = useTranslations("calculator");
   const [advancedMode, setAdvancedMode] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showFeeDetails, setShowFeeDetails] = useState(false);
+  const [showCostDetails, setShowCostDetails] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Slider state — default 0 so numbers show only after user input (no mock)
@@ -89,6 +92,7 @@ export default function CalculatorPage() {
   const [lockedSliders, setLockedSliders] = useState<Set<SliderKey>>(new Set());
   const [goalInput, setGoalInput] = useState("");
   const [goalProfit, setGoalProfit] = useState<number | null>(null);
+  const [goalError, setGoalError] = useState<string | null>(null);
 
   const activePrice = priceMode === "list" ? listPrice : sellingPrice;
   const discountPct = listPrice > 0 ? ((listPrice - sellingPrice) / listPrice) * 100 : 0;
@@ -118,7 +122,15 @@ export default function CalculatorPage() {
 
   const handleGoalSet = useCallback(() => {
     const target = parseFloat(goalInput);
-    if (isNaN(target)) return;
+    if (isNaN(target)) {
+      setGoalError(t("goalErrorNaN") || "กรุณากรอกตัวเลข");
+      return;
+    }
+    if (target < 0) {
+      setGoalError(t("goalErrorNegative") || "เป้ากำไรต้องไม่ติดลบ");
+      return;
+    }
+    setGoalError(null);
     setGoalProfit(target);
     const deficit = target - result.profitPerUnit;
     if (Math.abs(deficit) < 0.01) return;
@@ -133,7 +145,7 @@ export default function CalculatorPage() {
       const share = sum > 0 ? a.value / sum : 1 / adj.length;
       a.setter(Math.max(0, Math.round((a.value - deficit * share) * 100) / 100));
     });
-  }, [goalInput, result.profitPerUnit, lockedSliders, productCost, shippingCost, adSpend, packagingCost]);
+  }, [goalInput, result.profitPerUnit, lockedSliders, productCost, shippingCost, adSpend, packagingCost, t]);
 
   const handleCopySummary = useCallback(async () => {
     const lines = [
@@ -273,15 +285,16 @@ export default function CalculatorPage() {
         </div>
       </div>
 
-      {/* 3) Goal + one-line reverse description */}
+      {/* 3) Goal + Lock Grid */}
       <div className="card">
         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
           <div className="flex-1 w-full sm:w-auto">
             <label className="text-sm font-medium flex items-center gap-1.5 mb-1 text-foreground">
               <Target className="h-4 w-4 text-primary" />{t("goalLabel")}
             </label>
-            <input type="number" value={goalInput} onChange={(e) => setGoalInput(e.target.value)}
-              placeholder={t("goalPlaceholder")} className="input-base h-10 w-full" />
+            <input type="number" value={goalInput} onChange={(e) => { setGoalInput(e.target.value); if (goalError) setGoalError(null); }}
+              placeholder={t("goalPlaceholder")} className={cn("input-base h-10 w-full", goalError && "border-red-400 focus:border-red-500")} />
+            {goalError && <p className="text-xs text-red-500 mt-1">{goalError}</p>}
           </div>
           <button onClick={handleGoalSet} disabled={!goalInput}
             className="btn-primary flex items-center gap-1.5 shrink-0 disabled:opacity-50">
@@ -297,10 +310,52 @@ export default function CalculatorPage() {
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-          <Lock className="h-3 w-3 shrink-0" />{t("goalHint")}
+
+        {/* Lock Grid */}
+        <div className="border-t border-border/50 pt-4 mt-4">
+          <p className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-1">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+            {t("goalLockTitle") || "ล็อคค่าที่ไม่ต้องการให้ปรับ"}
+          </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            {t("goalLockHint") || "ค่าที่ถูกล็อคจะไม่ถูกเปลี่ยนเมื่อกด 'คำนวณย้อนกลับ'"}
+          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 border border-border/50 p-2 rounded-xl bg-muted/30">
+            {([
+              { key: "sellingPrice" as SliderKey, label: t("sellingPrice"), value: formatCurrency(activePrice) },
+              { key: "productCost" as SliderKey, label: t("productCost"), value: formatCurrency(productCost) },
+              { key: "packagingCost" as SliderKey, label: t("packagingCost"), value: formatCurrency(packagingCost) },
+              { key: "shippingCost" as SliderKey, label: t("shippingCost"), value: formatCurrency(shippingCost) },
+              { key: "adSpend" as SliderKey, label: t("adSpend"), value: formatCurrency(adSpend) },
+              { key: "affiliateRate" as SliderKey, label: t("affiliateRate"), value: `${affiliateRate}%` },
+              { key: "returnRate" as SliderKey, label: t("returnRate"), value: `${returnRate}%` },
+            ]).map((item) => (
+              <label
+                key={item.key}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg border px-3 py-2 cursor-pointer transition-all",
+                  lockedSliders.has(item.key)
+                    ? "border-primary/50 bg-primary/5 shadow-sm"
+                    : "border-border bg-background hover:bg-muted/50"
+                )}
+              >
+                <Switch
+                  checked={lockedSliders.has(item.key)}
+                  onCheckedChange={() => toggleLock(item.key)}
+                  className="shrink-0"
+                />
+                <div className="min-w-0">
+                  <span className="text-[13px] font-medium text-foreground block truncate">{item.label}</span>
+                  <span className="text-[11px] font-mono text-muted-foreground">{item.value}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground/90 mt-4 text-center">
+          {t("goalReverseDesc")}
         </p>
-        <p className="text-[11px] text-muted-foreground/90 mt-1">{t("goalReverseDesc")}</p>
       </div>
 
       {/* 4) Cost + Waterfall charts */}
