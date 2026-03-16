@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Target, DollarSign, Tag, Lock, Copy, Check } from "lucide-react";
 import { SlidersPanel } from "@/components/calculator/SlidersPanel";
@@ -73,6 +73,7 @@ export default function CalculatorPage() {
   const t = useTranslations("calculator");
   const [advancedMode, setAdvancedMode] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Slider state — default 0 so numbers show only after user input (no mock)
   const [priceMode, setPriceMode] = useState<"list" | "selling">("selling");
@@ -107,6 +108,13 @@ export default function CalculatorPage() {
   const sensitivity= useMemo(() => calcSensitivity(baseParams, result.profitPerUnit), [baseParams, result.profitPerUnit]);
   const scenarios  = useMemo(() => calcScenarios(baseParams), [baseParams]);
   const monte      = useMemo(() => calcMonteCarlo(baseParams), [baseParams]);
+
+  // Sticky bar accent color based on profit
+  const stickyAccent = result.profitMargin >= 15
+    ? { border: "border-green-500", gradient: "#10b981", dot: "bg-green-500", text: "text-green-600" }
+    : result.profitMargin >= 0
+      ? { border: "border-amber-500", gradient: "#f59e0b", dot: "bg-amber-500", text: "text-amber-600" }
+      : { border: "border-red-500", gradient: "#ef4444", dot: "bg-red-500", text: "text-red-600" };
 
   const handleGoalSet = useCallback(() => {
     const target = parseFloat(goalInput);
@@ -191,7 +199,7 @@ export default function CalculatorPage() {
               type="button"
               onClick={() => setAdvancedMode(mode)}
               className={cn(
-                "px-4 py-2 text-sm font-medium transition-colors",
+                "px-4 py-2.5 sm:py-2 text-sm font-medium transition-colors min-h-[44px] sm:min-h-0",
                 advancedMode === mode ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-muted"
               )}
             >
@@ -235,23 +243,23 @@ export default function CalculatorPage() {
           simpleMode={!advancedMode}
         />
         <div className="space-y-4">
-          {/* Main KPIs — prominent */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="card text-center py-4">
+          {/* Main KPIs — prominent, mobile-first stacked */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("results.profitPerUnit")}</p>
-              <p className={cn("text-2xl font-bold tabular-nums mt-1 transition-colors", result.profitPerUnit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1 transition-colors", result.profitPerUnit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
                 {formatCurrency(result.profitPerUnit)}
               </p>
             </div>
-            <div className="card text-center py-4">
+            <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Margin</p>
-              <p className={cn("text-2xl font-bold tabular-nums mt-1", result.profitMargin >= 30 ? "text-green-600" : result.profitMargin >= 15 ? "text-amber-600" : "text-red-600")}>
+              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.profitMargin >= 30 ? "text-green-600" : result.profitMargin >= 15 ? "text-amber-600" : "text-red-600")}>
                 {result.profitMargin.toFixed(1)}%
               </p>
             </div>
-            <div className="card text-center py-4">
+            <div className="card text-center py-4 sm:py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("results.perMonth")}</p>
-              <p className={cn("text-2xl font-bold tabular-nums mt-1", result.monthlyProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+              <p className={cn("text-2xl sm:text-xl font-bold tabular-nums mt-1", result.monthlyProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
                 {formatCurrency(result.monthlyProfit)}
               </p>
             </div>
@@ -350,6 +358,47 @@ export default function CalculatorPage() {
           })}
         </div>
       </section>
+
+      {/* Sticky Profit Bar — mobile only */}
+      <div
+        ref={resultsRef}
+        suppressHydrationWarning
+        className={cn(
+          "fixed bottom-0 inset-x-0 z-50 lg:hidden border-t-2",
+          stickyAccent.border,
+          "touch-manipulation shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.15)] overflow-hidden transition-all duration-500",
+          "bg-background/95 backdrop-blur-md"
+        )}
+        onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      >
+        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
+          <div className="flex items-center gap-1.5">
+            <div className={cn("w-2 h-2 rounded-full flex-shrink-0", stickyAccent.dot)} />
+            <span className="text-xs text-muted-foreground">กำไร</span>
+            <span className={cn("text-xl font-bold tabular-nums", stickyAccent.text)}>
+              {formatCurrency(result.profitPerUnit)}
+            </span>
+            <span className="text-xs text-muted-foreground">/ชิ้น</span>
+          </div>
+          <div className="w-px h-5 bg-border" />
+          <div className="flex items-center gap-0.5">
+            <span className={cn("text-base font-bold tabular-nums", stickyAccent.text)}>
+              {result.profitMargin.toFixed(1)}
+            </span>
+            <span className="text-xs text-muted-foreground">%</span>
+          </div>
+          <div className="w-px h-5 bg-border" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-lg font-bold tabular-nums text-foreground">
+              {formatCurrency(result.monthlyProfit)}
+            </span>
+            <span className="text-xs text-muted-foreground">/ด</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Spacer for sticky bar on mobile */}
+      <div className="h-20 lg:hidden" />
     </div>
   );
 }
