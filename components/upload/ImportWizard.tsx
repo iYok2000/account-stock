@@ -79,10 +79,13 @@ export function ImportWizard({
   const user = useUserContext();
   const role = user?.role ?? "Affiliate";
   const shopId = user?.shopId ?? null;
+  const isRootPreview = Boolean(user?.isViewingAs && user.roles.includes("Root"));
   const isAffiliateOnly = role === "Affiliate";
   const isOwnerRole = !isAffiliateOnly;
   const { showSuccess, showError } = useToast();
   const importInventoryMutation = useImportInventory();
+  const previewReadOnlyMessage =
+    "กำลังดูในมุมมองจำลองของ Root จึงยังบันทึกข้อมูลไม่ได้ โปรดสลับกลับเป็น Root view ก่อน";
 
   const visibleOptions = useMemo(
     () =>
@@ -271,6 +274,11 @@ export function ImportWizard({
 
   const handleSaveAffiliate = async () => {
     if (!affiliateItems || affiliateItems.length === 0) return;
+    if (isRootPreview) {
+      setError(previewReadOnlyMessage);
+      showError(previewReadOnlyMessage);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -294,6 +302,11 @@ export function ImportWizard({
 
   const handleSaveToInventory = async () => {
     if (!importResult || !importResult.items || importResult.items.length === 0) return;
+    if (isRootPreview) {
+      setError(previewReadOnlyMessage);
+      showError(previewReadOnlyMessage);
+      return;
+    }
     const payload: InventoryImportPayloadApi = {
       items: importResult.items.map((row) => ({
         date: row.date ?? null,
@@ -828,12 +841,18 @@ export function ImportWizard({
                 <p>ข้าม (ข้อมูลไม่ครบ): {importResult.skipped}</p>
               </div>
             )}
+            {isRootPreview && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                {previewReadOnlyMessage}
+              </div>
+            )}
             <div className="flex gap-2 flex-wrap items-center">
               {importResult.dataType === "affiliate_order" && importResult.affiliateSummary && !affiliateSaved && (
                 <button
                   type="button"
                   onClick={handleSaveAffiliate}
-                  className="btn-primary"
+                  disabled={isRootPreview || isLoading}
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   บันทึก
                 </button>
@@ -845,8 +864,8 @@ export function ImportWizard({
                 <button
                   type="button"
                   onClick={handleSaveToInventory}
-                  disabled={importInventoryMutation.isPending}
-                  className="btn-primary"
+                  disabled={isRootPreview || importInventoryMutation.isPending}
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {importInventoryMutation.isPending ? "กำลังบันทึก..." : "บันทึกเข้า Inventory"}
                 </button>

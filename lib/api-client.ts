@@ -8,6 +8,11 @@ import { env } from "@/lib/env";
 
 let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
+const ROOT_ROLE_VIEW_KEY = "root_role_view";
+const SESSION_CACHE_KEY = "rbac_session";
+const READ_ONLY_PREVIEW_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const ROOT_PREVIEW_READ_ONLY_ERROR =
+  "กำลังดูในมุมมองจำลองของ Root จึงยังบันทึกหรือแก้ไขข้อมูลไม่ได้ โปรดสลับกลับเป็น Root view ก่อน";
 
 export function setAuthToken(token: string | null): void {
   authToken = token;
@@ -24,6 +29,23 @@ export function setOnUnauthorized(cb: (() => void) | null): void {
 
 export function getApiBase(): string {
   return env().NEXT_PUBLIC_API_URL;
+}
+
+function isRootPreviewReadOnly(): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const roleView = sessionStorage.getItem(ROOT_ROLE_VIEW_KEY);
+    if (!roleView || roleView === "root") return false;
+
+    const rawSession = sessionStorage.getItem(SESSION_CACHE_KEY);
+    if (!rawSession) return false;
+
+    const parsed = JSON.parse(rawSession) as { session?: { roles?: string[] } };
+    return parsed.session?.roles?.includes("Root") ?? false;
+  } catch {
+    return false;
+  }
 }
 
 export type ApiRequestOptions = RequestInit & {
@@ -47,6 +69,7 @@ export async function apiRequest<T>(
   options?: ApiRequestOptions
 ): Promise<T> {
   const { authEndpoint = false, ...fetchOptions } = options ?? {};
+  const method = (fetchOptions.method ?? "GET").toUpperCase();
 
   // เผื่อกรณี component เรียก apiRequest เร็วเกินกว่าที่ AuthProvider จะ setAuthToken ให้
   // ดึง token จาก sessionStorage มาก่อน แล้ว cache ไว้ในตัวแปรโมดูล
@@ -59,6 +82,10 @@ export async function apiRequest<T>(
     } catch {
       /* ignore */
     }
+  }
+
+  if (READ_ONLY_PREVIEW_METHODS.has(method) && isRootPreviewReadOnly()) {
+    throw new Error(ROOT_PREVIEW_READ_ONLY_ERROR);
   }
 
   const base = getApiBase();

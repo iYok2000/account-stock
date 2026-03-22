@@ -295,6 +295,12 @@
     "groupReturns": "การคืนสินค้า",
     "advancedSectionTitle": "การวิเคราะห์ขั้นสูง",
     "happinessBlockTitle": "ภาพรวมสุขภาพดีล",
+    "productCost": "ต้นทุนสินค้า",
+    "shippingCost": "ค่าจัดส่ง",
+    "packagingCost": "ค่าแพ็คของ",
+    "adSpend": "ค่าโฆษณา",
+    "affiliateRate": "ค่า Affiliate",
+    "returnRate": "อัตราการคืนสินค้า",
     "sliders": {
       "title": "ปรับค่าด้วย Slider",
       "subtitle": "ลากปรับค่าเพื่อดูผลลัพธ์แบบ real-time · กด 🔓 เพื่อล็อคค่า",
@@ -390,7 +396,9 @@
       "commerceGrowth": "Commerce Growth",
       "infrastructure": "Infrastructure",
       "paymentFee": "Transaction Fee",
-      "affiliate": "Affiliate"
+      "affiliate": "Affiliate",
+      "feeDetails": "รายละเอียดค่าธรรมเนียม",
+      "costChartTitle": "สรุปต้นทุนและกำไร"
     },
     "analysis": {
       "sectionTitle": "การวิเคราะห์เชิงลึก",

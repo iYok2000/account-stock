@@ -296,6 +296,12 @@
     "groupReturns": "Returns",
     "advancedSectionTitle": "Advanced analysis",
     "happinessBlockTitle": "Wellness snapshot",
+    "productCost": "Product Cost",
+    "shippingCost": "Shipping Cost",
+    "packagingCost": "Packaging Cost",
+    "adSpend": "Ad Spend",
+    "affiliateRate": "Affiliate Rate",
+    "returnRate": "Return Rate",
     "stats": {
       "netRevenue": "Net Revenue/mo",
       "totalCost": "Total Cost/mo",
@@ -391,7 +397,9 @@
       "commerceGrowth": "Commerce Growth",
       "infrastructure": "Infrastructure",
       "paymentFee": "Transaction Fee",
-      "affiliate": "Affiliate"
+      "affiliate": "Affiliate",
+      "feeDetails": "Fee Details",
+      "costChartTitle": "Cost & Profit Summary"
     },
     "analysis": {
       "sectionTitle": "Deep Analysis",
