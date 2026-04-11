@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { RequirePermission } from "@/components/auth/RequirePermission";
 import {
@@ -444,7 +445,9 @@ function RevenueContent() {
 export default function RevenuePage() {
   return (
     <RequirePermission permission="analytics:read">
-      <RevenueContent />
+      <Suspense>
+        <RevenueContent />
+      </Suspense>
     </RequirePermission>
   );
 }

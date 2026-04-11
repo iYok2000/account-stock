@@ -202,6 +202,19 @@
       "netLabel": "สุทธิ",
       "noTopSkus": "ยังไม่มีรายการ SKU (ต้องมีข้อมูล SKU/วันที่)"
     },
+    "alerts": {
+      "title": "คำเตือนเกี่ยวกับข้อมูล",
+      "noIssues": "ทุกอย่างดูดี ไม่มีสิ่งผิดปกติ",
+      "staleImport": "ข้อมูลนำเข้าล้าสมัย — นำเข้าล่าสุดเมื่อ {date}",
+      "staleImportAction": "นำเข้าใหม่",
+      "noProducts": "ยังไม่มีสินค้าในระบบ",
+      "noProductsAction": "เพิ่มสินค้า",
+      "highLowStock": "มีสินค้า {count} รายการที่สต็อกใกล้หมด",
+      "highLowStockAction": "ดูสินค้า",
+      "missingOrders": "ไม่มีข้อมูลออเดอร์ — นำเข้าข้อมูลเพื่อดู KPIs",
+      "missingOrdersAction": "นำเข้าข้อมูล",
+      "lowStockItems": "{count} รายการสต็อกต่ำ"
+    },
     "revenue7dTitle": "รายรับ 7 วันล่าสุด",
     "revenue7dSubtitle": "ยอดรายรับรายวัน (บาท)",
       "lowStockTitle": "สต็อกใกล้หมด",

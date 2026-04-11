@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { RequirePermission } from "@/components/auth/RequirePermission";
 import { ArrowLeft, ArrowUpDown, BarChart3, ArrowRight, TrendingUp, Package, Hash, Star, AlertTriangle, TrendingDown, Layers, ChevronDown } from "lucide-react";
@@ -973,7 +973,9 @@ function ProductsContent() {
 export default function ProductsPage() {
   return (
     <RequirePermission permission="analytics:read">
-      <ProductsContent />
+      <Suspense>
+        <ProductsContent />
+      </Suspense>
     </RequirePermission>
   );
 }

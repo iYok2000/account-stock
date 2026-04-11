@@ -411,6 +411,7 @@ export default function TaxPage() {
         : t("flatBusiness"),
     };
   }, [
+    t,
     incomeType, config, grossIncome, deductionMethod, itemizedExpenses,
     hasSpouse, numChildren, numParents,
     socialSecurity, lifeInsurance, pensionInsurance, ssf, rmf, donations, otherDeductions,

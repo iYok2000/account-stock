@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { RequirePermission } from "@/components/auth/RequirePermission";
@@ -224,7 +224,9 @@ function ProfitabilityContent() {
 export default function ProfitabilityPage() {
   return (
     <RequirePermission permission="analytics:read">
-      <ProfitabilityContent />
+      <Suspense>
+        <ProfitabilityContent />
+      </Suspense>
     </RequirePermission>
   );
 }

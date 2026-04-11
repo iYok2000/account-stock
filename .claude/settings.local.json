@@ -8,7 +8,13 @@
       "Bash(go mod tidy)",
       "Bash(git status)",
       "Bash(git log --oneline -5)",
-      "Bash(git commit -m \"$(cat <<'EOF'\nfeat: update project documentation\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<'EOF'\nfeat: update project documentation\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(find /Users/noppachai/Documents/project-tiktok/congrate-seller/web/src/components/ui -name \"*.tsx\" 2>/dev/null | head -20)",
+      "Bash(find /Users/noppachai/Documents/project-tiktok/congrate-seller/web/src/components/dashboard -name \"*.tsx\" 2>/dev/null | head -20)",
+      "Bash(find /Users/noppachai/Documents/project-tiktok/congrate-seller/web/src/components/charts -name \"*.tsx\" 2>/dev/null | head -10)",
+      "Bash(find /Users/noppachai/Documents/project-tiktok/congrate-seller/web/src/lib -name \"*.ts\" -o -name \"*.tsx\" 2>/dev/null | head -20)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

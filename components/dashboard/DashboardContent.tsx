@@ -10,6 +10,9 @@ import {
   Calculator,
   BarChart3,
   Zap,
+  Bell,
+  CheckCircle2,
+  Info,
 } from "lucide-react";
 import { Link as LocaleLink } from "@/i18n/navigation";
 import { formatCurrency } from "@/lib/utils";
@@ -23,7 +26,26 @@ import {
 import { usePermissions, useUserContext } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
 
-const DAYS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
+const THAI_DAY = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"] as const;
+
+function buildChartPoints(points: { date: string; revenue: number }[]) {
+  // Build a map from date → revenue for O(1) lookup
+  const byDate = new Map(points.map((p) => [p.date, p.revenue]));
+  // Generate last 7 calendar days (oldest → newest)
+  const result: { day: string; date: string; revenue: number }[] = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    result.push({
+      day: THAI_DAY[d.getDay()],
+      date: dateStr,
+      revenue: byDate.get(dateStr) ?? 0,
+    });
+  }
+  return result;
+}
 
 const QUICK_ACTIONS = [
   { label: "เพิ่มสินค้า", href: "/inventory", icon: Plus, color: "bg-blue-50 text-blue-700 hover:bg-blue-100" },
@@ -59,14 +81,16 @@ export function DashboardContent() {
     () => revenueQuery.data?.data ?? [],
     [revenueQuery.data?.data]
   );
+  // Build 7 chart points aligned to actual calendar dates
+  const chartPoints = useMemo(() => buildChartPoints(revenuePoints), [revenuePoints]);
   const revenueTotal = useMemo(
-    () => revenuePoints.reduce((sum, p) => sum + (p.revenue || 0), 0),
-    [revenuePoints]
+    () => chartPoints.reduce((sum, p) => sum + p.revenue, 0),
+    [chartPoints]
   );
-  const revenueAvg = revenuePoints.length ? revenueTotal / revenuePoints.length : 0;
+  const revenueAvg = chartPoints.length ? revenueTotal / chartPoints.length : 0;
   const maxRevenue = useMemo(
-    () => Math.max(...revenuePoints.map((p) => p.revenue || 0), 1),
-    [revenuePoints]
+    () => Math.max(...chartPoints.map((p) => p.revenue), 1),
+    [chartPoints]
   );
   const isAffiliate = user?.role === "Affiliate";
 
@@ -109,6 +133,76 @@ export function DashboardContent() {
     [canAccessInventory, kpiCardsAll]
   );
 
+  /** Derive data quality alerts from API hooks */
+  const alerts = useMemo(() => {
+    const result: {
+      id: string;
+      severity: "warning" | "error" | "info";
+      messageKey: string;
+      messageParams?: Record<string, string | number>;
+      ctaKey?: string;
+      ctaHref?: string;
+    }[] = [];
+
+    if (overview) {
+      // Stale import warning: last import > 7 days ago
+      if (overview.lastImport) {
+        // eslint-disable-next-line react-hooks/purity -- intentionally uses current time to calculate days since import
+        const now = Date.now();
+        const lastImportDate = new Date(overview.lastImport).getTime();
+        const daysSinceImport = Math.floor(
+          (now - lastImportDate) / (1000 * 60 * 60 * 24)
+        );
+        if (daysSinceImport > 7) {
+          result.push({
+            id: "stale-import",
+            severity: "warning",
+            messageKey: "staleImport",
+            messageParams: { date: overview.lastImport },
+            ctaKey: "staleImportAction",
+            ctaHref: "/import",
+          });
+        }
+      }
+
+      // No products at all
+      if (overview.totalProducts === 0) {
+        result.push({
+          id: "no-products",
+          severity: "error",
+          messageKey: "noProducts",
+          ctaKey: "noProductsAction",
+          ctaHref: "/inventory",
+        });
+      }
+
+      // High low-stock count
+      if (overview.lowStock > 10) {
+        result.push({
+          id: "high-low-stock",
+          severity: "warning",
+          messageKey: "highLowStock",
+          messageParams: { count: overview.lowStock },
+          ctaKey: "highLowStockAction",
+          ctaHref: "/inventory",
+        });
+      }
+    }
+
+    // Missing order data
+    if (kpiQuery.data?.totalOrders === null) {
+      result.push({
+        id: "missing-orders",
+        severity: "info",
+        messageKey: "missingOrders",
+        ctaKey: "missingOrdersAction",
+        ctaHref: "/import",
+      });
+    }
+
+    return result;
+  }, [overview, kpiQuery.data?.totalOrders]);
+
   return (
     <div className="space-y-8">
       {/* Header with gradient accent */}
@@ -122,6 +216,69 @@ export function DashboardContent() {
           </p>
         </div>
       </div>
+
+      {/* Data Quality Alerts */}
+      {(overviewQuery.isLoading || alerts.length > 0) && (
+        <DashboardSection
+          id="data-alerts"
+          title={t("alerts.title")}
+          defaultOpen={alerts.length > 0}
+          icon={<Bell className="h-5 w-5" />}
+          chartCount={0}
+        >
+          {overviewQuery.isLoading ? (
+            <div className="flex items-center gap-3 py-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+              <p className="text-sm text-muted-foreground">{t("loading")}</p>
+            </div>
+          ) : alerts.length === 0 ? (
+            <div className="flex items-center gap-3 py-2 text-sm text-green-700 bg-green-50 rounded-lg px-4">
+              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600" />
+              <span>{t("alerts.noIssues")}</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {alerts.map((alert) => {
+                const Icon = alert.severity === "warning" ? AlertTriangle : alert.severity === "error" ? AlertTriangle : Info;
+                const bgClass =
+                  alert.severity === "warning"
+                    ? "bg-amber-50 border-amber-200"
+                    : alert.severity === "error"
+                    ? "bg-red-50 border-red-200"
+                    : "bg-blue-50 border-blue-200";
+                const iconClass =
+                  alert.severity === "warning"
+                    ? "text-amber-600"
+                    : alert.severity === "error"
+                    ? "text-red-600"
+                    : "text-blue-600";
+                return (
+                  <div
+                    key={alert.id}
+                    className={`flex items-center gap-3 rounded-lg border px-4 py-3 ${bgClass}`}
+                  >
+                    <Icon className={`h-5 w-5 flex-shrink-0 ${iconClass}`} />
+                    <p className="text-sm flex-1 min-w-0">
+                      {t(
+                        `alerts.${alert.messageKey}` as Parameters<typeof t>[0],
+                        alert.messageParams as Parameters<typeof t>[1]
+                      )}
+                    </p>
+                    {alert.ctaKey && alert.ctaHref && (
+                      <LocaleLink
+                        href={alert.ctaHref}
+                        className="flex-shrink-0 text-xs font-semibold text-white bg-primary hover:bg-primary/80 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        {t(`alerts.${alert.ctaKey}` as Parameters<typeof t>[0])}
+                      </LocaleLink>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DashboardSection>
+      )}
 
       {/* Section A: KPI overview */}
       <section aria-labelledby="dashboard-overview-heading" className="mb-6">
@@ -256,22 +413,21 @@ export function DashboardContent() {
               <p className="text-xs text-muted-foreground mt-1">{t("revenue7dSubtitle")}</p>
             </div>
             <div className="flex items-end gap-2 h-40 px-2">
-              {DAYS.map((day, idx) => {
-                const point = revenuePoints[idx];
-                const revenue = point?.revenue || 0;
+              {chartPoints.map((point) => {
+                const revenue = point.revenue;
                 const height = Math.max(4, (revenue / maxRevenue) * 100);
-                const isHighest = revenue === maxRevenue && revenue > 0;
+                const isHighest = revenue > 0 && revenue === maxRevenue;
                 return (
-                  <div key={day} className="flex flex-col items-center gap-2 flex-1 group">
+                  <div key={point.date} className="flex flex-col items-center gap-2 flex-1 group">
                     <div className="relative w-full">
                       <div
                         className={`w-full rounded-t-lg transition-all duration-500 hover:opacity-80 ${
-                          isHighest 
-                            ? 'bg-gradient-to-t from-primary via-primary to-primary/70 shadow-lg' 
-                            : 'bg-gradient-to-t from-primary/70 to-primary/50'
+                          isHighest
+                            ? "bg-gradient-to-t from-primary via-primary to-primary/70 shadow-lg"
+                            : "bg-gradient-to-t from-primary/70 to-primary/50"
                         }`}
                         style={{ height: `${height}%` }}
-                        title={`${day}: ${formatCurrency(revenue)}`}
+                        title={`${point.date}: ${formatCurrency(revenue)}`}
                       />
                       {isHighest && (
                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
@@ -279,7 +435,7 @@ export function DashboardContent() {
                         </div>
                       )}
                     </div>
-                    <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">{day}</span>
+                    <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">{point.day}</span>
                   </div>
                 );
               })}

@@ -202,6 +202,19 @@
       "netLabel": "Net",
       "noTopSkus": "No SKU breakdown yet (upload with SKU data)."
     },
+    "alerts": {
+      "title": "Data Warnings",
+      "noIssues": "Everything looks good — no issues detected",
+      "staleImport": "Import data is stale — last imported {date}",
+      "staleImportAction": "Import new data",
+      "noProducts": "No products in the system yet",
+      "noProductsAction": "Add products",
+      "highLowStock": "{count} items are running low on stock",
+      "highLowStockAction": "View products",
+      "missingOrders": "No order data — import to see KPIs",
+      "missingOrdersAction": "Import data",
+      "lowStockItems": "{count} low-stock items"
+    },
     "revenue7dTitle": "Last 7 days revenue",
     "revenue7dSubtitle": "Daily revenue (THB)",
     "lowStockTitle": "Low stock",

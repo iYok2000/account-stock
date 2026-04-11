@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { RequirePermission } from "@/components/auth/RequirePermission";
@@ -238,7 +238,9 @@ function TrendsContent() {
 export default function TrendsPage() {
   return (
     <RequirePermission permission="analytics:read">
-      <TrendsContent />
+      <Suspense>
+        <TrendsContent />
+      </Suspense>
     </RequirePermission>
   );
 }
