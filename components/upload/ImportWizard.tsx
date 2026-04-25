@@ -178,20 +178,22 @@ export function ImportWizard({
     if (dataType === "affiliate_order") {
       const affiliateSummary = aggregateAffiliateOrders(parsedData.rows, mappings);
       const itemsPayload = buildAffiliateImportItems(parsedData.rows, mappings);
-      setAffiliateItems(itemsPayload);
-      const result: ImportResult = {
-        imported: validation.validCount,
-        skipped: validation.invalidRows.length,
-        duplicates: 0,
-        errors: [],
-        affiliateSummary,
-        dataType: "affiliate_order",
-      };
-      setAffiliateSaved(false);
-      setImportResult(result);
-      setSelectedShop(null);
-      setStep("result");
-      onImportComplete?.(result);
+
+      // Save to sessionStorage for dashboard display (like congrate)
+      try {
+        sessionStorage.setItem("affiliate-dashboard-summary", JSON.stringify(affiliateSummary));
+      } catch {}
+
+      // Background: save to BE API (non-blocking — client-side data is source of truth)
+      apiRequest("/api/affiliate/import", {
+        method: "POST",
+        body: JSON.stringify({ items: itemsPayload }),
+      }).catch((err) => {
+        console.warn("Background affiliate save failed (client-side data still shown):", err);
+      });
+
+      // Redirect to dashboard immediately
+      router.push("/");
       return;
     }
     setIsLoading(true);
@@ -829,18 +831,6 @@ export function ImportWizard({
               </div>
             )}
             <div className="flex gap-2 flex-wrap items-center">
-              {importResult.dataType === "affiliate_order" && importResult.affiliateSummary && !affiliateSaved && (
-                <button
-                  type="button"
-                  onClick={handleSaveAffiliate}
-                  className="btn-primary"
-                >
-                  บันทึก
-                </button>
-              )}
-              {importResult.dataType === "affiliate_order" && affiliateSaved && (
-                <span className="text-sm text-neutral-500">บันทึกแล้ว — ต้องการบันทึกชุดใหม่ให้กด &quot;นำเข้าไฟล์ใหม่&quot;</span>
-              )}
               {importResult.dataType === "order_transaction" && isOwnerRole && importResult.items?.length ? (
                 <button
                   type="button"

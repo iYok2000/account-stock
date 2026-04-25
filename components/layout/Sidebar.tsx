@@ -39,6 +39,7 @@ const NAV_GROUPS = [
   {
     labelKey: "groupShops",
     items: [
+      { href: "/shops", key: "shopsList", icon: Store },
       { href: "/shops/create", key: "createShop", icon: Store },
       { href: "/shops/me", key: "shopMembers", icon: UserCog },
     ],

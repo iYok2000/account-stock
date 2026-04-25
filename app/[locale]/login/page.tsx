@@ -179,6 +179,12 @@ export default function LoginPage() {
                 Dev: fill Root credentials
               </button>
             )}
+
+            <p className="text-center text-sm text-muted-foreground pt-1">
+              <a href="/invite" className="text-primary hover:underline font-medium">
+                {t("registerLink")}
+              </a>
+            </p>
           </form>
 
         </div>

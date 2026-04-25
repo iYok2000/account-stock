@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { group: "หลัก", href: "/", key: "dashboard", icon: LayoutDashboard },
   { group: "หลัก", href: "/inventory", key: "inventory", icon: Package },
   { group: "หลัก", href: "/import", key: "import", icon: Upload },
+  { group: "ร้านค้า", href: "/shops", key: "shopsList", icon: Store },
   { group: "ร้านค้า", href: "/shops/create", key: "createShop", icon: Store },
   { group: "ร้านค้า", href: "/shops/me", key: "shopMembers", icon: UserCog },
   { group: "โปรโมชั่น", href: "/campaigns", key: "campaigns", icon: Megaphone },

@@ -39,6 +39,7 @@ export const NAV_PERMISSIONS: Record<string, PermissionString> = {
   "/": "dashboard:read",
   "/inventory": "inventory:read",
   "/import": "inventory:create",
+  "/shops": "shops:read",
   "/shops/create": "shops:create",
   "/shops/me": "users:read",
   "/campaigns": "promotions:read",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   Package,
@@ -23,8 +23,9 @@ import {
   useDashboardLowStock,
   useDashboardKpis,
 } from "@/lib/hooks/use-api";
-import { usePermissions, useUserContext } from "@/contexts/AuthContext";
+import { usePermissions, useUserContext, useAuth } from "@/contexts/AuthContext";
 import { NAV_PERMISSIONS } from "@/lib/rbac/constants";
+import { AffiliateDashboard } from "@/components/dashboard/AffiliateDashboard";
 
 const THAI_DAY = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"] as const;
 
@@ -57,6 +58,7 @@ export function DashboardContent() {
   const t = useTranslations("dashboard");
   const { can } = usePermissions();
   const user = useUserContext();
+  const { isLoading: isAuthLoading } = useAuth();
   const overviewQuery = useDashboardOverview();
   const revenueQuery = useDashboardRevenue7d();
   const lowStockQuery = useDashboardLowStock(5);
@@ -64,6 +66,12 @@ export function DashboardContent() {
 
   const [orderCountOverride, setOrderCountOverride] = useState<number | null>(null);
   const [costOverride, setCostOverride] = useState<number | null>(null);
+
+  // Detect affiliate data in sessionStorage (for Admin/SuperAdmin who just imported)
+  const [hasAffiliateSummary, setHasAffiliateSummary] = useState(false);
+  useEffect(() => {
+    setHasAffiliateSummary(!!sessionStorage.getItem("affiliate-dashboard-summary"));
+  }, []);
 
   const overview = overviewQuery.data;
 
@@ -93,6 +101,8 @@ export function DashboardContent() {
     [chartPoints]
   );
   const isAffiliate = user?.role === "Affiliate";
+
+  // --- All remaining hooks must be declared before any early returns ---
 
   const lowStock = lowStockQuery.data?.data ?? [];
 
@@ -145,9 +155,7 @@ export function DashboardContent() {
     }[] = [];
 
     if (overview) {
-      // Stale import warning: last import > 7 days ago
       if (overview.lastImport) {
-        // eslint-disable-next-line react-hooks/purity -- intentionally uses current time to calculate days since import
         const now = Date.now();
         const lastImportDate = new Date(overview.lastImport).getTime();
         const daysSinceImport = Math.floor(
@@ -165,7 +173,6 @@ export function DashboardContent() {
         }
       }
 
-      // No products at all
       if (overview.totalProducts === 0) {
         result.push({
           id: "no-products",
@@ -176,7 +183,6 @@ export function DashboardContent() {
         });
       }
 
-      // High low-stock count
       if (overview.lowStock > 10) {
         result.push({
           id: "high-low-stock",
@@ -189,7 +195,6 @@ export function DashboardContent() {
       }
     }
 
-    // Missing order data
     if (kpiQuery.data?.totalOrders === null) {
       result.push({
         id: "missing-orders",
@@ -202,6 +207,14 @@ export function DashboardContent() {
 
     return result;
   }, [overview, kpiQuery.data?.totalOrders]);
+
+  // --- Early returns (after ALL hooks) ---
+
+  // Wait for auth to load before deciding which dashboard to show (prevents flash)
+  if (isAuthLoading && !user) return null;
+
+  // Show affiliate dashboard if: role is Affiliate, OR sessionStorage has affiliate data (after import)
+  if (isAffiliate || hasAffiliateSummary) return <AffiliateDashboard />;
 
   return (
     <div className="space-y-8">

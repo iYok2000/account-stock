@@ -483,8 +483,9 @@ export default function TaxPage() {
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">{t("disclaimer.title")}</p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 leading-relaxed"
-                 dangerouslySetInnerHTML={{ __html: t("disclaimer.description") }} />
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 leading-relaxed">
+                {t.rich("disclaimer.description", { strong: (chunks) => <strong>{chunks}</strong> })}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
